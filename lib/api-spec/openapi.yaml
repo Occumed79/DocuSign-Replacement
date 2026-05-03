@@ -1,0 +1,854 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: PacketPath API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: auth
+    description: Authentication
+  - name: cases
+    description: Case management
+  - name: exam-types
+    description: Exam type management
+  - name: questions
+    description: Question template management
+  - name: answers
+    description: Case answers
+  - name: dashboard
+    description: Dashboard statistics
+  - name: security
+    description: Security and PHI compliance
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginBody"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout current user
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current authenticated user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /exam-types:
+    get:
+      operationId: listExamTypes
+      tags: [exam-types]
+      summary: List all exam types
+      responses:
+        "200":
+          description: List of exam types
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ExamType"
+
+  /cases:
+    get:
+      operationId: listCases
+      tags: [cases]
+      summary: List all cases
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+        - in: query
+          name: exam_type_id
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of cases
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Case"
+    post:
+      operationId: createCase
+      tags: [cases]
+      summary: Create a new case
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCaseBody"
+      responses:
+        "201":
+          description: Case created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Case"
+
+  /cases/{id}:
+    get:
+      operationId: getCase
+      tags: [cases]
+      summary: Get a case by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Case
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Case"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateCase
+      tags: [cases]
+      summary: Update a case
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCaseBody"
+      responses:
+        "200":
+          description: Updated case
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Case"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteCase
+      tags: [cases]
+      summary: Delete a case
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /cases/{id}/answers:
+    get:
+      operationId: getCaseAnswers
+      tags: [answers]
+      summary: Get all answers for a case
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Answers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Answer"
+    put:
+      operationId: upsertCaseAnswers
+      tags: [answers]
+      summary: Bulk upsert answers for a case
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertAnswersBody"
+      responses:
+        "200":
+          description: Updated answers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Answer"
+
+  /cases/{id}/review:
+    get:
+      operationId: getCaseReview
+      tags: [cases]
+      summary: Get completeness review for a case
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Case review
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaseReview"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /questions:
+    get:
+      operationId: listQuestions
+      tags: [questions]
+      summary: List questions, optionally filtered by exam type
+      parameters:
+        - in: query
+          name: exam_type_id
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Questions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Question"
+    post:
+      operationId: createQuestion
+      tags: [questions]
+      summary: Create a new question template
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateQuestionBody"
+      responses:
+        "201":
+          description: Created question
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Question"
+
+  /questions/{id}:
+    patch:
+      operationId: updateQuestion
+      tags: [questions]
+      summary: Update a question template
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateQuestionBody"
+      responses:
+        "200":
+          description: Updated question
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Question"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteQuestion
+      tags: [questions]
+      summary: Delete a question template
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /dashboard/stats:
+    get:
+      operationId: getDashboardStats
+      tags: [dashboard]
+      summary: Get dashboard statistics
+      responses:
+        "200":
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required: [status]
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required: [message]
+
+    LoginBody:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+      required: [email, password]
+
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        token:
+          type: string
+      required: [user, token]
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+        createdAt:
+          type: string
+      required: [id, name, email, role, createdAt]
+
+    ExamType:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        slug:
+          type: string
+      required: [id, name, description, slug]
+
+    Case:
+      type: object
+      properties:
+        id:
+          type: integer
+        patientName:
+          type: string
+        patientDob:
+          type: ["string", "null"]
+        examTypeId:
+          type: integer
+        examTypeName:
+          type: string
+        status:
+          type: string
+        completionPercent:
+          type: integer
+        createdById:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, patientName, examTypeId, examTypeName, status, completionPercent, createdAt, updatedAt]
+
+    CreateCaseBody:
+      type: object
+      properties:
+        patientName:
+          type: string
+        patientDob:
+          type: ["string", "null"]
+        examTypeId:
+          type: integer
+      required: [patientName, examTypeId]
+
+    UpdateCaseBody:
+      type: object
+      properties:
+        patientName:
+          type: string
+        patientDob:
+          type: ["string", "null"]
+        status:
+          type: string
+        examTypeId:
+          type: integer
+
+    Question:
+      type: object
+      properties:
+        id:
+          type: integer
+        text:
+          type: string
+        answerType:
+          type: string
+        required:
+          type: boolean
+        section:
+          type: string
+        orderIndex:
+          type: integer
+        examTypeIds:
+          type: array
+          items:
+            type: integer
+        options:
+          type: array
+          items:
+            type: string
+        triggerValue:
+          type: ["string", "null"]
+        followUpIds:
+          type: array
+          items:
+            type: integer
+        helpText:
+          type: ["string", "null"]
+      required: [id, text, answerType, required, section, orderIndex, examTypeIds, options, followUpIds]
+
+    CreateQuestionBody:
+      type: object
+      properties:
+        text:
+          type: string
+        answerType:
+          type: string
+        required:
+          type: boolean
+        section:
+          type: string
+        orderIndex:
+          type: integer
+        examTypeIds:
+          type: array
+          items:
+            type: integer
+        options:
+          type: array
+          items:
+            type: string
+        triggerValue:
+          type: ["string", "null"]
+        followUpIds:
+          type: array
+          items:
+            type: integer
+        helpText:
+          type: ["string", "null"]
+      required: [text, answerType, required, section, orderIndex, examTypeIds]
+
+    UpdateQuestionBody:
+      type: object
+      properties:
+        text:
+          type: string
+        answerType:
+          type: string
+        required:
+          type: boolean
+        section:
+          type: string
+        orderIndex:
+          type: integer
+        examTypeIds:
+          type: array
+          items:
+            type: integer
+        options:
+          type: array
+          items:
+            type: string
+        triggerValue:
+          type: ["string", "null"]
+        followUpIds:
+          type: array
+          items:
+            type: integer
+        helpText:
+          type: ["string", "null"]
+
+    Answer:
+      type: object
+      properties:
+        id:
+          type: integer
+        caseId:
+          type: integer
+        questionId:
+          type: integer
+        value:
+          type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, caseId, questionId, value, createdAt, updatedAt]
+
+    UpsertAnswersBody:
+      type: object
+      properties:
+        answers:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnswerInput"
+      required: [answers]
+
+    AnswerInput:
+      type: object
+      properties:
+        questionId:
+          type: integer
+        value:
+          type: string
+      required: [questionId, value]
+
+    CaseReview:
+      type: object
+      properties:
+        caseId:
+          type: integer
+        totalQuestions:
+          type: integer
+        answeredQuestions:
+          type: integer
+        requiredMissing:
+          type: array
+          items:
+            $ref: "#/components/schemas/MissingItem"
+        completionPercent:
+          type: integer
+        sections:
+          type: array
+          items:
+            $ref: "#/components/schemas/SectionStatus"
+        recommendations:
+          type: array
+          items:
+            type: string
+      required: [caseId, totalQuestions, answeredQuestions, requiredMissing, completionPercent, sections, recommendations]
+
+    MissingItem:
+      type: object
+      properties:
+        questionId:
+          type: integer
+        questionText:
+          type: string
+        section:
+          type: string
+        required:
+          type: boolean
+      required: [questionId, questionText, section, required]
+
+    SectionStatus:
+      type: object
+      properties:
+        name:
+          type: string
+        total:
+          type: integer
+        answered:
+          type: integer
+        complete:
+          type: boolean
+      required: [name, total, answered, complete]
+
+    DashboardStats:
+      type: object
+      properties:
+        totalCases:
+          type: integer
+        casesByStatus:
+          type: array
+          items:
+            $ref: "#/components/schemas/StatusCount"
+        casesByExamType:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExamTypeCount"
+        recentCases:
+          type: array
+          items:
+            $ref: "#/components/schemas/Case"
+        avgCompletionPercent:
+          type: integer
+      required: [totalCases, casesByStatus, casesByExamType, recentCases, avgCompletionPercent]
+
+    StatusCount:
+      type: object
+      properties:
+        status:
+          type: string
+        count:
+          type: integer
+      required: [status, count]
+
+    ExamTypeCount:
+      type: object
+      properties:
+        examTypeName:
+          type: string
+        count:
+          type: integer
+      required: [examTypeName, count]
+
+    SecurityEvent:
+      type: object
+      properties:
+        id:
+          type: integer
+        eventType:
+          type: string
+        userId:
+          type: ["integer", "null"]
+        email:
+          type: ["string", "null"]
+        ipAddress:
+          type: ["string", "null"]
+        userAgent:
+          type: ["string", "null"]
+        details:
+          type: ["string", "null"]
+        severity:
+          type: string
+        createdAt:
+          type: string
+      required: [id, eventType, severity, createdAt]
+
+    AuditLog:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: ["integer", "null"]
+        userEmail:
+          type: ["string", "null"]
+        userName:
+          type: ["string", "null"]
+        action:
+          type: string
+        resource:
+          type: string
+        resourceId:
+          type: ["string", "null"]
+        details:
+          type: ["string", "null"]
+        ipAddress:
+          type: ["string", "null"]
+        userAgent:
+          type: ["string", "null"]
+        phiAccessed:
+          type: boolean
+        patientName:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required: [id, action, resource, phiAccessed, createdAt]
+
+    SessionInfo:
+      type: object
+      properties:
+        id:
+          type: integer
+        ipAddress:
+          type: ["string", "null"]
+        userAgent:
+          type: ["string", "null"]
+        lastActivityAt:
+          type: string
+        expiresAt:
+          type: string
+        createdAt:
+          type: string
+        isCurrent:
+          type: boolean
+      required: [id, lastActivityAt, expiresAt, createdAt, isCurrent]
+
+    PhiUserStat:
+      type: object
+      properties:
+        email:
+          type: string
+        name:
+          type: string
+        count:
+          type: integer
+      required: [email, name, count]
+
+    SecurityStats:
+      type: object
+      properties:
+        totalPhiAccess:
+          type: integer
+        phiAccessToday:
+          type: integer
+        failedLoginsToday:
+          type: integer
+        activeSessions:
+          type: integer
+        recentEvents:
+          type: array
+          items:
+            $ref: "#/components/schemas/SecurityEvent"
+        topPhiUsers:
+          type: array
+          items:
+            $ref: "#/components/schemas/PhiUserStat"
+      required: [totalPhiAccess, phiAccessToday, failedLoginsToday, activeSessions, recentEvents, topPhiUsers]
+
+    AuditLogList:
+      type: object
+      properties:
+        logs:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditLog"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required: [logs, total, page, limit]
+
+    SecurityEventList:
+      type: object
+      properties:
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/SecurityEvent"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required: [events, total, page, limit]
