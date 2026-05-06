@@ -132,10 +132,10 @@ export default function ESignaturesPage() {
   };
 
   const statCards = [
-    { label: "Total Requests", value: stats.total, icon: FileText, gradient: "from-blue-500 to-indigo-600" },
-    { label: "Awaiting Signature", value: stats.pending, icon: Clock, gradient: "from-amber-500 to-orange-500" },
-    { label: "Completed", value: stats.completed, icon: CheckCircle, gradient: "from-emerald-500 to-teal-600" },
-    { label: "Voided", value: stats.voided, icon: XCircle, gradient: "from-slate-500 to-slate-600" },
+    { label: "Total Requests", value: stats.total, icon: FileText, iconBg: "linear-gradient(135deg, #3b82f6, #4f46e5)" },
+    { label: "Awaiting Signature", value: stats.pending, icon: Clock, iconBg: "linear-gradient(135deg, #f59e0b, #ea580c)" },
+    { label: "Completed", value: stats.completed, icon: CheckCircle, iconBg: "linear-gradient(135deg, #10b981, #14b8a6)" },
+    { label: "Voided", value: stats.voided, icon: XCircle, iconBg: "linear-gradient(135deg, #64748b, #475569)" },
   ];
 
   return (
@@ -144,7 +144,10 @@ export default function ESignaturesPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg">
+            <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{
+              background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+              boxShadow: "0 4px 16px rgba(99, 102, 241, 0.25), inset 0 1px 0 rgba(255,255,255,0.15)",
+            }}>
               <PenTool size={18} className="text-white" />
             </div>
             <div>
@@ -154,7 +157,12 @@ export default function ESignaturesPage() {
           </div>
           <div className="flex items-center gap-3">
             <Link href="/signature-templates">
-              <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border text-sm font-medium text-foreground hover:bg-muted/50 transition-colors">
+              <button className="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium text-foreground transition-all" style={{
+                background: "rgba(255,255,255,0.50)",
+                border: "1px solid rgba(255,255,255,0.50)",
+                backdropFilter: "blur(12px)",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.5)",
+              }}>
                 <FileText size={15} />
                 Templates
               </button>
@@ -162,7 +170,12 @@ export default function ESignaturesPage() {
             <button
               data-testid="btn-new-request"
               onClick={() => setShowCreate(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-sm font-medium hover:opacity-90 transition-opacity shadow-lg"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-white text-sm font-medium transition-all"
+              style={{
+                background: "linear-gradient(135deg, hsl(210, 100%, 52%), hsl(250, 80%, 60%))",
+                boxShadow: "0 4px 16px rgba(56, 140, 255, 0.25), inset 0 1px 0 rgba(255,255,255,0.15)",
+                border: "1px solid rgba(255,255,255,0.12)",
+              }}
             >
               <Plus size={15} />
               New Request
@@ -178,14 +191,17 @@ export default function ESignaturesPage() {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.06 }}
-              className="glass-card rounded-2xl p-5"
+              className="liquid-glass rounded-3xl p-5 relative overflow-hidden glass-highlight"
             >
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-muted-foreground text-xs font-medium uppercase tracking-wider">{s.label}</p>
                   <p className="text-foreground text-2xl font-semibold mt-1.5 tracking-tight">{s.value}</p>
                 </div>
-                <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center bg-gradient-to-br", s.gradient)}>
+                <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{
+                  background: s.iconBg,
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.3)",
+                }}>
                   <s.icon size={18} className="text-white" />
                 </div>
               </div>
@@ -201,13 +217,13 @@ export default function ESignaturesPage() {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search requests..."
-              className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-background border border-border text-sm outline-none focus:border-primary text-foreground placeholder:text-muted-foreground"
+              className="w-full pl-9 pr-4 py-2.5 rounded-2xl bg-white/60 border border-white/40 text-sm outline-none focus:border-primary/50 text-foreground placeholder:text-muted-foreground transition-all backdrop-blur-sm"
             />
           </div>
           <select
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}
-            className="px-3 py-2.5 rounded-xl bg-background border border-border text-sm outline-none focus:border-primary text-foreground"
+            className="px-3 py-2.5 rounded-2xl bg-white/60 border border-white/40 text-sm outline-none focus:border-primary/50 text-foreground transition-all backdrop-blur-sm"
           >
             <option value="">All Status</option>
             <option value="draft">Draft</option>
@@ -251,7 +267,7 @@ export default function ESignaturesPage() {
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.04 }}
-                  className="glass-card rounded-2xl p-5 hover:shadow-md transition-all"
+                  className="liquid-glass rounded-3xl p-5 hover:shadow-md transition-all relative overflow-hidden glass-highlight"
                 >
                   <div className="flex items-start gap-4">
                     {/* Icon */}

@@ -52,7 +52,12 @@ export default function CasesPage() {
         <Link href="/cases/new">
           <button
             data-testid="btn-cases-new"
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity shadow-sm"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-white text-sm font-medium transition-all"
+            style={{
+              background: "linear-gradient(135deg, hsl(210, 100%, 52%), hsl(250, 80%, 60%))",
+              boxShadow: "0 4px 16px rgba(56, 140, 255, 0.25), inset 0 1px 0 rgba(255,255,255,0.15)",
+              border: "1px solid rgba(255,255,255,0.12)",
+            }}
           >
             <Plus size={15} /> New Case
           </button>
@@ -60,7 +65,7 @@ export default function CasesPage() {
       </div>
 
       {/* Filters */}
-      <div className="glass-card rounded-xl p-4 mb-6 flex flex-wrap gap-3">
+      <div className="liquid-glass rounded-3xl p-4 mb-6 flex flex-wrap gap-3 relative glass-highlight">
         <div className="flex-1 min-w-48 relative">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
@@ -69,14 +74,14 @@ export default function CasesPage() {
             placeholder="Search patients..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 rounded-lg bg-background border border-border text-sm outline-none focus:border-primary transition-colors"
+            className="w-full pl-9 pr-4 py-2.5 rounded-2xl bg-white/60 border border-white/40 text-sm outline-none focus:border-primary/50 transition-all backdrop-blur-sm"
           />
         </div>
         <select
           data-testid="select-status-filter"
           value={statusFilter}
           onChange={e => setStatusFilter(e.target.value)}
-          className="px-3 py-2 rounded-lg bg-background border border-border text-sm outline-none focus:border-primary text-foreground"
+          className="px-3 py-2.5 rounded-2xl bg-white/60 border border-white/40 text-sm outline-none focus:border-primary/50 text-foreground transition-all backdrop-blur-sm"
         >
           <option value="">All Statuses</option>
           <option value="draft">Draft</option>
@@ -88,7 +93,7 @@ export default function CasesPage() {
           data-testid="select-exam-type-filter"
           value={examTypeFilter}
           onChange={e => setExamTypeFilter(e.target.value)}
-          className="px-3 py-2 rounded-lg bg-background border border-border text-sm outline-none focus:border-primary text-foreground"
+          className="px-3 py-2.5 rounded-2xl bg-white/60 border border-white/40 text-sm outline-none focus:border-primary/50 text-foreground transition-all backdrop-blur-sm"
         >
           <option value="">All Exam Types</option>
           {(examTypes ?? []).map(et => (
@@ -134,7 +139,7 @@ export default function CasesPage() {
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.04 }}
-                className="glass-card rounded-2xl p-5 group"
+                className="liquid-glass rounded-3xl p-5 group relative overflow-hidden glass-highlight"
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1 min-w-0">

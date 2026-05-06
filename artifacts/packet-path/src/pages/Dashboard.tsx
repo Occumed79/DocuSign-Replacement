@@ -12,15 +12,15 @@ const statusConfig: Record<string, { label: string; color: string; bg: string; i
   submitted: { label: "Submitted", color: "text-violet-600", bg: "bg-violet-50", icon: CheckCircle },
 };
 
-function StatCard({ label, value, sub, icon: Icon, gradient }: {
+function StatCard({ label, value, sub, icon: Icon, iconBg }: {
   label: string; value: number | string; sub?: string;
-  icon: React.ElementType; gradient: string;
+  icon: React.ElementType; iconBg: string;
 }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="glass-card rounded-2xl p-5"
+      className="liquid-glass rounded-3xl p-5 relative overflow-hidden glass-highlight"
     >
       <div className="flex items-start justify-between">
         <div>
@@ -28,7 +28,10 @@ function StatCard({ label, value, sub, icon: Icon, gradient }: {
           <p className="text-foreground text-2xl font-semibold mt-1.5 tracking-tight">{value}</p>
           {sub && <p className="text-muted-foreground text-xs mt-1">{sub}</p>}
         </div>
-        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", gradient)}>
+        <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{
+          background: iconBg,
+          boxShadow: "0 4px 12px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.3)",
+        }}>
           <Icon size={18} className="text-white" />
         </div>
       </div>
@@ -59,7 +62,12 @@ export default function DashboardPage() {
           <Link href="/cases/new">
             <button
               data-testid="btn-dashboard-new-case"
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity shadow-sm"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-white text-sm font-medium transition-all"
+              style={{
+                background: "linear-gradient(135deg, hsl(210, 100%, 52%), hsl(250, 80%, 60%))",
+                boxShadow: "0 4px 16px rgba(56, 140, 255, 0.25), inset 0 1px 0 rgba(255,255,255,0.15)",
+                border: "1px solid rgba(255,255,255,0.12)",
+              }}
             >
               <Plus size={15} /> New Case
             </button>
@@ -79,23 +87,23 @@ export default function DashboardPage() {
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <StatCard label="Total Cases" value={stats?.totalCases ?? 0} icon={FileText}
-            gradient="bg-gradient-to-br from-blue-500 to-blue-600" />
+            iconBg="linear-gradient(135deg, #3b82f6, #2563eb)" />
           <StatCard label="In Progress" value={inProgress} icon={Clock}
-            gradient="bg-gradient-to-br from-amber-500 to-orange-500" />
+            iconBg="linear-gradient(135deg, #f59e0b, #ea580c)" />
           <StatCard label="Complete" value={complete + submitted}
             sub="Ready for review" icon={CheckCircle}
-            gradient="bg-gradient-to-br from-emerald-500 to-teal-500" />
+            iconBg="linear-gradient(135deg, #10b981, #14b8a6)" />
           <StatCard label="Avg Completion" value={`${stats?.avgCompletionPercent ?? 0}%`}
             sub="Across all cases" icon={TrendingUp}
-            gradient="bg-gradient-to-br from-violet-500 to-purple-600" />
+            iconBg="linear-gradient(135deg, #8b5cf6, #a855f7)" />
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent cases */}
         <div className="lg:col-span-2">
-          <div className="glass-card rounded-2xl overflow-hidden">
-            <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+          <div className="liquid-glass rounded-3xl overflow-hidden relative glass-highlight">
+            <div className="px-6 py-4 border-b border-white/20 flex items-center justify-between">
               <h2 className="font-semibold text-foreground text-sm">Recent Cases</h2>
               <Link href="/cases">
                 <button className="text-xs text-primary hover:underline flex items-center gap-1">
@@ -103,7 +111,7 @@ export default function DashboardPage() {
                 </button>
               </Link>
             </div>
-            <div className="divide-y divide-border">
+            <div className="divide-y divide-white/15">
               {isLoading ? (
                 Array.from({length: 4}).map((_, i) => (
                   <div key={i} className="px-6 py-4 animate-pulse flex items-center gap-4">
@@ -153,8 +161,8 @@ export default function DashboardPage() {
 
         {/* By exam type */}
         <div>
-          <div className="glass-card rounded-2xl overflow-hidden">
-            <div className="px-6 py-4 border-b border-border">
+          <div className="liquid-glass rounded-3xl overflow-hidden relative glass-highlight">
+            <div className="px-6 py-4 border-b border-white/20">
               <h2 className="font-semibold text-foreground text-sm">By Exam Type</h2>
             </div>
             <div className="p-6 flex flex-col gap-3">
