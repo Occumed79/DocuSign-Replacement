@@ -4,6 +4,7 @@ import {
   examTypesTable,
   questionsTable,
   casesTable,
+  answersTable,
 } from "@workspace/db/schema";
 import crypto from "crypto";
 import { sql } from "drizzle-orm";
@@ -17,6 +18,12 @@ function hashPassword(password: string): string {
 
 async function seed() {
   console.log("🌱 Seeding database...\n");
+
+  // Clear existing seed data (order matters for FK constraints)
+  await db.delete(answersTable);
+  await db.delete(casesTable);
+  await db.delete(questionsTable);
+  console.log("  Cleared existing questions, cases, and answers");
 
   // ── Users ──────────────────────────────────────────────────────────────────
   const passwordHash = hashPassword("admin123");
@@ -121,7 +128,6 @@ async function seed() {
       { text: "Overall medical clearance", answerType: "dropdown", section: "Clearance", orderIndex: 35, examTypeIds: [deploymentId, traditionalId], required: true, options: ["Cleared — no restrictions", "Cleared — with restrictions", "Temporarily unfit", "Permanently unfit"] },
       { text: "Clearance notes / restrictions", answerType: "text", section: "Clearance", orderIndex: 36, examTypeIds: [deploymentId, traditionalId], required: false },
     ])
-    .onConflictDoNothing()
     .returning();
   console.log(`  Questions: ${questions.length} created`);
 
@@ -159,7 +165,6 @@ async function seed() {
       { patientName: "Emily Brown", patientDob: "2001-01-10", examTypeId: labsId, status: "in_progress", completionPercent: 60, createdById: adminId },
       { patientName: "Robert Wilson", patientDob: "1990-06-05", examTypeId: deploymentId, status: "submitted", completionPercent: 100, createdById: adminId },
     ])
-    .onConflictDoNothing()
     .returning();
   console.log(`  Cases: ${cases.length} created`);
 
