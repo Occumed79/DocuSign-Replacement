@@ -1,0 +1,150 @@
+# PacketPath — Occu-Med Exam Workflow App
+
+A TurboTax-style internal web app for occupational health exam workflows with a built-in **DocuSign-replacement e-signature platform**. Features a macOS glass/luminous UI aesthetic with deep blue-indigo-violet gradients.
+
+## Features
+
+- **Exam Workflow** — TurboTax-style interview wizard for patient cases (section-by-section Q&A)
+- **E-Signature Platform** — Create, send, and track signature requests with tamper-proof document hashing
+- **Public Signing Pages** — Token-based signing links (no auth required) with draw or type signature modes
+- **PDF Generation** — Download signed documents as PDF with full audit trail
+- **HIPAA-Compliant Audit Logging** — Full audit trail with IP, user agent, and timestamp tracking
+- **Email Notifications** — Configurable SMTP for signing request and reminder emails
+- **Admin Dashboard** — Case stats, question template management, security event monitoring
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 18, Vite 7, Tailwind CSS v4, Framer Motion, Wouter, TanStack Query |
+| UI | Shadcn/ui, glass morphism design system, Inter font |
+| Backend | Express 5, Node.js |
+| Database | PostgreSQL, Drizzle ORM |
+| API Contract | OpenAPI spec → Orval codegen → React Query hooks + Zod schemas |
+| Auth | SHA-256 token-based sessions |
+
+## Quick Start
+
+### Prerequisites
+
+- **Node.js** ≥ 22
+- **pnpm** ≥ 9
+- **PostgreSQL** 15+ (or Docker)
+
+### 1. Install Dependencies
+
+```bash
+pnpm install
+```
+
+### 2. Start PostgreSQL
+
+Using Docker:
+
+```bash
+docker compose up -d
+```
+
+Or use an existing PostgreSQL instance and set `DATABASE_URL` accordingly.
+
+### 3. Configure Environment
+
+```bash
+cp .env.example .env
+# Edit .env if needed (defaults work with the Docker setup)
+```
+
+### 4. Push Database Schema
+
+```bash
+DATABASE_URL=postgresql://packetpath:packetpath@localhost:5432/packetpath pnpm db:push
+```
+
+### 5. Seed the Database
+
+```bash
+DATABASE_URL=postgresql://packetpath:packetpath@localhost:5432/packetpath pnpm db:seed
+```
+
+### 6. Start the App
+
+Start the API server and frontend in separate terminals:
+
+```bash
+# Terminal 1 — API server (port 8080)
+DATABASE_URL=postgresql://packetpath:packetpath@localhost:5432/packetpath pnpm dev:api
+
+# Terminal 2 — Frontend (port 5173)
+pnpm dev:web
+```
+
+Open **http://localhost:5173** in your browser.
+
+### Login Credentials
+
+| Email | Password | Role |
+|-------|----------|------|
+| admin@occumed.com | admin123 | Admin |
+| examqa@occumed.com | admin123 | Exam QA |
+| reviewer@occumed.com | admin123 | Reviewer |
+
+## Project Structure
+
+```
+artifacts/
+  api-server/          # Express backend (port 8080)
+  packet-path/         # React+Vite frontend (port 5173)
+  mockup-sandbox/      # Canvas component sandbox
+lib/
+  api-client-react/    # Orval-generated React Query hooks
+  api-spec/            # OpenAPI specification
+  api-zod/             # Orval-generated Zod schemas
+  db/                  # Drizzle schema + migrations
+scripts/
+  src/seed.ts          # Database seed script
+```
+
+## Pages
+
+| Path | Description |
+|------|-------------|
+| `/login` | Glass morphism login page |
+| `/` | Dashboard with stats, recent cases, exam type breakdown |
+| `/cases` | Case list with search/filter |
+| `/cases/new` | New case form (patient info + exam type) |
+| `/cases/:id` | TurboTax-style interview wizard |
+| `/cases/:id/review` | Packet review with completion ring |
+| `/esignatures` | E-signature hub: list requests, stats, create wizard |
+| `/signature-templates` | Manage reusable document templates |
+| `/signature-requests/:id` | Detail view with audit trail |
+| `/sign/:token` | **Public** signing page (no auth, token-based) |
+| `/email-settings` | SMTP configuration (admin only) |
+| `/admin` | Question template management (admin only) |
+| `/security` | Security event monitoring (admin only) |
+| `/audit` | Audit log viewer (admin only) |
+
+## E-Signature Platform
+
+- Secure 48-byte `crypto.randomBytes` base64url tokens per recipient
+- SHA-256 document hash stored at creation for tamper detection
+- Signature hash = SHA-256(signatureData + fullName + IP)
+- Full audit trail (HIPAA §164.312(b) compliant)
+- ESIGN Act + UETA compliant legal language
+- Draw (canvas) and type signature modes
+- Multi-recipient signing with ordered flow
+- Void / remind / copy-link admin actions
+
+## SMTP Configuration (Optional)
+
+To enable email notifications for signature requests, set these environment variables:
+
+```bash
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=you@example.com
+SMTP_PASS=your-app-password
+SMTP_FROM=no-reply@occumed.com
+SMTP_FROM_NAME=Occu-Med PacketPath
+```
+
+You can also configure SMTP from the **Email Settings** page in the admin UI.
