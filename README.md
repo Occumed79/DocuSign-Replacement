@@ -134,6 +134,57 @@ scripts/
 - Multi-recipient signing with ordered flow
 - Void / remind / copy-link admin actions
 
+## Production Deployment
+
+PacketPath ships with a **Dockerfile** that bundles the frontend and backend into a single container. In production, the Express server serves the React SPA and handles API requests on one port.
+
+### Option A: Railway (Recommended — Easiest)
+
+1. Push this repo to GitHub
+2. Create a new project on [Railway](https://railway.app)
+3. Add a **PostgreSQL** plugin → copy the `DATABASE_URL`
+4. Add the repo as a **Service** → Railway auto-detects the Dockerfile
+5. Set environment variables:
+   - `DATABASE_URL` — from the PostgreSQL plugin
+   - `PORT` — Railway sets this automatically
+6. Deploy. Once running, open the Railway-provided URL.
+7. Run the seed script via Railway shell: `DATABASE_URL=... node scripts/dist/seed.mjs`
+
+### Option B: Fly.io
+
+```bash
+# Install flyctl: https://fly.io/docs/flyctl/install/
+fly launch --no-deploy
+fly postgres create --name packetpath-db
+fly postgres attach packetpath-db
+fly deploy
+# Seed the database
+fly ssh console -C "DATABASE_URL=\$DATABASE_URL node scripts/dist/seed.mjs"
+```
+
+### Option C: Any Docker Host
+
+```bash
+# Build the image
+docker build -t packetpath .
+
+# Run with your own PostgreSQL
+docker run -p 8080:8080 \
+  -e DATABASE_URL=postgresql://user:pass@host:5432/packetpath \
+  -e PORT=8080 \
+  packetpath
+```
+
+### Production Build (without Docker)
+
+```bash
+pnpm install
+pnpm --filter @workspace/packet-path run build
+pnpm --filter @workspace/api-server run build
+cp -r artifacts/packet-path/dist/public artifacts/api-server/dist/public
+DATABASE_URL=... PORT=8080 node artifacts/api-server/dist/index.mjs
+```
+
 ## SMTP Configuration (Optional)
 
 To enable email notifications for signature requests, set these environment variables:
