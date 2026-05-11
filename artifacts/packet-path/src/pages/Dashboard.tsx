@@ -41,7 +41,7 @@ function StatCard({ label, value, sub, icon: Icon, iconBg }: {
 }
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const { data: stats, isLoading } = useGetDashboardStats({ query: { queryKey: getGetDashboardStatsQueryKey() } });
 
   const statusCounts = stats?.casesByStatus ?? [];
@@ -50,20 +50,37 @@ export default function DashboardPage() {
   const submitted = statusCounts.find(s => s.status === "submitted")?.count ?? 0;
 
   const isEmptyWorkspace = (stats?.totalCases ?? 0) === 0;
-  const [onboarding, setOnboarding] = useState({ caseCreated: false, questionAdded: false, requestSent: false });
+  const [hasTemplate, setHasTemplate] = useState(false);
+  const [hasSignatureRequest, setHasSignatureRequest] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem("packetpath.onboarding");
-    if (saved) setOnboarding(JSON.parse(saved));
-  }, []);
+    const loadOnboardingSignals = async () => {
+      try {
+        const [tmplRes, reqRes] = await Promise.all([
+          fetch("/api/signature-templates", { headers: { Authorization: `Bearer ${token}` } }),
+          fetch("/api/signature-requests", { headers: { Authorization: `Bearer ${token}` } }),
+        ]);
+        if (tmplRes.ok) {
+          const templates = await tmplRes.json();
+          setHasTemplate(Array.isArray(templates) && templates.length > 0);
+        }
+        if (reqRes.ok) {
+          const requestsPayload = await reqRes.json();
+          const requests = Array.isArray(requestsPayload?.requests) ? requestsPayload.requests : [];
+          setHasSignatureRequest(requests.length > 0);
+        }
+      } catch {
+        // Ignore onboarding hint failures to keep dashboard resilient.
+      }
+    };
+    if (token) loadOnboardingSignals();
+  }, [token]);
 
-  const toggleOnboarding = (key: keyof typeof onboarding) => {
-    setOnboarding(prev => {
-      const next = { ...prev, [key]: !prev[key] };
-      localStorage.setItem("packetpath.onboarding", JSON.stringify(next));
-      return next;
-    });
-  };
+  const checklistDone = [
+    (stats?.totalCases ?? 0) > 0,
+    hasTemplate,
+    hasSignatureRequest,
+  ].filter(Boolean).length;
 
   return (
     <div className="p-8 max-w-6xl mx-auto">
@@ -128,24 +145,18 @@ export default function DashboardPage() {
               <div className="grid sm:grid-cols-3 gap-2 mt-3 text-xs">
                 <div className="rounded-xl bg-white/60 border border-white/50 px-3 py-2">
                   <Link href="/cases/new"><button className="text-left hover:underline">1. Create a case</button></Link>
-                  <label className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                    <input type="checkbox" checked={onboarding.caseCreated} onChange={() => toggleOnboarding("caseCreated")} /> Mark done
-                  </label>
+                  <p className="mt-2 text-[11px] text-muted-foreground">Status: {(stats?.totalCases ?? 0) > 0 ? "Complete" : "Not started"}</p>
                 </div>
                 <div className="rounded-xl bg-white/60 border border-white/50 px-3 py-2">
-                  <Link href="/admin"><button className="text-left hover:underline">2. Add exam questions</button></Link>
-                  <label className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                    <input type="checkbox" checked={onboarding.questionAdded} onChange={() => toggleOnboarding("questionAdded")} /> Mark done
-                  </label>
+                  <Link href="/signature-templates"><button className="text-left hover:underline">2. Create template</button></Link>
+                  <p className="mt-2 text-[11px] text-muted-foreground">Status: {hasTemplate ? "Complete" : "Not started"}</p>
                 </div>
                 <div className="rounded-xl bg-white/60 border border-white/50 px-3 py-2">
                   <Link href="/esignatures"><button className="text-left hover:underline flex items-center gap-1">3. Send signature request <PenTool size={12} /></button></Link>
-                  <label className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                    <input type="checkbox" checked={onboarding.requestSent} onChange={() => toggleOnboarding("requestSent")} /> Mark done
-                  </label>
+                  <p className="mt-2 text-[11px] text-muted-foreground">Status: {hasSignatureRequest ? "Complete" : "Not started"}</p>
                 </div>
               </div>
-              <p className="mt-2 text-xs text-muted-foreground">Progress: {[onboarding.caseCreated, onboarding.questionAdded, onboarding.requestSent].filter(Boolean).length}/3 complete</p>
+              <p className="mt-2 text-xs text-muted-foreground">Progress: {checklistDone}/3 complete (auto-tracked)</p>
             </div>
           </div>
         </motion.div>
