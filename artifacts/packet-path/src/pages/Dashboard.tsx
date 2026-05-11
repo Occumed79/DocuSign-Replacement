@@ -1,5 +1,6 @@
 import { useGetDashboardStats, useListCases, getGetDashboardStatsQueryKey } from "@workspace/api-client-react";
 import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { FileText, CheckCircle, Clock, AlertCircle, TrendingUp, Plus, ArrowRight, PenTool, Sparkles } from "lucide-react";
@@ -49,6 +50,20 @@ export default function DashboardPage() {
   const submitted = statusCounts.find(s => s.status === "submitted")?.count ?? 0;
 
   const isEmptyWorkspace = (stats?.totalCases ?? 0) === 0;
+  const [onboarding, setOnboarding] = useState({ caseCreated: false, questionAdded: false, requestSent: false });
+
+  useEffect(() => {
+    const saved = localStorage.getItem("packetpath.onboarding");
+    if (saved) setOnboarding(JSON.parse(saved));
+  }, []);
+
+  const toggleOnboarding = (key: keyof typeof onboarding) => {
+    setOnboarding(prev => {
+      const next = { ...prev, [key]: !prev[key] };
+      localStorage.setItem("packetpath.onboarding", JSON.stringify(next));
+      return next;
+    });
+  };
 
   return (
     <div className="p-8 max-w-6xl mx-auto">
@@ -111,10 +126,26 @@ export default function DashboardPage() {
             <div className="flex-1">
               <p className="text-sm font-semibold text-foreground">Workspace is empty — here’s the fastest way to see the full DocuSign-style flow</p>
               <div className="grid sm:grid-cols-3 gap-2 mt-3 text-xs">
-                <Link href="/cases/new"><button className="text-left rounded-xl bg-white/60 border border-white/50 px-3 py-2 hover:bg-white/80 transition">1. Create a case</button></Link>
-                <Link href="/admin"><button className="text-left rounded-xl bg-white/60 border border-white/50 px-3 py-2 hover:bg-white/80 transition">2. Add exam questions</button></Link>
-                <Link href="/esignatures"><button className="text-left rounded-xl bg-white/60 border border-white/50 px-3 py-2 hover:bg-white/80 transition flex items-center justify-between">3. Send signature request <PenTool size={12} /></button></Link>
+                <div className="rounded-xl bg-white/60 border border-white/50 px-3 py-2">
+                  <Link href="/cases/new"><button className="text-left hover:underline">1. Create a case</button></Link>
+                  <label className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <input type="checkbox" checked={onboarding.caseCreated} onChange={() => toggleOnboarding("caseCreated")} /> Mark done
+                  </label>
+                </div>
+                <div className="rounded-xl bg-white/60 border border-white/50 px-3 py-2">
+                  <Link href="/admin"><button className="text-left hover:underline">2. Add exam questions</button></Link>
+                  <label className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <input type="checkbox" checked={onboarding.questionAdded} onChange={() => toggleOnboarding("questionAdded")} /> Mark done
+                  </label>
+                </div>
+                <div className="rounded-xl bg-white/60 border border-white/50 px-3 py-2">
+                  <Link href="/esignatures"><button className="text-left hover:underline flex items-center gap-1">3. Send signature request <PenTool size={12} /></button></Link>
+                  <label className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <input type="checkbox" checked={onboarding.requestSent} onChange={() => toggleOnboarding("requestSent")} /> Mark done
+                  </label>
+                </div>
               </div>
+              <p className="mt-2 text-xs text-muted-foreground">Progress: {[onboarding.caseCreated, onboarding.questionAdded, onboarding.requestSent].filter(Boolean).length}/3 complete</p>
             </div>
           </div>
         </motion.div>
