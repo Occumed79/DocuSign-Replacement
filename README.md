@@ -151,17 +151,46 @@ scripts/
 
 PacketPath ships with a **Dockerfile** that bundles the frontend and backend into a single container. In production, the Express server serves the React SPA and handles API requests on one port.
 
-### Option A: Railway (Recommended — Easiest)
+### Option A: Neon + Render (Recommended)
 
-1. Push this repo to GitHub
-2. Create a new project on [Railway](https://railway.app)
-3. Add a **PostgreSQL** plugin → copy the `DATABASE_URL`
-4. Add the repo as a **Service** → Railway auto-detects the Dockerfile
-5. Set environment variables:
-   - `DATABASE_URL` — from the PostgreSQL plugin
-   - `PORT` — Railway sets this automatically
-6. Deploy. Once running, open the Railway-provided URL.
-7. Run the seed script via Railway shell: `DATABASE_URL=... node scripts/dist/seed.mjs`
+If you want a managed PostgreSQL + managed app host, this is the cleanest setup.
+
+#### 1) Create a Neon Postgres database
+
+1. Create a Neon project at [neon.tech](https://neon.tech).
+2. In Neon, create a database (for example: `packetpath`).
+3. Copy the connection string and save it as your production `DATABASE_URL`.
+   - Prefer pooled connection string for app traffic.
+   - Keep SSL enabled (`sslmode=require`) in production.
+
+#### 2) Create a Render Web Service from this repo
+
+1. Push this repo to GitHub.
+2. In Render, create a **Web Service** from the repo.
+3. Render will detect the included `Dockerfile`; keep **Environment = Docker**.
+4. Set environment variables in Render:
+   - `DATABASE_URL` = Neon connection string
+   - `NODE_ENV` = `production`
+   - `PORT` = `8080` (Render usually injects `PORT`, but setting this is fine)
+   - Optional SMTP vars if you want email delivery (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`, `SMTP_FROM_NAME`)
+5. Deploy the service.
+
+#### 3) Run schema + seed against Neon
+
+From your local machine (or CI), point to Neon and run:
+
+```bash
+DATABASE_URL='postgresql://...neon...' pnpm db:push
+DATABASE_URL='postgresql://...neon...' pnpm db:seed
+```
+
+> Tip: You can also run one-off jobs in Render Shell/Jobs if you prefer not to run migrations from local.
+
+#### 4) Verify production health
+
+- Check `GET /api/health` on your Render URL.
+- Log in with seeded credentials.
+- Create a test case and run one signature flow.
 
 ### Option B: Fly.io
 
