@@ -12,7 +12,6 @@ COPY lib/api-zod/package.json lib/api-zod/
 COPY artifacts/api-server/package.json artifacts/api-server/
 COPY artifacts/packet-path/package.json artifacts/packet-path/
 COPY scripts/package.json scripts/
-# Copy any other workspace packages that may exist
 COPY artifacts/mockup-sandbox/package.json artifacts/mockup-sandbox/
 RUN pnpm install --frozen-lockfile
 
@@ -48,8 +47,12 @@ COPY --from=build-frontend /app/artifacts/packet-path/dist/public ./artifacts/ap
 # Copy lib sources (needed at runtime by drizzle/db)
 COPY lib/ ./lib/
 
+# Copy entrypoint script
+COPY entrypoint.sh ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh
+
 ENV NODE_ENV=production
 ENV PORT=8080
 EXPOSE 8080
 
-CMD ["node", "--enable-source-maps", "artifacts/api-server/dist/index.mjs"]
+CMD ["./entrypoint.sh"]
