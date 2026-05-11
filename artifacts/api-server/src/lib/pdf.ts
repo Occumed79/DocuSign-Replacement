@@ -542,17 +542,33 @@ export function generateSignedDocumentPdf(input: PdfInput): Readable {
     }
   }
 
-  // Footer on every page (via page event)
-  const pageCount = (doc as any)._pageCount ?? 0;
-  const footerY = doc.page.height - 45;
-  drawHRule(doc, footerY);
-  doc.fillColor(MUTED).fontSize(8).font("Helvetica")
-    .text(
-      `PacketPath E-Signature Platform · Occu-Med Occupational Health · Document ID: PKT-SIG-${String(input.requestId).padStart(5, "0")}`,
-      ML, footerY + 8, { width: W, align: "center" }
-    );
-  doc.fillColor(MUTED).fontSize(8)
-    .text(`Generated: ${formatDate(new Date())}`, ML, footerY + 20, { width: W, align: "center" });
+   // ─── VERIFIED WATERMARK ──────────────────────────────────────────────────
+  // Apply a diagonal "VERIFIED" watermark on the cover page for completed docs
+  if (input.status === "completed") {
+    doc.save();
+    doc.opacity(0.06);
+    doc.fillColor(EMERALD).fontSize(72).font("Helvetica-Bold");
+    const cx = doc.page.width / 2;
+    const cy = doc.page.height / 2;
+    doc.rotate(-35, { origin: [cx, cy] });
+    doc.text("VERIFIED", cx - 160, cy - 36, { width: 320, align: "center" });
+    doc.restore();
+  }
+
+  // ─── QR CODE AUDIT TRAIL LINK ─────────────────────────────────────────────
+  // Embed the audit trail URL as text (QR code library not bundled; URL is machine-readable)
+  const baseUrl = process.env.APP_BASE_URL ?? process.env.REPLIT_DOMAINS?.split(",")[0]?.trim()
+    ? `https://${process.env.REPLIT_DOMAINS?.split(",")[0]?.trim()}`
+    : "https://packetpath.app";
+  const auditUrl = `${baseUrl}/signature-requests/${input.requestId}`;
+  const footerY2 = doc.page.height - 60;
+  drawHRule(doc, footerY2);
+  doc.fillColor(MUTED).fontSize(7).font("Helvetica")
+    .text(`Audit Trail: ${auditUrl}`, ML, footerY2 + 8, { width: W, align: "center" });
+  doc.fillColor(MUTED).fontSize(7)
+    .text(`Document ID: PKT-SIG-${String(input.requestId).padStart(5, "0")} · PacketPath E-Signature Platform · Occu-Med Occupational Health`, ML, footerY2 + 18, { width: W, align: "center" });
+  doc.fillColor(MUTED).fontSize(7)
+    .text(`Generated: ${formatDate(new Date())} · SHA-256: ${input.documentHash.slice(0, 32)}...`, ML, footerY2 + 28, { width: W, align: "center" });
 
   doc.end();
   return doc as unknown as Readable;

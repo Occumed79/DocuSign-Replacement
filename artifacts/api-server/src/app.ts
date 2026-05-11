@@ -6,8 +6,12 @@ import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { phiLogger } from "./middleware/phi-logger";
+import { sentryRequestHandler, sentryErrorHandler } from "./lib/sentry";
 
 const app: Express = express();
+
+// Sentry request handler MUST be first (captures request context for error reports)
+app.use(sentryRequestHandler());
 
 app.use(
   pinoHttp({
@@ -72,5 +76,17 @@ app.use("/api/auth/login", authLimiter);
 app.use(phiLogger);
 
 app.use("/api", router);
+
+// Sentry error handler MUST be after all routes and before other error handlers
+app.use(sentryErrorHandler());
+
+// Global error handler — catches any unhandled errors and returns a clean JSON response
+app.use((err: any, _req: any, res: any, _next: any) => {
+  logger.error({ err }, "Unhandled error");
+  const status = err?.status ?? err?.statusCode ?? 500;
+  res.status(status).json({
+    error: status < 500 ? (err?.message ?? "Bad request") : "Internal server error",
+  });
+});
 
 export default app;

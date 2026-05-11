@@ -4,7 +4,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   LayoutDashboard, FolderOpen, Plus, LogOut, ChevronLeft, ChevronRight,
-  Activity, Shield, User, Users, ClipboardList, AlertTriangle, Clock, PenTool, Mail
+  Activity, Shield, User, Users, ClipboardList, AlertTriangle, Clock, PenTool, Mail,
+  BarChart2, Webhook, Palette
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -16,12 +17,15 @@ const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/" },
   { label: "All Cases", icon: FolderOpen, href: "/cases" },
   { label: "E-Signatures", icon: PenTool, href: "/esignatures" },
+  { label: "Analytics", icon: BarChart2, href: "/analytics" },
 ];
 
 const adminItems = [
   { label: "Admin", icon: Shield, href: "/admin" },
   { label: "Users", icon: Users, href: "/users" },
   { label: "Email Settings", icon: Mail, href: "/email-settings" },
+  { label: "Branding", icon: Palette, href: "/branding" },
+  { label: "Webhooks", icon: Webhook, href: "/webhooks" },
   { label: "Security", icon: AlertTriangle, href: "/security" },
   { label: "Audit Log", icon: ClipboardList, href: "/audit" },
 ];
