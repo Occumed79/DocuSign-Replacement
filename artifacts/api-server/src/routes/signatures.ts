@@ -130,7 +130,35 @@ router.post("/signature-templates", async (req, res): Promise<void> => {
 router.put("/signature-templates/:id", async (req, res): Promise<void> => {
   const userId = await requireAuth(req, res);
   if (!userId) return;
-  const { name, description, category, content, formSchema, isActive } = req.body;
+  const { name, description, category, content, formSchema, isActive, changeNote } = req.body;
+  const templateId = Number(req.params.id);
+
+  // Snapshot current version before overwriting
+  const [current] = await db.select().from(signatureTemplatesTable).where(eq(signatureTemplatesTable.id, templateId)).limit(1);
+  if (!current) { res.status(404).json({ error: "Not found" }); return; }
+
+  // Determine next version number
+  const { templateVersionsTable } = await import("@workspace/db");
+  const [latestVer] = await db
+    .select({ version: templateVersionsTable.version })
+    .from(templateVersionsTable)
+    .where(eq(templateVersionsTable.templateId, templateId))
+    .orderBy(desc(templateVersionsTable.version))
+    .limit(1);
+  const nextVersion = (latestVer?.version ?? 0) + 1;
+
+  await db.insert(templateVersionsTable).values({
+    templateId,
+    version: nextVersion,
+    name: current.name,
+    description: current.description ?? null,
+    category: current.category,
+    content: current.content,
+    formSchema: current.formSchema,
+    changeNote: changeNote ?? null,
+    createdById: userId,
+  });
+
   const [t] = await db
     .update(signatureTemplatesTable)
     .set({
@@ -139,10 +167,10 @@ router.put("/signature-templates/:id", async (req, res): Promise<void> => {
       formSchema: Array.isArray(formSchema) ? formSchema : undefined,
       isActive,
     })
-    .where(eq(signatureTemplatesTable.id, Number(req.params.id)))
+    .where(eq(signatureTemplatesTable.id, templateId))
     .returning();
   if (!t) { res.status(404).json({ error: "Not found" }); return; }
-  res.json({ id: t.id, name: t.name });
+  res.json({ id: t.id, name: t.name, version: nextVersion });
 });
 
 // DELETE /api/signature-templates/:id
@@ -855,6 +883,154 @@ router.post("/sign/:token/decline", async (req, res): Promise<void> => {
   });
 
   res.json({ message: "Declined" });
+});
+
+// ─── BULK ACTIONS ────────────────────────────────────────────────────────────
+
+// POST /api/signature-requests/bulk/void
+router.post("/signature-requests/bulk/void", async (req, res): Promise<void> => {
+  const userId = await requireAuth(req, res);
+  if (!userId) return;
+
+  const { ids, reason } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    res.status(400).json({ error: "ids array required" });
+    return;
+  }
+
+  const [user] = await db.select({ email: usersTable.email, name: usersTable.name }).from(usersTable).where(eq(usersTable.id, userId));
+  const results: { id: number; success: boolean }[] = [];
+
+  for (const id of ids.slice(0, 50)) { // Max 50 at a time
+    const [updated] = await db
+      .update(signatureRequestsTable)
+      .set({ status: "voided", voidedAt: new Date(), voidReason: reason || "Bulk voided by admin" })
+      .where(and(eq(signatureRequestsTable.id, Number(id)), sql`${signatureRequestsTable.status} != 'voided'`))
+      .returning();
+    if (updated) {
+      await logSigAction({
+        userId, userEmail: user?.email, userName: user?.name,
+        action: "bulk_voided", resourceId: String(id),
+        details: `Bulk voided: ${reason || "No reason"}`, ip: getClientIp(req), ua: req.headers["user-agent"],
+      });
+    }
+    results.push({ id: Number(id), success: Boolean(updated) });
+  }
+
+  res.json({ voided: results.filter(r => r.success).length, results });
+});
+
+// POST /api/signature-requests/bulk/remind
+router.post("/signature-requests/bulk/remind", async (req, res): Promise<void> => {
+  const userId = await requireAuth(req, res);
+  if (!userId) return;
+
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    res.status(400).json({ error: "ids array required" });
+    return;
+  }
+
+  const [user] = await db.select({ email: usersTable.email, name: usersTable.name }).from(usersTable).where(eq(usersTable.id, userId));
+  const baseUrl = getBaseUrl(req);
+  let totalSent = 0;
+  let totalFailed = 0;
+
+  for (const id of ids.slice(0, 20)) { // Max 20 requests at a time
+    const [request] = await db.select().from(signatureRequestsTable).where(eq(signatureRequestsTable.id, Number(id)));
+    if (!request || request.status !== "sent") continue;
+
+    const pendingRecipients = await db
+      .select()
+      .from(signatureRecipientsTable)
+      .where(and(
+        eq(signatureRecipientsTable.requestId, Number(id)),
+        sql`${signatureRecipientsTable.status} IN ('pending', 'viewed')`
+      ));
+
+    for (const r of pendingRecipients) {
+      const result = await sendSigningEmail({
+        recipientName: r.name,
+        recipientEmail: r.email,
+        senderName: user?.name ?? "Occu-Med",
+        requestTitle: request.title,
+        message: request.message,
+        signingToken: r.token,
+        expiresAt: r.tokenExpiresAt,
+        isReminder: true,
+        baseUrl,
+      });
+      if (result.sent) totalSent++;
+      else totalFailed++;
+    }
+  }
+
+  res.json({ message: `Bulk reminder: ${totalSent} emails sent, ${totalFailed} failed`, totalSent, totalFailed });
+});
+
+// POST /api/signature-requests/:id/sms — send SMS signing notification
+router.post("/signature-requests/:id/sms", async (req, res): Promise<void> => {
+  const userId = await requireAuth(req, res);
+  if (!userId) return;
+
+  const id = Number(req.params.id);
+  const { isReminder = false } = req.body;
+
+  const [request] = await db.select().from(signatureRequestsTable).where(eq(signatureRequestsTable.id, id));
+  if (!request) { res.status(404).json({ error: "Not found" }); return; }
+
+  const pendingRecipients = await db
+    .select()
+    .from(signatureRecipientsTable)
+    .where(and(
+      eq(signatureRecipientsTable.requestId, id),
+      sql`${signatureRecipientsTable.status} IN ('pending', 'viewed')`
+    ));
+
+  const { sendSigningSms, isSmsConfigured } = await import("../lib/sms.js");
+
+  if (!isSmsConfigured()) {
+    res.json({ sent: 0, message: "SMS not configured — set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER" });
+    return;
+  }
+
+  const baseUrl = getBaseUrl(req);
+  const results: { name: string; sent: boolean; error?: string }[] = [];
+
+  for (const r of pendingRecipients) {
+    // Phone number must be stored in the recipient's email field prefixed with "sms:" or passed in req.body.phones
+    const phones: Record<string, string> = req.body.phones ?? {};
+    const phone = phones[String(r.id)];
+    if (!phone) { results.push({ name: r.name, sent: false, error: "No phone number" }); continue; }
+
+    const result = await sendSigningSms({
+      recipientName: r.name,
+      recipientPhone: phone,
+      requestTitle: request.title,
+      signingToken: r.token,
+      baseUrl,
+      isReminder,
+    });
+    results.push({ name: r.name, ...result });
+  }
+
+  const sent = results.filter(r => r.sent).length;
+  res.json({ sent, total: pendingRecipients.length, results });
+});
+
+// GET /api/signature-settings/sms-status
+router.get("/signature-settings/sms-status", async (req, res): Promise<void> => {
+  const userId = await requireAuth(req, res);
+  if (!userId) return;
+  const { isSmsConfigured } = await import("../lib/sms.js");
+  res.json({
+    configured: isSmsConfigured(),
+    vars: {
+      TWILIO_ACCOUNT_SID: Boolean(process.env.TWILIO_ACCOUNT_SID),
+      TWILIO_AUTH_TOKEN: Boolean(process.env.TWILIO_AUTH_TOKEN),
+      TWILIO_FROM_NUMBER: Boolean(process.env.TWILIO_FROM_NUMBER),
+    },
+  });
 });
 
 export default router;

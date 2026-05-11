@@ -84,7 +84,68 @@ export default function SecurityPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [revoking, setRevoking] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<"overview" | "sessions" | "events">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "sessions" | "events" | "mfa">("overview");
+
+  // MFA state
+  const [mfaStatus, setMfaStatus] = useState<{ enabled: boolean; verifiedAt: string | null } | null>(null);
+  const [mfaSetup, setMfaSetup] = useState<{ secret: string; uri: string; backupCodes: string[] } | null>(null);
+  const [mfaCode, setMfaCode] = useState("");
+  const [mfaLoading, setMfaLoading] = useState(false);
+  const [showBackupCodes, setShowBackupCodes] = useState(false);
+
+  const fetchMfaStatus = useCallback(async () => {
+    const res = await fetch("/api/mfa/status", { headers: { Authorization: `Bearer ${token}` } });
+    if (res.ok) setMfaStatus(await res.json());
+  }, [token]);
+
+  const startMfaSetup = async () => {
+    setMfaLoading(true);
+    const res = await fetch("/api/mfa/setup", { method: "POST", headers: { Authorization: `Bearer ${token}` } });
+    if (res.ok) {
+      const data = await res.json();
+      setMfaSetup(data);
+      setShowBackupCodes(true);
+    } else {
+      toast({ title: "Failed to start MFA setup", variant: "destructive" });
+    }
+    setMfaLoading(false);
+  };
+
+  const enableMfa = async () => {
+    if (!mfaCode || mfaCode.length !== 6) { toast({ title: "Enter a 6-digit code", variant: "destructive" }); return; }
+    setMfaLoading(true);
+    const res = await fetch("/api/mfa/enable", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ code: mfaCode }),
+    });
+    if (res.ok) {
+      toast({ title: "MFA enabled successfully" });
+      setMfaSetup(null);
+      setMfaCode("");
+      fetchMfaStatus();
+    } else {
+      const err = await res.json();
+      toast({ title: err.error ?? "Invalid code", variant: "destructive" });
+    }
+    setMfaLoading(false);
+  };
+
+  const disableMfa = async () => {
+    const code = prompt("Enter your current TOTP code to disable MFA:");
+    if (!code) return;
+    const res = await fetch("/api/mfa/disable", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    });
+    if (res.ok) {
+      toast({ title: "MFA disabled" });
+      fetchMfaStatus();
+    } else {
+      toast({ title: "Invalid code", variant: "destructive" });
+    }
+  };
 
   const fetchStats = useCallback(async () => {
     const res = await fetch("/api/security/stats", {
@@ -102,8 +163,8 @@ export default function SecurityPage() {
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([fetchStats(), fetchSessions()]).finally(() => setLoading(false));
-  }, [fetchStats, fetchSessions]);
+    Promise.all([fetchStats(), fetchSessions(), fetchMfaStatus()]).finally(() => setLoading(false));
+  }, [fetchStats, fetchSessions, fetchMfaStatus]);
 
   const revokeSession = async (id: number) => {
     setRevoking(id);
@@ -191,7 +252,7 @@ export default function SecurityPage() {
 
         {/* Tabs */}
         <div className="flex gap-1 p-1 glass-card rounded-xl mb-6 w-fit">
-          {(["overview", "sessions", "events"] as const).map(tab => (
+          {(["overview", "sessions", "events", "mfa"] as const).map(tab => (
             <button
               key={tab}
               data-testid={`tab-${tab}`}
@@ -556,6 +617,125 @@ function SecurityEvents({ token }: { token: string | null }) {
           </button>
         </div>
       )}
+
+        {/* MFA Tab */}
+        {activeTab === "mfa" && (
+          <div className="space-y-6">
+            {/* MFA Status Card */}
+            <div className="glass-card rounded-2xl p-6">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${mfaStatus?.enabled ? 'bg-emerald-100' : 'bg-amber-100'}`}>
+                    <Lock size={18} className={mfaStatus?.enabled ? 'text-emerald-600' : 'text-amber-600'} />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground">Multi-Factor Authentication (TOTP)</h3>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      {mfaStatus?.enabled
+                        ? `Enabled · Verified ${mfaStatus.verifiedAt ? new Date(mfaStatus.verifiedAt).toLocaleDateString() : 'recently'}`
+                        : 'Not enabled — your account uses password-only authentication'}
+                    </p>
+                  </div>
+                </div>
+                <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+                  mfaStatus?.enabled ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                }`}>
+                  {mfaStatus?.enabled ? 'Enabled' : 'Disabled'}
+                </span>
+              </div>
+
+              {!mfaStatus?.enabled && !mfaSetup && (
+                <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                  <p className="text-sm text-amber-800 mb-3">
+                    <strong>Recommended for HIPAA compliance.</strong> MFA adds a second layer of security using a TOTP authenticator app (Google Authenticator, Authy, 1Password, etc.).
+                  </p>
+                  <button
+                    onClick={startMfaSetup}
+                    disabled={mfaLoading}
+                    className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50"
+                  >
+                    {mfaLoading ? 'Setting up...' : 'Set Up MFA'}
+                  </button>
+                </div>
+              )}
+
+              {mfaSetup && (
+                <div className="mt-4 space-y-4">
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                    <p className="text-sm font-semibold text-blue-800 mb-2">Step 1: Enter this secret in your authenticator app</p>
+                    <div className="font-mono text-sm bg-white border border-blue-200 rounded-lg p-3 break-all select-all">
+                      {mfaSetup.secret}
+                    </div>
+                  </div>
+                  <div className="p-4 bg-violet-50 border border-violet-200 rounded-xl">
+                    <p className="text-sm font-semibold text-violet-800 mb-2">Step 2: Save these backup codes (single-use, store safely)</p>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {mfaSetup.backupCodes.map((code, i) => (
+                        <code key={i} className="text-xs bg-white border border-violet-200 rounded px-2 py-1 font-mono">{code}</code>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
+                    <p className="text-sm font-semibold text-emerald-800 mb-2">Step 3: Enter the 6-digit code from your app to confirm</p>
+                    <div className="flex gap-2">
+                      <input
+                        type="text" inputMode="numeric" maxLength={6}
+                        value={mfaCode}
+                        onChange={e => setMfaCode(e.target.value.replace(/\D/g, ''))}
+                        placeholder="000000"
+                        className="w-32 px-3 py-2 rounded-lg border border-border text-center font-mono text-lg tracking-widest bg-background"
+                      />
+                      <button onClick={enableMfa} disabled={mfaLoading || mfaCode.length !== 6}
+                        className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-50">
+                        {mfaLoading ? 'Verifying...' : 'Enable MFA'}
+                      </button>
+                      <button onClick={() => { setMfaSetup(null); setMfaCode(''); }}
+                        className="px-4 py-2 border border-border rounded-lg text-sm text-muted-foreground hover:bg-muted/50">Cancel</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {mfaStatus?.enabled && (
+                <div className="mt-4 flex items-center gap-3">
+                  <button onClick={disableMfa}
+                    className="px-4 py-2 border border-red-200 text-red-600 rounded-lg text-sm font-medium hover:bg-red-50">
+                    Disable MFA
+                  </button>
+                  <span className="text-xs text-muted-foreground">Requires your current TOTP code</span>
+                </div>
+              )}
+            </div>
+
+            <div className="glass-card rounded-2xl p-6">
+              <h3 className="font-semibold text-foreground mb-4">Security Checklist</h3>
+              <div className="space-y-3">
+                {[
+                  { label: 'Multi-Factor Authentication', done: mfaStatus?.enabled ?? false, desc: 'TOTP-based second factor for all logins' },
+                  { label: 'HIPAA Audit Logging', done: true, desc: 'All PHI access logged with user, IP, and timestamp' },
+                  { label: 'Session Management', done: true, desc: 'Active sessions visible and revocable' },
+                  { label: 'Login Rate Limiting', done: true, desc: 'Account lockout after 5 failed attempts' },
+                  { label: 'Document Tamper Detection', done: true, desc: 'SHA-256 hash stored at time of send' },
+                  { label: 'Encrypted Signing Tokens', done: true, desc: '48-byte cryptographically random tokens per recipient' },
+                  { label: 'Field-Level PHI Encryption', done: true, desc: 'AES-256-GCM encryption for patient data at rest' },
+                ].map(item => (
+                  <div key={item.label} className="flex items-start gap-3">
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
+                      item.done ? 'bg-emerald-100' : 'bg-amber-100'
+                    }`}>
+                      {item.done ? <CheckCircle size={12} className="text-emerald-600" /> : <AlertTriangle size={12} className="text-amber-600" />}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{item.label}</p>
+                      <p className="text-xs text-muted-foreground">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </motion.div>
     </div>
   );
 }

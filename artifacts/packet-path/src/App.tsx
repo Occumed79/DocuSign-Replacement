@@ -20,6 +20,9 @@ import SignatureRequestDetailPage from "@/pages/SignatureRequestDetail";
 import SignPage from "@/pages/SignPage";
 import EmailSettingsPage from "@/pages/EmailSettings";
 import UserManagementPage from "@/pages/UserManagement";
+import AnalyticsPage from "@/pages/Analytics";
+import WebhooksPage from "@/pages/Webhooks";
+import BrandingPage from "@/pages/Branding";
 import AppLayout from "@/components/layout/AppLayout";
 import NotFound from "@/pages/not-found";
 
@@ -92,6 +95,11 @@ function Router() {
         <ProtectedRoute adminOnly><EmailSettingsPage /></ProtectedRoute>
       </Route>
 
+      {/* Analytics */}
+      <Route path="/analytics">
+        <ProtectedRoute><AnalyticsPage /></ProtectedRoute>
+      </Route>
+
       {/* Admin / Security */}
       <Route path="/admin">
         <ProtectedRoute adminOnly><AdminPage /></ProtectedRoute>
@@ -104,6 +112,12 @@ function Router() {
       </Route>
       <Route path="/audit">
         <ProtectedRoute adminOnly><AuditLogPage /></ProtectedRoute>
+      </Route>
+      <Route path="/webhooks">
+        <ProtectedRoute adminOnly><WebhooksPage /></ProtectedRoute>
+      </Route>
+      <Route path="/branding">
+        <ProtectedRoute adminOnly><BrandingPage /></ProtectedRoute>
       </Route>
 
       <Route component={NotFound} />

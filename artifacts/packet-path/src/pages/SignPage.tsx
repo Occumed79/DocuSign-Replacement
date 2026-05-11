@@ -553,19 +553,44 @@ export default function SignPage({ token }: { token: string }) {
                 />
               </AnimatePresence>
             </div>
-            <div className="px-6 pb-6 flex items-center justify-between">
+            <div className="px-6 pb-6 flex items-center justify-between flex-wrap gap-3">
               <button
                 onClick={() => setStep("document")}
                 className="px-4 py-2.5 rounded-xl border border-border text-sm text-muted-foreground hover:bg-muted/50 transition-colors"
               >
                 ← Back to Document
               </button>
-              <button
-                onClick={proceedToSign}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-sm font-medium hover:opacity-90 shadow-md"
-              >
-                Continue to Sign <ChevronRight size={14} />
-              </button>
+              <div className="flex items-center gap-2">
+                {/* Save Progress Button */}
+                <button
+                  onClick={() => saveProgress(false)}
+                  disabled={savingProgress}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border text-xs text-muted-foreground hover:bg-muted/50 transition-colors disabled:opacity-50"
+                  title="Save your progress and return later"
+                >
+                  {savingProgress ? (
+                    <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                  ) : progressSaved ? (
+                    <span className="text-emerald-600">✓ Saved</span>
+                  ) : (
+                    <>💾 Save Progress</>
+                  )}
+                </button>
+                <button
+                  onClick={() => saveProgress(true)}
+                  disabled={savingProgress || saveEmailSent}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border text-xs text-muted-foreground hover:bg-muted/50 transition-colors disabled:opacity-50"
+                  title="Save and email yourself a resume link"
+                >
+                  {saveEmailSent ? "✓ Email Sent" : "📧 Email Resume Link"}
+                </button>
+                <button
+                  onClick={proceedToSign}
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-sm font-medium hover:opacity-90 shadow-md"
+                >
+                  Continue to Sign <ChevronRight size={14} />
+                </button>
+              </div>
             </div>
           </motion.div>
         )}

@@ -292,3 +292,48 @@ export async function verifySmtpConnection(): Promise<{ ok: boolean; error?: str
 export function isEmailConfigured(): boolean {
   return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
 }
+
+// ─── Progress Save Email ──────────────────────────────────────────────────────
+
+export interface SendProgressSaveEmailParams {
+  recipientName: string;
+  recipientEmail: string;
+  requestTitle: string;
+  resumeUrl: string;
+  expiresAt: Date;
+}
+
+export async function sendProgressSaveEmail(params: SendProgressSaveEmailParams): Promise<{ sent: boolean; error?: string }> {
+  const cfg = getMailConfig();
+  if (!cfg) return { sent: false, error: "SMTP not configured" };
+
+  const { recipientName, recipientEmail, requestTitle, resumeUrl, expiresAt } = params;
+  const expiry = expiresAt.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+
+  const html = `<!DOCTYPE html><html><body style="font-family:Inter,sans-serif;background:#f8fafc;margin:0;padding:24px;">
+<div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;padding:32px;box-shadow:0 1px 3px rgba(0,0,0,.1);">
+  <h2 style="color:#1e293b;margin-top:0;">Your progress has been saved</h2>
+  <p style="color:#475569;">Hello ${recipientName},</p>
+  <p style="color:#475569;">Your progress on <strong>"${requestTitle}"</strong> has been saved. You can return to complete it at any time before the link expires.</p>
+  <div style="text-align:center;margin:32px 0;">
+    <a href="${resumeUrl}" style="background:#2563eb;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block;">Resume Where I Left Off →</a>
+  </div>
+  <p style="color:#94a3b8;font-size:13px;">This resume link expires on <strong>${expiry}</strong>.</p>
+  <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;" />
+  <p style="color:#94a3b8;font-size:12px;">Sent securely by PacketPath · Occu-Med Occupational Health</p>
+</div></body></html>`;
+
+  try {
+    const transport = createTransport(cfg);
+    await transport.sendMail({
+      from: `"${cfg.fromName}" <${cfg.fromAddress}>`,
+      to: `"${recipientName}" <${recipientEmail}>`,
+      subject: `Your progress on "${requestTitle}" has been saved`,
+      html,
+      text: `Hello ${recipientName},\n\nYour progress on "${requestTitle}" has been saved.\n\nResume here: ${resumeUrl}\n\nThis link expires on ${expiry}.\n\n-- Occu-Med Occupational Health via PacketPath`,
+    });
+    return { sent: true };
+  } catch (err: any) {
+    return { sent: false, error: err?.message ?? "Email send failed" };
+  }
+}
