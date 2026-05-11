@@ -2,7 +2,7 @@ import { Router, type IRouter, type Request } from "express";
 import { db, usersTable, auditLogsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { LoginBody } from "@workspace/api-zod";
-import crypto from "crypto";
+import bcrypt from "bcrypt";
 import {
   generateToken,
   createSession,
@@ -16,8 +16,20 @@ import {
 
 const router: IRouter = Router();
 
-export function hashPassword(password: string): string {
-  return crypto.createHash("sha256").update(password + "packetpath_salt").digest("hex");
+const BCRYPT_ROUNDS = 12;
+
+export async function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, BCRYPT_ROUNDS);
+}
+
+export async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  // Support legacy SHA-256 hashes during migration
+  if (hash.length === 64 && !hash.startsWith("$2")) {
+    const { createHash } = await import("crypto");
+    const legacyHash = createHash("sha256").update(password + "packetpath_salt").digest("hex");
+    return legacyHash === hash;
+  }
+  return bcrypt.compare(password, hash);
 }
 
 function getClientIp(req: Request): string {
@@ -55,10 +67,11 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     return;
   }
 
-  const hash = hashPassword(password);
   const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email));
 
-  if (!user || user.passwordHash !== hash) {
+  const passwordValid = user ? await verifyPassword(password, user.passwordHash) : false;
+
+  if (!user || !passwordValid) {
     const result = await recordLoginAttempt(email, false, ip);
     await logSecurityEvent({
       eventType: "login_failed",

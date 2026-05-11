@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   LayoutDashboard, FolderOpen, Plus, LogOut, ChevronLeft, ChevronRight,
-  Activity, Shield, User, ClipboardList, AlertTriangle, Clock, PenTool, Mail
+  Activity, Shield, User, Users, ClipboardList, AlertTriangle, Clock, PenTool, Mail
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -20,6 +20,7 @@ const navItems = [
 
 const adminItems = [
   { label: "Admin", icon: Shield, href: "/admin" },
+  { label: "Users", icon: Users, href: "/users" },
   { label: "Email Settings", icon: Mail, href: "/email-settings" },
   { label: "Security", icon: AlertTriangle, href: "/security" },
   { label: "Audit Log", icon: ClipboardList, href: "/audit" },

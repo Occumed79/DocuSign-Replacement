@@ -19,6 +19,7 @@ import SignatureTemplatesPage from "@/pages/SignatureTemplates";
 import SignatureRequestDetailPage from "@/pages/SignatureRequestDetail";
 import SignPage from "@/pages/SignPage";
 import EmailSettingsPage from "@/pages/EmailSettings";
+import UserManagementPage from "@/pages/UserManagement";
 import AppLayout from "@/components/layout/AppLayout";
 import NotFound from "@/pages/not-found";
 
@@ -94,6 +95,9 @@ function Router() {
       {/* Admin / Security */}
       <Route path="/admin">
         <ProtectedRoute adminOnly><AdminPage /></ProtectedRoute>
+      </Route>
+      <Route path="/users">
+        <ProtectedRoute adminOnly><UserManagementPage /></ProtectedRoute>
       </Route>
       <Route path="/security">
         <ProtectedRoute adminOnly><SecurityPage /></ProtectedRoute>

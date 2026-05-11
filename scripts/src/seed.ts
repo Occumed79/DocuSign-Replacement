@@ -6,14 +6,11 @@ import {
   casesTable,
   answersTable,
 } from "@workspace/db/schema";
-import crypto from "crypto";
 import { sql } from "drizzle-orm";
+import bcrypt from "bcrypt";
 
-function hashPassword(password: string): string {
-  return crypto
-    .createHash("sha256")
-    .update(password + "packetpath_salt")
-    .digest("hex");
+async function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, 12);
 }
 
 async function seed() {
@@ -26,7 +23,7 @@ async function seed() {
   console.log("  Cleared existing questions, cases, and answers");
 
   // ── Users ──────────────────────────────────────────────────────────────────
-  const passwordHash = hashPassword("admin123");
+  const passwordHash = await hashPassword("admin123");
 
   const users = await db
     .insert(usersTable)

@@ -21,7 +21,9 @@ A TurboTax-style internal web app for occupational health exam workflows with a 
 | Backend | Express 5, Node.js |
 | Database | PostgreSQL, Drizzle ORM |
 | API Contract | OpenAPI spec → Orval codegen → React Query hooks + Zod schemas |
-| Auth | SHA-256 token-based sessions |
+| Auth | bcrypt password hashing, token-based sessions |
+| Security | Helmet, Express Rate Limit |
+| Testing | Vitest, Supertest |
 
 ## Quick Start
 
@@ -66,7 +68,17 @@ DATABASE_URL=postgresql://packetpath:packetpath@localhost:5432/packetpath pnpm d
 DATABASE_URL=postgresql://packetpath:packetpath@localhost:5432/packetpath pnpm db:seed
 ```
 
-### 6. Start the App
+### 6. Run Tests
+
+```bash
+# Run all tests
+pnpm test --filter=api-server
+
+# Run tests with coverage
+pnpm run test:coverage --filter=api-server
+```
+
+### 7. Start the App
 
 Start the API server and frontend in separate terminals:
 
@@ -120,6 +132,7 @@ scripts/
 | `/sign/:token` | **Public** signing page (no auth, token-based) |
 | `/email-settings` | SMTP configuration (admin only) |
 | `/admin` | Question template management (admin only) |
+| `/users` | User management and role assignment (admin only) |
 | `/security` | Security event monitoring (admin only) |
 | `/audit` | Audit log viewer (admin only) |
 
