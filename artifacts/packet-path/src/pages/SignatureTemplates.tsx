@@ -110,6 +110,18 @@ function TemplateEditor({
     setSaving(false);
   };
 
+
+  const importHtmlFile = async (file: File) => {
+    const lower = file.name.toLowerCase();
+    if (!(lower.endsWith('.html') || lower.endsWith('.htm'))) {
+      toast({ title: 'Only .html/.htm can be imported here', variant: 'destructive' });
+      return;
+    }
+    const text = await file.text();
+    setContent(text);
+    if (!name.trim()) setName(file.name.replace(/\.html?$/i, '').replace(/[-_]/g, ' '));
+    toast({ title: 'HTML imported' });
+  };
   const conditionalCount = formSchema.filter(f => f.showWhen?.fieldId).length;
 
   return (
@@ -213,14 +225,30 @@ function TemplateEditor({
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider">Document Content (HTML) *</label>
-                  {content && (
-                    <button
-                      onClick={() => setPreviewDoc(p => !p)}
-                      className="text-xs text-indigo-500 hover:text-indigo-700"
-                    >
-                      {previewDoc ? "Edit HTML" : "Preview"}
-                    </button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs cursor-pointer px-2.5 py-1 rounded-lg border border-border hover:bg-muted/40">
+                      Import HTML
+                      <input
+                        type="file"
+                        accept=".html,.htm,text/html"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) await importHtmlFile(file);
+                          e.currentTarget.value = "";
+                        }}
+                      />
+                    </label>
+                    <span className="text-[11px] text-muted-foreground">Have PDF? convert to HTML once, then import.</span>
+                    {content && (
+                      <button
+                        onClick={() => setPreviewDoc(p => !p)}
+                        className="text-xs text-indigo-500 hover:text-indigo-700"
+                      >
+                        {previewDoc ? "Edit HTML" : "Preview"}
+                      </button>
+                    )}
+                  </div>
                 </div>
                 {!previewDoc ? (
                   <>
