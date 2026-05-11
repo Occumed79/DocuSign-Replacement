@@ -502,122 +502,6 @@ export default function SecurityPage() {
         {activeTab === "events" && (
           <SecurityEvents token={token} />
         )}
-      </motion.div>
-    </div>
-  );
-}
-
-function SecurityEvents({ token }: { token: string | null }) {
-  const [events, setEvents] = useState<SecurityEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [severity, setSeverity] = useState("");
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
-
-  const fetchEvents = useCallback(async () => {
-    setLoading(true);
-    const params = new URLSearchParams({ page: String(page), limit: "50" });
-    if (severity) params.set("severity", severity);
-    const res = await fetch(`/api/security/events?${params}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setEvents(data.events);
-      setTotal(data.total);
-    }
-    setLoading(false);
-  }, [token, severity, page]);
-
-  useEffect(() => { fetchEvents(); }, [fetchEvents]);
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <select
-            value={severity}
-            onChange={e => { setSeverity(e.target.value); setPage(1); }}
-            className="px-3 py-2 rounded-lg bg-background border border-border text-sm outline-none focus:border-primary text-foreground"
-          >
-            <option value="">All Severities</option>
-            <option value="info">Info</option>
-            <option value="warn">Warning</option>
-            <option value="error">Error</option>
-          </select>
-          <button onClick={fetchEvents} className="p-2 rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors">
-            <RefreshCw size={14} />
-          </button>
-        </div>
-        <span className="text-sm text-muted-foreground">{total} total events</span>
-      </div>
-
-      <div className="glass-card rounded-2xl overflow-hidden">
-        <div className="divide-y divide-border">
-          {loading ? (
-            Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="px-6 py-3.5 flex items-center gap-3 animate-pulse">
-                <div className="w-7 h-7 bg-muted rounded-lg" />
-                <div className="flex-1"><div className="h-3 w-32 bg-muted rounded mb-1.5" /><div className="h-2.5 w-48 bg-muted rounded" /></div>
-              </div>
-            ))
-          ) : events.length === 0 ? (
-            <div className="px-6 py-12 text-center text-muted-foreground text-sm">No events found</div>
-          ) : (
-            events.map(event => {
-              const cfg = severityConfig[event.severity] ?? severityConfig.info;
-              const Icon = cfg.icon;
-              return (
-                <div key={event.id} className="px-6 py-3.5 flex items-start gap-3">
-                  <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5", cfg.bg)}>
-                    <Icon size={13} className={cfg.color} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-sm font-semibold text-foreground">
-                        {eventTypeLabels[event.eventType] ?? event.eventType}
-                      </p>
-                      <span className={cn("text-xs px-1.5 py-0.5 rounded-md capitalize", cfg.bg, cfg.color)}>
-                        {event.severity}
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {event.email ?? "Unknown user"} · {event.ipAddress ?? "Unknown IP"}
-                    </p>
-                    {event.details && (
-                      <p className="text-xs text-muted-foreground/70 mt-0.5">{event.details}</p>
-                    )}
-                  </div>
-                  <span className="text-xs text-muted-foreground shrink-0 whitespace-nowrap">
-                    {new Date(event.createdAt).toLocaleString()}
-                  </span>
-                </div>
-              );
-            })
-          )}
-        </div>
-      </div>
-
-      {total > 50 && (
-        <div className="flex items-center justify-center gap-3">
-          <button
-            disabled={page === 1}
-            onClick={() => setPage(p => p - 1)}
-            className="px-4 py-2 rounded-lg border border-border text-sm disabled:opacity-50 hover:bg-muted/50 transition-colors"
-          >
-            Previous
-          </button>
-          <span className="text-sm text-muted-foreground">Page {page}</span>
-          <button
-            disabled={page * 50 >= total}
-            onClick={() => setPage(p => p + 1)}
-            className="px-4 py-2 rounded-lg border border-border text-sm disabled:opacity-50 hover:bg-muted/50 transition-colors"
-          >
-            Next
-          </button>
-        </div>
-      )}
-
         {/* MFA Tab */}
         {activeTab === "mfa" && (
           <div className="space-y-6">
@@ -736,6 +620,120 @@ function SecurityEvents({ token }: { token: string | null }) {
           </div>
         )}
       </motion.div>
+    </div>
+  );
+}
+
+function SecurityEvents({ token }: { token: string | null }) {
+  const [events, setEvents] = useState<SecurityEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [severity, setSeverity] = useState("");
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+
+  const fetchEvents = useCallback(async () => {
+    setLoading(true);
+    const params = new URLSearchParams({ page: String(page), limit: "50" });
+    if (severity) params.set("severity", severity);
+    const res = await fetch(`/api/security/events?${params}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setEvents(data.events);
+      setTotal(data.total);
+    }
+    setLoading(false);
+  }, [token, severity, page]);
+
+  useEffect(() => { fetchEvents(); }, [fetchEvents]);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <select
+            value={severity}
+            onChange={e => { setSeverity(e.target.value); setPage(1); }}
+            className="px-3 py-2 rounded-lg bg-background border border-border text-sm outline-none focus:border-primary text-foreground"
+          >
+            <option value="">All Severities</option>
+            <option value="info">Info</option>
+            <option value="warn">Warning</option>
+            <option value="error">Error</option>
+          </select>
+          <button onClick={fetchEvents} className="p-2 rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors">
+            <RefreshCw size={14} />
+          </button>
+        </div>
+        <span className="text-sm text-muted-foreground">{total} total events</span>
+      </div>
+
+      <div className="glass-card rounded-2xl overflow-hidden">
+        <div className="divide-y divide-border">
+          {loading ? (
+            Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="px-6 py-3.5 flex items-center gap-3 animate-pulse">
+                <div className="w-7 h-7 bg-muted rounded-lg" />
+                <div className="flex-1"><div className="h-3 w-32 bg-muted rounded mb-1.5" /><div className="h-2.5 w-48 bg-muted rounded" /></div>
+              </div>
+            ))
+          ) : events.length === 0 ? (
+            <div className="px-6 py-12 text-center text-muted-foreground text-sm">No events found</div>
+          ) : (
+            events.map(event => {
+              const cfg = severityConfig[event.severity] ?? severityConfig.info;
+              const Icon = cfg.icon;
+              return (
+                <div key={event.id} className="px-6 py-3.5 flex items-start gap-3">
+                  <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5", cfg.bg)}>
+                    <Icon size={13} className={cfg.color} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-semibold text-foreground">
+                        {eventTypeLabels[event.eventType] ?? event.eventType}
+                      </p>
+                      <span className={cn("text-xs px-1.5 py-0.5 rounded-md capitalize", cfg.bg, cfg.color)}>
+                        {event.severity}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {event.email ?? "Unknown user"} · {event.ipAddress ?? "Unknown IP"}
+                    </p>
+                    {event.details && (
+                      <p className="text-xs text-muted-foreground/70 mt-0.5">{event.details}</p>
+                    )}
+                  </div>
+                  <span className="text-xs text-muted-foreground shrink-0 whitespace-nowrap">
+                    {new Date(event.createdAt).toLocaleString()}
+                  </span>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {total > 50 && (
+        <div className="flex items-center justify-center gap-3">
+          <button
+            disabled={page === 1}
+            onClick={() => setPage(p => p - 1)}
+            className="px-4 py-2 rounded-lg border border-border text-sm disabled:opacity-50 hover:bg-muted/50 transition-colors"
+          >
+            Previous
+          </button>
+          <span className="text-sm text-muted-foreground">Page {page}</span>
+          <button
+            disabled={page * 50 >= total}
+            onClick={() => setPage(p => p + 1)}
+            className="px-4 py-2 rounded-lg border border-border text-sm disabled:opacity-50 hover:bg-muted/50 transition-colors"
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 }
