@@ -111,16 +111,36 @@ function TemplateEditor({
   };
 
 
-  const importHtmlFile = async (file: File) => {
+  const importDocumentFile = async (file: File) => {
     const lower = file.name.toLowerCase();
-    if (!(lower.endsWith('.html') || lower.endsWith('.htm'))) {
-      toast({ title: 'Only .html/.htm can be imported here', variant: 'destructive' });
+    if (lower.endsWith('.html') || lower.endsWith('.htm')) {
+      const text = await file.text();
+      setContent(text);
+      if (!name.trim()) setName(file.name.replace(/\.html?$/i, '').replace(/[-_]/g, ' '));
+      toast({ title: 'HTML imported' });
       return;
     }
-    const text = await file.text();
-    setContent(text);
-    if (!name.trim()) setName(file.name.replace(/\.html?$/i, '').replace(/[-_]/g, ' '));
-    toast({ title: 'HTML imported' });
+
+    if (lower.endsWith('.pdf')) {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+      });
+
+      setContent(`<div style="display:flex;flex-direction:column;gap:12px;">
+  <p><strong>Imported PDF:</strong> ${file.name}</p>
+  <object data="${dataUrl}" type="application/pdf" width="100%" height="900">
+    <p>Your browser cannot preview this PDF. Download file: <a href="${dataUrl}" download="${file.name}">${file.name}</a></p>
+  </object>
+</div>`);
+      if (!name.trim()) setName(file.name.replace(/\.pdf$/i, '').replace(/[-_]/g, ' '));
+      toast({ title: 'PDF imported (embedded)' });
+      return;
+    }
+
+    toast({ title: 'Only .html, .htm, and .pdf are supported', variant: 'destructive' });
   };
   const conditionalCount = formSchema.filter(f => f.showWhen?.fieldId).length;
 
@@ -227,19 +247,19 @@ function TemplateEditor({
                   <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider">Document Content (HTML) *</label>
                   <div className="flex items-center gap-2">
                     <label className="text-xs cursor-pointer px-2.5 py-1 rounded-lg border border-border hover:bg-muted/40">
-                      Import HTML
+                      Import HTML/PDF
                       <input
                         type="file"
-                        accept=".html,.htm,text/html"
+                        accept=".html,.htm,text/html,.pdf,application/pdf"
                         className="hidden"
                         onChange={async (e) => {
                           const file = e.target.files?.[0];
-                          if (file) await importHtmlFile(file);
+                          if (file) await importDocumentFile(file);
                           e.currentTarget.value = "";
                         }}
                       />
                     </label>
-                    <span className="text-[11px] text-muted-foreground">Have PDF? convert to HTML once, then import.</span>
+                    <span className="text-[11px] text-muted-foreground">PDF files are embedded directly; HTML files are imported as editable content.</span>
                     {content && (
                       <button
                         onClick={() => setPreviewDoc(p => !p)}
