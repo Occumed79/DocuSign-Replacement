@@ -14,6 +14,7 @@ import brandingRouter from "./branding";
 import templateVersionsRouter from "./template-versions";
 import formProgressRouter from "./form-progress";
 import analyticsRouter from "./analytics";
+import setupRouter from "./setup";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use(brandingRouter);
 router.use(templateVersionsRouter);
 router.use(formProgressRouter);
 router.use(analyticsRouter);
+router.use(setupRouter);
 
 export default router;
