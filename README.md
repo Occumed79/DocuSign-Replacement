@@ -151,17 +151,62 @@ scripts/
 
 PacketPath ships with a **Dockerfile** that bundles the frontend and backend into a single container. In production, the Express server serves the React SPA and handles API requests on one port.
 
-### Option A: Railway (Recommended — Easiest)
+### Option A: Neon + Render (Recommended)
 
-1. Push this repo to GitHub
-2. Create a new project on [Railway](https://railway.app)
-3. Add a **PostgreSQL** plugin → copy the `DATABASE_URL`
-4. Add the repo as a **Service** → Railway auto-detects the Dockerfile
-5. Set environment variables:
-   - `DATABASE_URL` — from the PostgreSQL plugin
-   - `PORT` — Railway sets this automatically
-6. Deploy. Once running, open the Railway-provided URL.
-7. Run the seed script via Railway shell: `DATABASE_URL=... node scripts/dist/seed.mjs`
+Do these steps in order exactly.
+
+#### 0) One-time local setup
+
+```bash
+pnpm install
+```
+
+#### 1) Create Neon database
+
+1. Create a Neon project at [neon.tech](https://neon.tech).
+2. Create a database named `packetpath`.
+3. Copy the Neon **pooled** connection string and keep `sslmode=require`.
+4. Save that string as your production `DATABASE_URL`.
+
+#### 2) Push schema + seed data into Neon
+
+Run these commands from this repo on your machine:
+
+```bash
+DATABASE_URL='postgresql://<neon-connection-string>' pnpm db:push
+DATABASE_URL='postgresql://<neon-connection-string>' pnpm db:seed
+```
+
+#### 3) Deploy app on Render
+
+1. Push this repo to GitHub.
+2. In Render, create a new **Web Service** from the repo.
+3. Select **Docker** environment (Render will use this repo's `Dockerfile`).
+4. In Render environment variables, set:
+   - `DATABASE_URL` = your Neon connection string
+   - `NODE_ENV` = `production`
+   - `PORT` = `8080`
+5. Click **Deploy**.
+
+#### 4) Verify deployment
+
+After Render says deploy succeeded:
+
+1. Open: `https://<your-render-service>.onrender.com/api/health`
+2. Confirm response is healthy.
+3. Open app URL and log in with:
+   - `admin@occumed.com` / `admin123`
+4. Create one test case and complete one signature flow.
+
+#### 5) Optional email setup (SMTP)
+
+Add these Render env vars only if you want outbound emails:
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_USER`
+- `SMTP_PASS`
+- `SMTP_FROM`
+- `SMTP_FROM_NAME`
 
 ### Option B: Fly.io
 

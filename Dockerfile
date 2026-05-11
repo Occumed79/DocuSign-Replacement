@@ -1,5 +1,5 @@
 FROM node:22-slim AS base
-RUN corepack enable && corepack prepare pnpm@9.15.1 --activate
+RUN corepack enable && corepack prepare pnpm@10.28.1 --activate
 WORKDIR /app
 
 # ── Install dependencies ─────────────────────────────────────────────────────
