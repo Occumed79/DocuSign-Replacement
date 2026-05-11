@@ -243,6 +243,27 @@ cp -r artifacts/packet-path/dist/public artifacts/api-server/dist/public
 DATABASE_URL=... PORT=8080 node artifacts/api-server/dist/index.mjs
 ```
 
+
+### Troubleshooting Render Build Failures
+
+If Render fails in `vite build` with errors like `Unterminated regular expression` near JSX lines (often around `</motion.div>`), the branch usually contains unresolved merge markers or malformed JSX from a conflict resolution.
+
+Run these checks locally before deploying:
+
+```bash
+# 1) Detect unresolved merge markers
+rg -n "^(<<<<<<<|=======|>>>>>>>)" artifacts/packet-path/src artifacts/api-server/src
+
+# 2) Reproduce frontend build error locally
+pnpm --filter @workspace/packet-path run build
+
+# 3) Reproduce full workspace type/build checks
+pnpm run typecheck
+pnpm build
+```
+
+If step 1 returns matches, open those files and remove conflict markers, keeping only valid TS/TSX code, then commit and redeploy.
+
 ## SMTP Configuration (Optional)
 
 To enable email notifications for signature requests, set these environment variables:
