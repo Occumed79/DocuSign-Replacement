@@ -153,44 +153,60 @@ PacketPath ships with a **Dockerfile** that bundles the frontend and backend int
 
 ### Option A: Neon + Render (Recommended)
 
-If you want a managed PostgreSQL + managed app host, this is the cleanest setup.
+Do these steps in order exactly.
 
-#### 1) Create a Neon Postgres database
-
-1. Create a Neon project at [neon.tech](https://neon.tech).
-2. In Neon, create a database (for example: `packetpath`).
-3. Copy the connection string and save it as your production `DATABASE_URL`.
-   - Prefer pooled connection string for app traffic.
-   - Keep SSL enabled (`sslmode=require`) in production.
-
-#### 2) Create a Render Web Service from this repo
-
-1. Push this repo to GitHub.
-2. In Render, create a **Web Service** from the repo.
-3. Render will detect the included `Dockerfile`; keep **Environment = Docker**.
-4. Set environment variables in Render:
-   - `DATABASE_URL` = Neon connection string
-   - `NODE_ENV` = `production`
-   - `PORT` = `8080` (Render usually injects `PORT`, but setting this is fine)
-   - Optional SMTP vars if you want email delivery (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`, `SMTP_FROM_NAME`)
-5. Deploy the service.
-
-#### 3) Run schema + seed against Neon
-
-From your local machine (or CI), point to Neon and run:
+#### 0) One-time local setup
 
 ```bash
-DATABASE_URL='postgresql://...neon...' pnpm db:push
-DATABASE_URL='postgresql://...neon...' pnpm db:seed
+pnpm install
 ```
 
-> Tip: You can also run one-off jobs in Render Shell/Jobs if you prefer not to run migrations from local.
+#### 1) Create Neon database
 
-#### 4) Verify production health
+1. Create a Neon project at [neon.tech](https://neon.tech).
+2. Create a database named `packetpath`.
+3. Copy the Neon **pooled** connection string and keep `sslmode=require`.
+4. Save that string as your production `DATABASE_URL`.
 
-- Check `GET /api/health` on your Render URL.
-- Log in with seeded credentials.
-- Create a test case and run one signature flow.
+#### 2) Push schema + seed data into Neon
+
+Run these commands from this repo on your machine:
+
+```bash
+DATABASE_URL='postgresql://<neon-connection-string>' pnpm db:push
+DATABASE_URL='postgresql://<neon-connection-string>' pnpm db:seed
+```
+
+#### 3) Deploy app on Render
+
+1. Push this repo to GitHub.
+2. In Render, create a new **Web Service** from the repo.
+3. Select **Docker** environment (Render will use this repo's `Dockerfile`).
+4. In Render environment variables, set:
+   - `DATABASE_URL` = your Neon connection string
+   - `NODE_ENV` = `production`
+   - `PORT` = `8080`
+5. Click **Deploy**.
+
+#### 4) Verify deployment
+
+After Render says deploy succeeded:
+
+1. Open: `https://<your-render-service>.onrender.com/api/health`
+2. Confirm response is healthy.
+3. Open app URL and log in with:
+   - `admin@occumed.com` / `admin123`
+4. Create one test case and complete one signature flow.
+
+#### 5) Optional email setup (SMTP)
+
+Add these Render env vars only if you want outbound emails:
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_USER`
+- `SMTP_PASS`
+- `SMTP_FROM`
+- `SMTP_FROM_NAME`
 
 ### Option B: Fly.io
 
