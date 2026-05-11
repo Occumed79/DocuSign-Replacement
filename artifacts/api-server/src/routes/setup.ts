@@ -2,39 +2,64 @@ import { Router, type IRouter } from "express";
 import { db, usersTable } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import bcrypt from "bcrypt";
+import { z } from "zod";
 
 const router: IRouter = Router();
 
+const SetupBody = z.object({
+  orgName: z.string().min(1).max(120),
+  name: z.string().min(1).max(120),
+  email: z.string().email(),
+  password: z.string().min(8),
+});
+
+/**
+ * GET /api/setup/status
+ * Returns whether the app has been initialized (users exist).
+ */
+router.get("/setup/status", async (_req, res): Promise<void> => {
+  try {
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(usersTable);
+    res.json({ initialized: count > 0 });
+  } catch (err: any) {
+    res.status(500).json({ ok: false, error: err?.message ?? "Unknown error" });
+  }
+});
+
 /**
  * POST /api/setup
- * One-time admin bootstrap — creates the default admin user only if NO users exist.
- * Safe to call multiple times; does nothing if users already exist.
+ * One-time admin bootstrap. Only works when NO users exist.
  */
-router.post("/setup", async (_req, res): Promise<void> => {
+router.post("/setup", async (req, res): Promise<void> => {
   try {
     const [{ count }] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(usersTable);
 
     if (count > 0) {
-      res.json({ ok: true, message: "Already initialized — users exist", seeded: false });
+      res.status(403).json({ ok: false, error: "Already initialized" });
       return;
     }
 
-    const passwordHash = await bcrypt.hash("admin123", 12);
+    const parsed = SetupBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ ok: false, error: "Invalid request", details: parsed.error.flatten() });
+      return;
+    }
 
-    await db.insert(usersTable).values([
-      { name: "Admin User",  email: "admin@occumed.com",    passwordHash, role: "admin"    },
-      { name: "Exam QA",     email: "examqa@occumed.com",   passwordHash, role: "examqa"   },
-      { name: "Reviewer",    email: "reviewer@occumed.com", passwordHash, role: "reviewer" },
-    ]);
+    const { name, email, password } = parsed.data;
+    const passwordHash = await bcrypt.hash(password, 12);
 
-    res.json({
-      ok: true,
-      message: "Database seeded with default users",
-      seeded: true,
-      credentials: { email: "admin@occumed.com", password: "admin123" },
+    await db.insert(usersTable).values({
+      name,
+      email: email.toLowerCase(),
+      passwordHash,
+      role: "admin",
     });
+
+    res.json({ ok: true, message: "Admin account created. You can now sign in." });
   } catch (err: any) {
     res.status(500).json({ ok: false, error: err?.message ?? "Unknown error" });
   }

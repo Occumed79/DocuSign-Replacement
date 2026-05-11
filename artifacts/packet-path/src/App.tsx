@@ -25,6 +25,7 @@ import WebhooksPage from "@/pages/Webhooks";
 import BrandingPage from "@/pages/Branding";
 import AppLayout from "@/components/layout/AppLayout";
 import NotFound from "@/pages/not-found";
+import SetupPage from "@/pages/Setup";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -55,6 +56,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/login" component={LoginPage} />
+      <Route path="/setup" component={SetupPage} />
 
       {/* Public signing page — no auth required */}
       <Route path="/sign/:token">
