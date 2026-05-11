@@ -2,7 +2,7 @@ import { useGetDashboardStats, useListCases, getGetDashboardStatsQueryKey } from
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
-import { FileText, CheckCircle, Clock, AlertCircle, TrendingUp, Plus, ArrowRight } from "lucide-react";
+import { FileText, CheckCircle, Clock, AlertCircle, TrendingUp, Plus, ArrowRight, PenTool, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const statusConfig: Record<string, { label: string; color: string; bg: string; icon: React.ElementType }> = {
@@ -47,6 +47,8 @@ export default function DashboardPage() {
   const inProgress = statusCounts.find(s => s.status === "in_progress")?.count ?? 0;
   const complete = statusCounts.find(s => s.status === "complete")?.count ?? 0;
   const submitted = statusCounts.find(s => s.status === "submitted")?.count ?? 0;
+
+  const isEmptyWorkspace = (stats?.totalCases ?? 0) === 0;
 
   return (
     <div className="p-8 max-w-6xl mx-auto">
@@ -97,6 +99,25 @@ export default function DashboardPage() {
             sub="Across all cases" icon={TrendingUp}
             iconBg="linear-gradient(135deg, #8b5cf6, #a855f7)" />
         </div>
+      )}
+
+
+      {isEmptyWorkspace && !isLoading && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="liquid-glass rounded-3xl p-5 mb-6 border border-indigo-200/40">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 text-white flex items-center justify-center shrink-0">
+              <Sparkles size={16} />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-foreground">Workspace is empty — here’s the fastest way to see the full DocuSign-style flow</p>
+              <div className="grid sm:grid-cols-3 gap-2 mt-3 text-xs">
+                <Link href="/cases/new"><button className="text-left rounded-xl bg-white/60 border border-white/50 px-3 py-2 hover:bg-white/80 transition">1. Create a case</button></Link>
+                <Link href="/admin"><button className="text-left rounded-xl bg-white/60 border border-white/50 px-3 py-2 hover:bg-white/80 transition">2. Add exam questions</button></Link>
+                <Link href="/esignatures"><button className="text-left rounded-xl bg-white/60 border border-white/50 px-3 py-2 hover:bg-white/80 transition flex items-center justify-between">3. Send signature request <PenTool size={12} /></button></Link>
+              </div>
+            </div>
+          </div>
+        </motion.div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
