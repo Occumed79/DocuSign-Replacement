@@ -14,11 +14,11 @@ const examTypeIcons: Record<string, React.ElementType> = {
   labs: FlaskConical,
 };
 
-const examTypeColors: Record<string, string> = {
-  deployment: "from-blue-500 to-indigo-600",
-  traditional: "from-emerald-500 to-teal-600",
-  dental: "from-orange-500 to-amber-600",
-  labs: "from-violet-500 to-purple-600",
+const examTypeGradients: Record<string, string> = {
+  deployment: "linear-gradient(135deg, #3b82f6, #4f46e5)",
+  traditional: "linear-gradient(135deg, #10b981, #0d9488)",
+  dental: "linear-gradient(135deg, #f59e0b, #d97706)",
+  labs: "linear-gradient(135deg, #8b5cf6, #a855f7)",
 };
 
 export default function NewCasePage() {
@@ -72,7 +72,7 @@ export default function NewCasePage() {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
           {/* Patient info */}
-          <div className="glass-card rounded-2xl p-6">
+          <div className="liquid-glass rounded-3xl p-6 relative glass-highlight">
             <h2 className="font-semibold text-foreground text-sm mb-4">Patient Information</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -86,7 +86,7 @@ export default function NewCasePage() {
                   onChange={e => setPatientName(e.target.value)}
                   required
                   placeholder="Full legal name"
-                  className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-sm outline-none focus:border-primary transition-colors"
+                  className="w-full px-4 py-2.5 rounded-2xl border border-white/40 bg-white/50 text-sm outline-none focus:border-primary/50 transition-all backdrop-blur-sm"
                 />
               </div>
               <div>
@@ -98,14 +98,14 @@ export default function NewCasePage() {
                   type="date"
                   value={patientDob}
                   onChange={e => setPatientDob(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-sm outline-none focus:border-primary transition-colors text-foreground"
+                  className="w-full px-4 py-2.5 rounded-2xl border border-white/40 bg-white/50 text-sm outline-none focus:border-primary/50 transition-all text-foreground backdrop-blur-sm"
                 />
               </div>
             </div>
           </div>
 
           {/* Exam type */}
-          <div className="glass-card rounded-2xl p-6">
+          <div className="liquid-glass rounded-3xl p-6 relative glass-highlight">
             <h2 className="font-semibold text-foreground text-sm mb-1">Exam Type <span className="text-destructive">*</span></h2>
             <p className="text-muted-foreground text-xs mb-4">Select the type of examination to determine which questions apply</p>
             {isLoading ? (
@@ -118,7 +118,7 @@ export default function NewCasePage() {
               <div className="grid grid-cols-2 gap-3">
                 {(examTypes ?? []).map((et) => {
                   const Icon = examTypeIcons[et.slug] ?? FileText;
-                  const gradient = examTypeColors[et.slug] ?? "from-blue-500 to-indigo-600";
+                  const gradient = examTypeGradients[et.slug] ?? "linear-gradient(135deg, #3b82f6, #4f46e5)";
                   const selected = selectedExamTypeId === et.id;
                   return (
                     <motion.button
@@ -129,13 +129,21 @@ export default function NewCasePage() {
                       whileTap={{ scale: 0.99 }}
                       onClick={() => setSelectedExamTypeId(et.id)}
                       className={cn(
-                        "p-4 rounded-xl border-2 text-left transition-all",
+                        "p-4 rounded-2xl text-left transition-all",
                         selected
-                          ? "border-primary bg-primary/5 shadow-sm"
-                          : "border-border hover:border-border/80 hover:bg-muted/30"
+                          ? "shadow-md"
+                          : "hover:shadow-sm"
                       )}
+                      style={{
+                        background: selected ? "rgba(255,255,255,0.70)" : "rgba(255,255,255,0.40)",
+                        border: selected ? "2px solid hsl(210, 100%, 52%)" : "2px solid rgba(255,255,255,0.50)",
+                        backdropFilter: "blur(12px)",
+                      }}
                     >
-                      <div className={cn("w-9 h-9 rounded-lg bg-gradient-to-br flex items-center justify-center mb-3", gradient)}>
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style={{
+                        background: gradient,
+                        boxShadow: "0 3px 10px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.25)",
+                      }}>
                         <Icon size={16} className="text-white" />
                       </div>
                       <p className="font-semibold text-foreground text-sm">{et.name}</p>
@@ -151,7 +159,12 @@ export default function NewCasePage() {
             data-testid="button-create-case"
             type="submit"
             disabled={createCase.isPending || !patientName.trim() || !selectedExamTypeId}
-            className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50 shadow-sm"
+            className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl text-white font-semibold text-sm transition-all disabled:opacity-50"
+            style={{
+              background: "linear-gradient(135deg, hsl(210, 100%, 52%), hsl(250, 80%, 60%))",
+              boxShadow: "0 4px 20px rgba(56, 140, 255, 0.25), inset 0 1px 0 rgba(255,255,255,0.15)",
+              border: "1px solid rgba(255,255,255,0.12)",
+            }}
           >
             {createCase.isPending ? (
               <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />

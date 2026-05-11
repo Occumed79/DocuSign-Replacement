@@ -23,7 +23,7 @@ function YesNoInput({ value, onChange }: { value: string; onChange: (v: string) 
           data-testid={`yn-${opt}`}
           onClick={() => onChange(opt)}
           className={cn(
-            "flex-1 py-3 rounded-xl border-2 text-sm font-semibold capitalize transition-all",
+            "flex-1 py-3 rounded-2xl border-2 text-sm font-semibold capitalize transition-all",
             value === opt
               ? opt === "yes"
                 ? "border-emerald-500 bg-emerald-50 text-emerald-700"
@@ -49,7 +49,7 @@ function QuestionInput({ q, value, onChange }: { q: Question; value: string; onC
           data-testid="input-dropdown"
           value={value}
           onChange={e => onChange(e.target.value)}
-          className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm outline-none focus:border-primary transition-colors text-foreground"
+          className="w-full px-4 py-3 rounded-2xl border border-white/40 bg-white/50 text-sm outline-none focus:border-primary/50 transition-all text-foreground backdrop-blur-sm"
         >
           <option value="">Select an option...</option>
           {q.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
@@ -72,7 +72,7 @@ function QuestionInput({ q, value, onChange }: { q: Question; value: string; onC
                   onChange(next.join("||"));
                 }}
                 className={cn(
-                  "flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-sm text-left transition-all",
+                  "flex items-center gap-3 px-4 py-3 rounded-2xl border-2 text-sm text-left transition-all",
                   checked
                     ? "border-primary bg-primary/5 text-foreground"
                     : "border-border hover:border-border/80 text-muted-foreground hover:text-foreground"
@@ -99,7 +99,7 @@ function QuestionInput({ q, value, onChange }: { q: Question; value: string; onC
           type="date"
           value={value}
           onChange={e => onChange(e.target.value)}
-          className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm outline-none focus:border-primary transition-colors text-foreground"
+          className="w-full px-4 py-3 rounded-2xl border border-white/40 bg-white/50 text-sm outline-none focus:border-primary/50 transition-all text-foreground backdrop-blur-sm"
         />
       );
 
@@ -110,7 +110,7 @@ function QuestionInput({ q, value, onChange }: { q: Question; value: string; onC
           type="number"
           value={value}
           onChange={e => onChange(e.target.value)}
-          className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm outline-none focus:border-primary transition-colors"
+          className="w-full px-4 py-3 rounded-2xl border border-white/40 bg-white/50 text-sm outline-none focus:border-primary/50 transition-all backdrop-blur-sm"
           placeholder="Enter a number..."
         />
       );
@@ -122,7 +122,7 @@ function QuestionInput({ q, value, onChange }: { q: Question; value: string; onC
           value={value}
           onChange={e => onChange(e.target.value)}
           rows={3}
-          className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm outline-none focus:border-primary transition-colors resize-none"
+          className="w-full px-4 py-3 rounded-2xl border border-white/40 bg-white/50 text-sm outline-none focus:border-primary/50 transition-all resize-none backdrop-blur-sm"
           placeholder="Type your answer..."
         />
       );
@@ -293,7 +293,7 @@ export default function CaseWizardPage({ caseId }: { caseId: number }) {
       </motion.div>
 
       {/* Overall progress */}
-      <div className="glass-card rounded-xl p-4 mb-6">
+      <div className="liquid-glass rounded-3xl p-4 mb-6 relative glass-highlight">
         <div className="flex items-center justify-between text-xs mb-2">
           <span className="text-muted-foreground font-medium">Overall Progress</span>
           <span className="text-foreground font-semibold">{overallProgress}%</span>
@@ -343,7 +343,7 @@ export default function CaseWizardPage({ caseId }: { caseId: number }) {
             transition={{ duration: 0.2 }}
             className="flex flex-col gap-4"
           >
-            <div className="glass-card rounded-2xl p-6">
+            <div className="liquid-glass rounded-3xl p-6 relative glass-highlight">
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <p className="text-xs text-primary font-semibold uppercase tracking-wider mb-1">
@@ -410,7 +410,13 @@ export default function CaseWizardPage({ caseId }: { caseId: number }) {
                   data-testid="btn-prev-section"
                   onClick={handlePrev}
                   disabled={isSaving}
-                  className="flex items-center gap-2 px-4 py-3 rounded-xl border border-border text-sm font-medium text-foreground hover:bg-muted/50 transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 px-4 py-3 rounded-2xl text-sm font-medium text-foreground transition-all disabled:opacity-50"
+                  style={{
+                    background: "rgba(255,255,255,0.50)",
+                    border: "1px solid rgba(255,255,255,0.50)",
+                    backdropFilter: "blur(12px)",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.5)",
+                  }}
                 >
                   <ArrowLeft size={15} /> Previous
                 </button>
@@ -420,11 +426,16 @@ export default function CaseWizardPage({ caseId }: { caseId: number }) {
                 onClick={handleNext}
                 disabled={isSaving}
                 className={cn(
-                  "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-all",
+                  "flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-semibold transition-all",
                   sectionComplete
-                    ? "bg-primary text-primary-foreground hover:opacity-90 shadow-sm"
+                    ? "text-white"
                     : "bg-muted text-muted-foreground"
                 )}
+                style={sectionComplete ? {
+                  background: "linear-gradient(135deg, hsl(210, 100%, 52%), hsl(250, 80%, 60%))",
+                  boxShadow: "0 4px 16px rgba(56, 140, 255, 0.25), inset 0 1px 0 rgba(255,255,255,0.15)",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                } : undefined}
               >
                 {isSaving ? (
                   <div className="w-4 h-4 border-2 border-current/40 border-t-current rounded-full animate-spin" />
