@@ -154,7 +154,7 @@ export default function ESignaturesPage() {
             </div>
             <div>
               <h1 className="text-2xl font-semibold text-foreground tracking-tight">E-Signatures</h1>
-              <p className="text-muted-foreground text-sm mt-0.5">Secure, HIPAA-compliant document signing</p>
+              <p className="text-muted-foreground text-sm mt-0.5">Secure, HIPAA-compliant document signing. Build custom forms in Templates.</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
