@@ -45,7 +45,8 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     return;
   }
 
-  const { email, password } = parsed.data;
+  const { email: rawEmail, password } = parsed.data;
+  const email = rawEmail.toLowerCase().trim();
   const ip = getClientIp(req);
   const ua = req.headers["user-agent"];
 
