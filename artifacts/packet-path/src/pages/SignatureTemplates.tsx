@@ -512,7 +512,16 @@ export default function SignatureTemplatesPage() {
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05 }}
-                  className="glass-card rounded-2xl p-5 hover:shadow-md transition-all group"
+                  onClick={() => setEditing(template)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setEditing(template);
+                    }
+                  }}
+                  className="glass-card rounded-2xl p-5 hover:shadow-md transition-all group cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-400"
                 >
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div className="flex-1 min-w-0">
@@ -521,18 +530,20 @@ export default function SignatureTemplatesPage() {
                         <p className="text-muted-foreground text-xs mt-0.5 line-clamp-2">{template.description}</p>
                       )}
                     </div>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    <div className="flex items-center gap-1 shrink-0">
                       <button
-                        onClick={() => setEditing(template)}
-                        className="p-1.5 rounded-lg hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors"
+                        onClick={(e) => { e.stopPropagation(); setEditing(template); }}
+                        className="p-1.5 rounded-lg bg-muted/40 hover:bg-muted/70 text-muted-foreground hover:text-foreground transition-colors"
                         title="Edit"
+                        aria-label={`Edit ${template.name}`}
                       >
                         <Edit2 size={13} />
                       </button>
                       <button
-                        onClick={() => deleteTemplate(template.id)}
-                        className="p-1.5 rounded-lg hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors"
+                        onClick={(e) => { e.stopPropagation(); deleteTemplate(template.id); }}
+                        className="p-1.5 rounded-lg bg-muted/40 hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors"
                         title="Delete"
+                        aria-label={`Delete ${template.name}`}
                       >
                         <Trash2 size={13} />
                       </button>
