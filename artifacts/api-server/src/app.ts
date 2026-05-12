@@ -10,6 +10,10 @@ import { sentryRequestHandler, sentryErrorHandler } from "./lib/sentry";
 
 const app: Express = express();
 
+// Render and most production hosts sit behind a reverse proxy.
+// This keeps express-rate-limit from erroring on X-Forwarded-For headers.
+app.set("trust proxy", 1);
+
 function getAllowedOrigins(): string[] {
   const configured = process.env.ALLOWED_ORIGINS
     ?.split(",")
@@ -89,6 +93,21 @@ app.use(cors({
 }));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
+// Direct health checks before rate limiting/router mounting.
+// Render may use HEAD before GET, so support both.
+app.get("/api/health", (_req, res) => {
+  res.json({ status: "ok" });
+});
+app.head("/api/health", (_req, res) => {
+  res.status(200).end();
+});
+app.get("/api/healthz", (_req, res) => {
+  res.json({ status: "ok" });
+});
+app.head("/api/healthz", (_req, res) => {
+  res.status(200).end();
+});
 
 // Global rate limiter: 200 requests per 15 minutes per IP
 const globalLimiter = rateLimit({
