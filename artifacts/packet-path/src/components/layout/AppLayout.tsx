@@ -17,6 +17,7 @@ const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/" },
   { label: "All Cases", icon: FolderOpen, href: "/cases" },
   { label: "E-Signatures", icon: PenTool, href: "/esignatures" },
+  { label: "Agreements", icon: ClipboardList, href: "/agreements" },
   { label: "Templates", icon: FileSignature, href: "/signature-templates" },
   { label: "Analytics", icon: BarChart2, href: "/analytics" },
 ];

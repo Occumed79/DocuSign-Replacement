@@ -21,6 +21,7 @@ import SignPage from "@/pages/SignPage";
 import EmailSettingsPage from "@/pages/EmailSettings";
 import UserManagementPage from "@/pages/UserManagement";
 import AnalyticsPage from "@/pages/Analytics";
+import AgreementsPage from "@/pages/Agreements";
 import WebhooksPage from "@/pages/Webhooks";
 import BrandingPage from "@/pages/Branding";
 import AppLayout from "@/components/layout/AppLayout";
@@ -77,6 +78,10 @@ function Router() {
       </Route>
       <Route path="/cases/:id">
         {(params) => <ProtectedRoute><CaseWizardPage caseId={Number(params.id)} /></ProtectedRoute>}
+      </Route>
+
+      <Route path="/agreements">
+        <ProtectedRoute><AgreementsPage /></ProtectedRoute>
       </Route>
 
       {/* E-Signatures */}
