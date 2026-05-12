@@ -10,6 +10,28 @@ import { sentryRequestHandler, sentryErrorHandler } from "./lib/sentry";
 
 const app: Express = express();
 
+function getAllowedOrigins(): string[] {
+  const configured = process.env.ALLOWED_ORIGINS
+    ?.split(",")
+    .map(origin => origin.trim())
+    .filter(Boolean) ?? [];
+
+  if (configured.length > 0) return configured;
+
+  if (process.env.NODE_ENV === "production") {
+    return [];
+  }
+
+  return [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+  ];
+}
+
+const allowedOrigins = getAllowedOrigins();
+
 // Sentry request handler MUST be first (captures request context for error reports)
 app.use(sentryRequestHandler());
 
@@ -40,7 +62,7 @@ app.use(
         scriptSrc: ["'self'", "'unsafe-inline'"],
         styleSrc: ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", "data:", "blob:"],
-        connectSrc: ["'self'"],
+        connectSrc: ["'self'", ...allowedOrigins],
         fontSrc: ["'self'"],
         objectSrc: ["'none'"],
         upgradeInsecureRequests: [],
@@ -49,7 +71,22 @@ app.use(
     crossOriginEmbedderPolicy: false,
   }),
 );
-app.use(cors());
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error("Origin not allowed by CORS"));
+  },
+  credentials: true,
+}));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
