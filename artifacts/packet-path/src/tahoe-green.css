@@ -1,0 +1,189 @@
+:root {
+  --tahoe-cream: #F1F2A3;
+  --tahoe-lime: #B7EC48;
+  --tahoe-chartreuse: #B0CA22;
+  --tahoe-moss: #7D9D0A;
+  --tahoe-olive: #5C7F3B;
+  --tahoe-ink: #102015;
+  --tahoe-glass: rgba(255, 255, 255, 0.52);
+  --tahoe-glass-strong: rgba(255, 255, 255, 0.72);
+
+  --background: 76 44% 95%;
+  --foreground: 133 35% 10%;
+  --border: 79 30% 78%;
+  --card: 78 55% 96%;
+  --card-foreground: 133 35% 10%;
+  --card-border: 79 38% 82%;
+  --primary: 79 82% 45%;
+  --primary-foreground: 133 35% 10%;
+  --accent: 75 80% 58%;
+  --accent-foreground: 133 35% 10%;
+  --ring: 79 82% 45%;
+  --muted: 78 42% 91%;
+  --muted-foreground: 91 18% 40%;
+  --sidebar: 138 28% 14%;
+  --sidebar-foreground: 76 60% 91%;
+  --sidebar-border: 133 28% 21%;
+  --sidebar-primary: 79 82% 58%;
+  --sidebar-primary-foreground: 133 35% 10%;
+  --sidebar-accent: 91 30% 24%;
+  --sidebar-accent-foreground: 76 60% 91%;
+}
+
+body {
+  background:
+    radial-gradient(circle at 18% 12%, rgba(241, 242, 163, 0.95) 0%, transparent 30%),
+    radial-gradient(circle at 88% 16%, rgba(183, 236, 72, 0.45) 0%, transparent 28%),
+    radial-gradient(circle at 60% 92%, rgba(125, 157, 10, 0.22) 0%, transparent 34%),
+    linear-gradient(145deg, #f9faea 0%, #eef4d7 42%, #edf5e7 100%) !important;
+  color: var(--tahoe-ink);
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.28) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.24) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: radial-gradient(circle at 50% 30%, black, transparent 74%);
+  opacity: 0.35;
+  z-index: 0;
+}
+
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+.luminous-gradient {
+  background:
+    radial-gradient(ellipse at 18% 18%, rgba(241, 242, 163, 0.70) 0%, transparent 42%),
+    radial-gradient(ellipse at 82% 20%, rgba(183, 236, 72, 0.42) 0%, transparent 44%),
+    radial-gradient(ellipse at 56% 88%, rgba(92, 127, 59, 0.18) 0%, transparent 45%),
+    linear-gradient(145deg, #fbfce8 0%, #f2f6dc 45%, #eef7ec 100%) !important;
+}
+
+.sidebar-gradient,
+.liquid-glass-dark {
+  background:
+    radial-gradient(circle at 20% 8%, rgba(183, 236, 72, 0.24), transparent 34%),
+    linear-gradient(180deg, rgba(15, 32, 21, 0.96) 0%, rgba(10, 22, 14, 0.98) 100%) !important;
+  border-right: 1px solid rgba(183, 236, 72, 0.18) !important;
+  box-shadow:
+    18px 0 48px rgba(46, 72, 26, 0.20),
+    inset -1px 0 0 rgba(255,255,255,0.08) !important;
+}
+
+.glass-card,
+.liquid-glass,
+.glass {
+  background:
+    linear-gradient(145deg, rgba(255,255,255,0.74), rgba(255,255,255,0.42)),
+    radial-gradient(circle at top left, rgba(241,242,163,0.34), transparent 38%) !important;
+  border: 1px solid rgba(255,255,255,0.68) !important;
+  box-shadow:
+    0 18px 52px rgba(92, 127, 59, 0.12),
+    0 4px 16px rgba(16, 32, 21, 0.06),
+    inset 0 1px 0 rgba(255,255,255,0.86),
+    inset 0 -1px 0 rgba(183,236,72,0.12) !important;
+}
+
+.glass-card:hover {
+  box-shadow:
+    0 24px 68px rgba(92, 127, 59, 0.18),
+    0 0 0 1px rgba(183,236,72,0.26),
+    inset 0 1px 0 rgba(255,255,255,0.90) !important;
+}
+
+button[class*="from-indigo"],
+button[class*="from-blue"],
+.bg-gradient-to-r.from-indigo-500,
+.bg-gradient-to-br.from-blue-500 {
+  background: linear-gradient(135deg, var(--tahoe-lime), var(--tahoe-chartreuse), var(--tahoe-moss)) !important;
+  color: var(--tahoe-ink) !important;
+  box-shadow:
+    0 12px 32px rgba(176, 202, 34, 0.34),
+    inset 0 1px 0 rgba(255,255,255,0.62) !important;
+}
+
+.text-indigo-500,
+.text-indigo-600,
+.text-blue-500,
+.text-blue-600 {
+  color: var(--tahoe-moss) !important;
+}
+
+.bg-indigo-50,
+.bg-blue-50 {
+  background-color: rgba(183, 236, 72, 0.16) !important;
+}
+
+.text-indigo-600,
+.text-blue-600 {
+  color: #5C7F3B !important;
+}
+
+.border-indigo-500,
+.border-blue-500,
+.focus\:border-indigo-400:focus,
+.focus\:ring-indigo-400:focus {
+  border-color: var(--tahoe-chartreuse) !important;
+}
+
+.template-iframe-shell {
+  height: min(78vh, 920px);
+  border-radius: 28px;
+  padding: 14px;
+  background:
+    linear-gradient(145deg, rgba(255,255,255,0.74), rgba(255,255,255,0.38)),
+    radial-gradient(circle at 20% 0%, rgba(183,236,72,0.26), transparent 44%);
+  border: 1px solid rgba(255,255,255,0.72);
+  box-shadow:
+    0 28px 80px rgba(47, 68, 26, 0.20),
+    inset 0 1px 0 rgba(255,255,255,0.88);
+  overflow: hidden;
+}
+
+.template-iframe-shell iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 20px;
+  background: white;
+}
+
+.luminous-orb {
+  position: fixed;
+  border-radius: 999px;
+  filter: blur(42px);
+  pointer-events: none;
+  opacity: 0.55;
+  z-index: 0;
+}
+
+.luminous-orb.one {
+  width: 260px;
+  height: 260px;
+  background: rgba(241, 242, 163, 0.60);
+  left: 18%;
+  top: 8%;
+}
+
+.luminous-orb.two {
+  width: 340px;
+  height: 340px;
+  background: rgba(183, 236, 72, 0.32);
+  right: 10%;
+  top: 18%;
+}
+
+.luminous-orb.three {
+  width: 320px;
+  height: 320px;
+  background: rgba(125, 157, 10, 0.18);
+  left: 44%;
+  bottom: -8%;
+}
