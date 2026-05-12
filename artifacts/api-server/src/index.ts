@@ -3,10 +3,13 @@ import { existsSync } from "fs";
 import { logger } from "./lib/logger";
 import { initSentry } from "./lib/sentry";
 import { processWebhookRetries } from "./lib/webhooks";
+import { validateEnvironment } from "./lib/env";
 
 const port = Number(process.env["PORT"] || "8080");
 
 async function main() {
+  validateEnvironment();
+
   // Initialize Sentry BEFORE importing app (so it can instrument Express)
   await initSentry();
 
