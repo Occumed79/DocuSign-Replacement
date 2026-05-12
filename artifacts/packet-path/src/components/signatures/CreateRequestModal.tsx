@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { X, Plus, Trash2, PenTool, FileText, Users, Send, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -193,6 +194,14 @@ export default function CreateRequestModal({ token, onClose, onCreated }: Props)
                     <option value="">No template</option>
                     {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                   </select>
+                  {templates.length === 0 && (
+                    <div className="mt-2 rounded-lg border border-indigo-200 bg-indigo-50/60 px-2.5 py-2 flex items-center justify-between gap-2">
+                      <p className="text-[11px] text-indigo-700">No templates yet. Create a custom form template first.</p>
+                      <Link href="/signature-templates">
+                        <button type="button" className="text-[11px] px-2 py-1 rounded bg-indigo-600 text-white">Open Templates</button>
+                      </Link>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Link to Case (optional)</label>
