@@ -1,13 +1,22 @@
 import { db, activeSessionsTable, usersTable, securityEventsTable, loginAttemptsTable } from "@workspace/db";
-import { eq, and, gt, lt, sql, lte } from "drizzle-orm";
+import { eq, and, gt, lt, sql } from "drizzle-orm";
 import crypto from "crypto";
 
 const SESSION_DURATION_MS = 8 * 60 * 60 * 1000; // 8 hours
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
 
+function hashToken(token: string): string {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) {
+    throw new Error("SESSION_SECRET is required for session token hashing");
+  }
+  return crypto.createHmac("sha256", secret).update(token).digest("hex");
+}
+
 export function generateToken(userId: number): string {
-  return Buffer.from(`${userId}:${Date.now()}:${crypto.randomBytes(24).toString("hex")}`).toString("base64url");
+  const random = crypto.randomBytes(48).toString("base64url");
+  return Buffer.from(`${userId}:${Date.now()}:${random}`).toString("base64url");
 }
 
 export async function createSession(
@@ -18,7 +27,7 @@ export async function createSession(
 ): Promise<void> {
   const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
   await db.insert(activeSessionsTable).values({
-    token,
+    token: hashToken(token),
     userId,
     ipAddress: ip ?? null,
     userAgent: userAgent ?? null,
@@ -28,12 +37,13 @@ export async function createSession(
 }
 
 export async function getSessionUserId(token: string): Promise<number | null> {
+  const tokenHash = hashToken(token);
   const [session] = await db
     .select({ userId: activeSessionsTable.userId })
     .from(activeSessionsTable)
     .where(
       and(
-        eq(activeSessionsTable.token, token),
+        eq(activeSessionsTable.token, tokenHash),
         gt(activeSessionsTable.expiresAt, new Date()),
         sql`${activeSessionsTable.revokedAt} IS NULL`
       )
@@ -46,7 +56,7 @@ export async function getSessionUserId(token: string): Promise<number | null> {
   await db
     .update(activeSessionsTable)
     .set({ lastActivityAt: new Date() })
-    .where(eq(activeSessionsTable.token, token));
+    .where(eq(activeSessionsTable.token, tokenHash));
 
   return session.userId;
 }
@@ -55,7 +65,7 @@ export async function revokeSession(token: string): Promise<void> {
   await db
     .update(activeSessionsTable)
     .set({ revokedAt: new Date() })
-    .where(eq(activeSessionsTable.token, token));
+    .where(eq(activeSessionsTable.token, hashToken(token)));
 }
 
 export async function revokeAllUserSessions(userId: number): Promise<void> {
