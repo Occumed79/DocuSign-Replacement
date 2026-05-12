@@ -140,7 +140,37 @@ function TemplateEditor({
       return;
     }
 
-    toast({ title: 'Only .html, .htm, and .pdf are supported', variant: 'destructive' });
+
+    if (file.type.startsWith('image/')) {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+      });
+      setContent(`<div style="display:flex;flex-direction:column;gap:12px;">
+  <p><strong>Imported image form:</strong> ${file.name}</p>
+  <img src="${dataUrl}" alt="${file.name}" style="max-width:100%;border:1px solid #d1d5db;border-radius:8px;" />
+</div>`);
+      if (!name.trim()) setName(file.name.replace(/\.[^.]+$/i, '').replace(/[-_]/g, ' '));
+      toast({ title: 'Image imported' });
+      return;
+    }
+
+    const genericDataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+    setContent(`<div style="display:flex;flex-direction:column;gap:12px;">
+  <p><strong>Imported file:</strong> ${file.name}</p>
+  <p>This file type cannot be rendered inline, but it has been attached to the template content.</p>
+  <a href="${genericDataUrl}" download="${file.name}">Download ${file.name}</a>
+</div>`);
+    if (!name.trim()) setName(file.name.replace(/\.[^.]+$/i, '').replace(/[-_]/g, ' '));
+    toast({ title: 'File imported as attachment' });
+    return;
   };
   const conditionalCount = formSchema.filter(f => f.showWhen?.fieldId).length;
 
@@ -247,10 +277,10 @@ function TemplateEditor({
                   <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider">Document Content (HTML) *</label>
                   <div className="flex items-center gap-2">
                     <label className="text-xs cursor-pointer px-2.5 py-1 rounded-lg border border-border hover:bg-muted/40">
-                      Import HTML/PDF
+                      Import Any File
                       <input
                         type="file"
-                        accept=".html,.htm,text/html,.pdf,application/pdf"
+                        accept="*/*"
                         className="hidden"
                         onChange={async (e) => {
                           const file = e.target.files?.[0];
@@ -259,7 +289,7 @@ function TemplateEditor({
                         }}
                       />
                     </label>
-                    <span className="text-[11px] text-muted-foreground">PDF files are embedded directly; HTML files are imported as editable content.</span>
+                    <span className="text-[11px] text-muted-foreground">HTML stays editable; PDF and images render inline; other files attach as downloads.</span>
                     {content && (
                       <button
                         onClick={() => setPreviewDoc(p => !p)}
