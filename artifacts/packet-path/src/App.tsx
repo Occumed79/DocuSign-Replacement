@@ -17,7 +17,7 @@ import AuditLogPage from "@/pages/AuditLog";
 import ESignaturesPage from "@/pages/ESignatures";
 import SignatureTemplatesPage from "@/pages/SignatureTemplates";
 import SignatureRequestDetailPage from "@/pages/SignatureRequestDetail";
-import SignPage from "@/pages/SignPage";
+import SignPage from "@/pages/ApplicantSignPage";
 import EmailSettingsPage from "@/pages/EmailSettings";
 import UserManagementPage from "@/pages/UserManagement";
 import AnalyticsPage from "@/pages/Analytics";
