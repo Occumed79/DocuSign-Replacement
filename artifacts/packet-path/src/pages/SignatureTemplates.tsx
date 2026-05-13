@@ -49,15 +49,15 @@ function pageEstimate(content: string): number {
 
 function OccuMedWordmark() {
   return (
-    <div className="flex items-center gap-3 rounded-[28px] border border-white/25 bg-black/15 px-5 py-3 shadow-[0_0_32px_rgba(183,236,72,.22)] backdrop-blur-2xl">
-      <div className="grid h-10 w-14 grid-cols-3 gap-1 rounded-2xl border border-lime-200/45 bg-lime-300/10 p-1.5 shadow-[0_0_22px_rgba(183,236,72,.35)]">
-        <div className="rounded-l-full border border-lime-200/90 bg-lime-300/20" />
-        <div className="rounded-t-full border border-yellow-200/90 bg-yellow-300/20" />
-        <div className="rounded-t-full border border-orange-300/90 bg-orange-400/20" />
+    <div className="flex items-center gap-3 rounded-[28px] border border-white/25 bg-black/15 px-5 py-3 shadow-[0_0_32px_rgba(141,190,181,.18)] backdrop-blur-2xl">
+      <div className="grid h-10 w-14 grid-cols-3 gap-1 rounded-2xl border border-white/30 bg-[#8dbeb5]/10 p-1.5 shadow-[0_0_22px_rgba(141,190,181,.16)]">
+        <div className="rounded-l-full border border-white/35 bg-[#8dbeb5]/20" />
+        <div className="rounded-t-full border border-white/35 bg-[#8dbeb5]/15" />
+        <div className="rounded-t-full border border-white/35 bg-[#8dbeb5]/12" />
       </div>
       <div className="leading-none">
-        <div className="text-[10px] uppercase tracking-[0.35em] text-lime-100/70">Occu-Med</div>
-        <div className="text-lg font-semibold tracking-wide text-white drop-shadow-[0_0_12px_rgba(183,236,72,.45)]">PacketPath</div>
+        <div className="text-[10px] uppercase tracking-[0.35em] text-[#c8d2d1]/80">Occu-Med</div>
+        <div className="text-lg font-semibold tracking-wide text-[#f4f7f6]">PacketPath</div>
       </div>
     </div>
   );
@@ -79,7 +79,7 @@ function PacketPreview({ template }: { template: Template }) {
 function PacketViewer({ template, onClose }: { template: Template; onClose: () => void }) {
   return (
     <motion.div
-      className="fixed inset-0 z-50 bg-[#07120b]/80 p-5 backdrop-blur-2xl"
+      className="fixed inset-0 z-50 bg-[#031219]/85 p-5 backdrop-blur-2xl"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -87,7 +87,7 @@ function PacketViewer({ template, onClose }: { template: Template; onClose: () =
       <div className="mx-auto flex h-full max-w-7xl flex-col overflow-hidden rounded-[34px] border border-white/25 bg-white/10 shadow-[0_35px_120px_rgba(0,0,0,.45)] backdrop-blur-3xl">
         <div className="flex items-center justify-between border-b border-white/15 px-6 py-4">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.35em] text-lime-200/80">Embedded Packet Viewer</div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.35em] text-[#8dbeb5]/90">Embedded Packet Viewer</div>
             <h2 className="mt-1 text-2xl font-semibold text-white">{template.name}</h2>
             <p className="text-sm text-white/60">{packetSubtitle(template)}</p>
           </div>
@@ -97,15 +97,15 @@ function PacketViewer({ template, onClose }: { template: Template; onClose: () =
         </div>
         <div className="grid min-h-0 flex-1 grid-cols-[210px_1fr] gap-4 p-5">
           <aside className="rounded-[28px] border border-white/15 bg-black/20 p-4 text-white/75 backdrop-blur-2xl">
-            <div className="mb-4 text-xs font-semibold uppercase tracking-[0.25em] text-lime-200">Packet Tools</div>
+            <div className="mb-4 text-xs font-semibold uppercase tracking-[0.25em] text-[#8dbeb5]">Packet Tools</div>
             <div className="space-y-2 text-sm">
               <div className="rounded-2xl bg-white/10 px-3 py-2">Preview form</div>
               <div className="rounded-2xl bg-white/5 px-3 py-2 text-white/45">Add signer fields</div>
               <div className="rounded-2xl bg-white/5 px-3 py-2 text-white/45">Create envelope</div>
               <div className="rounded-2xl bg-white/5 px-3 py-2 text-white/45">Export PDF</div>
             </div>
-            <div className="mt-6 rounded-3xl border border-lime-200/20 bg-lime-300/10 p-4">
-              <div className="text-[11px] uppercase tracking-[0.22em] text-lime-100">HIPAA Audit</div>
+            <div className="mt-6 rounded-3xl border border-white/20 bg-[#8dbeb5]/10 p-4">
+              <div className="text-[11px] uppercase tracking-[0.22em] text-[#8dbeb5]/90">HIPAA Audit</div>
               <p className="mt-2 text-xs text-white/60">Viewer activity and PHI access are logged by PacketPath.</p>
             </div>
           </aside>
@@ -151,30 +151,30 @@ function TemplateEditor({ onSave, onClose, token }: { onSave: () => void; onClos
   };
 
   return (
-    <motion.div className="fixed inset-0 z-50 flex items-center justify-center bg-[#07120b]/70 p-6 backdrop-blur-2xl" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+    <motion.div className="fixed inset-0 z-50 flex items-center justify-center bg-[#031219]/75 p-6 backdrop-blur-2xl" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
       <motion.div className="glass-card w-full max-w-4xl overflow-hidden rounded-[32px]" initial={{ scale: 0.96, y: 18 }} animate={{ scale: 1, y: 0 }}>
         <div className="flex items-center justify-between border-b border-white/35 px-6 py-4">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-lime-700">Add Packet</div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-[#8dbeb5]">Add Packet</div>
             <h2 className="text-xl font-semibold">Import HTML Form</h2>
           </div>
           <button onClick={onClose} className="rounded-full bg-white/40 p-2 hover:bg-white/70"><X size={18} /></button>
         </div>
         <div className="grid gap-4 p-6 md:grid-cols-3">
-          <input value={name} onChange={e => setName(e.target.value)} placeholder="Packet name" className="rounded-2xl border border-white/60 bg-white/60 px-4 py-3 outline-none" />
-          <select value={category} onChange={e => setCategory(e.target.value)} className="rounded-2xl border border-white/60 bg-white/60 px-4 py-3 outline-none">
+          <input value={name} onChange={e => setName(e.target.value)} placeholder="Packet name" className="rounded-2xl border border-white/60 bg-[#052a32]/70 text-[#f4f7f6] px-4 py-3 outline-none" />
+          <select value={category} onChange={e => setCategory(e.target.value)} className="rounded-2xl border border-white/60 bg-[#052a32]/70 text-[#f4f7f6] px-4 py-3 outline-none">
             {CATEGORIES.filter(c => c !== "All").map(c => <option key={c}>{c}</option>)}
           </select>
-          <label className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-lime-700/40 bg-lime-300/20 px-4 py-3 font-medium text-lime-950 hover:bg-lime-300/30">
+          <label className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-white/25 bg-white/10 px-4 py-3 font-medium text-[#f4f7f6] hover:bg-[#9bc8bf]/30">
             <Upload size={16} /> Upload HTML
             <input type="file" accept=".html,.htm,text/html" className="hidden" onChange={e => e.target.files?.[0] && importFile(e.target.files[0])} />
           </label>
-          <input value={description} onChange={e => setDescription(e.target.value)} placeholder="Short description" className="md:col-span-3 rounded-2xl border border-white/60 bg-white/60 px-4 py-3 outline-none" />
-          <textarea value={content} onChange={e => setContent(e.target.value)} rows={14} placeholder="Paste or upload the full HTML form here" className="md:col-span-3 rounded-3xl border border-white/60 bg-white/60 p-4 font-mono text-xs outline-none" />
+          <input value={description} onChange={e => setDescription(e.target.value)} placeholder="Short description" className="md:col-span-3 rounded-2xl border border-white/60 bg-[#052a32]/70 text-[#f4f7f6] px-4 py-3 outline-none" />
+          <textarea value={content} onChange={e => setContent(e.target.value)} rows={14} placeholder="Paste or upload the full HTML form here" className="md:col-span-3 rounded-3xl border border-white/60 bg-[#052a32]/70 text-[#f4f7f6] p-4 font-mono text-xs outline-none" />
         </div>
         <div className="flex justify-end gap-3 border-t border-white/35 px-6 py-4">
           <button onClick={onClose} className="rounded-2xl border border-white/50 bg-white/40 px-5 py-2.5">Cancel</button>
-          <button onClick={save} disabled={saving || !name.trim() || !content.trim()} className="rounded-2xl bg-lime-400 px-5 py-2.5 font-semibold text-lime-950 shadow-[0_0_30px_rgba(183,236,72,.35)] disabled:opacity-50">
+          <button onClick={save} disabled={saving || !name.trim() || !content.trim()} className="rounded-2xl bg-[#8dbeb5] px-5 py-2.5 font-semibold text-[#f4f7f6] shadow-[0_0_30px_rgba(141,190,181,.16)] disabled:opacity-50">
             {saving ? "Saving..." : <span className="inline-flex items-center gap-2"><Save size={16} /> Save Packet</span>}
           </button>
         </div>
@@ -221,11 +221,11 @@ export default function SignatureTemplatesPage() {
         <div className="mb-8 flex items-start justify-between gap-6">
           <div>
             <div className="mb-4"><OccuMedWordmark /></div>
-            <div className="text-[12px] font-semibold uppercase tracking-[0.38em] text-lime-800/70">Document Center</div>
-            <h1 className="mt-2 text-5xl font-semibold tracking-tight text-[#102015]">Packet Library</h1>
-            <p className="mt-2 max-w-2xl text-base text-[#5c7f3b]">Embedded Occu-Med forms, DD packet documents, agreements, and authorization forms in one luminous workspace.</p>
+            <div className="text-[12px] font-semibold uppercase tracking-[0.38em] text-[#8dbeb5]/70">Document Center</div>
+            <h1 className="mt-2 text-5xl font-semibold tracking-tight text-[#f4f7f6]">Packet Library</h1>
+            <p className="mt-2 max-w-2xl text-base text-[#c8d2d1]">Embedded Occu-Med forms, DD packet documents, agreements, and authorization forms in one luminous workspace.</p>
           </div>
-          <button onClick={() => setCreating(true)} className="rounded-[24px] bg-lime-400 px-6 py-3 font-semibold text-lime-950 shadow-[0_0_34px_rgba(183,236,72,.45)] hover:bg-lime-300">
+          <button onClick={() => setCreating(true)} className="rounded-[24px] bg-[#8dbeb5] px-6 py-3 font-semibold text-[#f4f7f6] shadow-[0_0_34px_rgba(183,236,72,.45)] hover:bg-[#9bc8bf]">
             <span className="inline-flex items-center gap-2"><Plus size={18} /> Add Form</span>
           </button>
         </div>
@@ -233,12 +233,12 @@ export default function SignatureTemplatesPage() {
         <div className="glass-card mb-8 rounded-[32px] p-4">
           <div className="grid gap-4 md:grid-cols-[1fr_auto]">
             <div className="flex items-center gap-3 rounded-[24px] border border-white/55 bg-white/45 px-4 py-3 backdrop-blur-xl">
-              <Search size={18} className="text-lime-900/55" />
-              <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search packets, forms, or categories..." className="w-full bg-transparent text-sm outline-none placeholder:text-lime-950/35" />
+              <Search size={18} className="text-[#8dbeb5]/75" />
+              <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search packets, forms, or categories..." className="w-full bg-transparent text-sm outline-none placeholder:text-[#f4f7f6]/35" />
             </div>
             <div className="flex flex-wrap gap-2">
               {CATEGORIES.map(c => (
-                <button key={c} onClick={() => setCategory(c)} className={cn("rounded-2xl px-4 py-2 text-sm font-semibold transition", category === c ? "bg-lime-400 text-lime-950 shadow-[0_0_24px_rgba(183,236,72,.35)]" : "bg-white/35 text-lime-950/70 hover:bg-white/55")}>{c}</button>
+                <button key={c} onClick={() => setCategory(c)} className={cn("rounded-2xl px-4 py-2 text-sm font-semibold transition", category === c ? "bg-[#8dbeb5] text-[#f4f7f6] shadow-[0_0_24px_rgba(141,190,181,.16)]" : "bg-white/35 text-[#f4f7f6]/70 hover:bg-white/55")}>{c}</button>
               ))}
             </div>
           </div>
@@ -255,30 +255,30 @@ export default function SignatureTemplatesPage() {
               return (
                 <motion.article key={template.id} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }} className="glass-card group relative overflow-hidden rounded-[34px] p-4">
                   <div className="absolute right-4 top-4 z-10 flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-                    <button onClick={() => setViewing(template)} className="rounded-full bg-white/70 p-2 text-lime-950 shadow"><ExternalLink size={15} /></button>
+                    <button onClick={() => setViewing(template)} className="rounded-full bg-white/70 p-2 text-[#f4f7f6] shadow"><ExternalLink size={15} /></button>
                     <button onClick={() => deleteTemplate(template.id)} className="rounded-full bg-white/70 p-2 text-red-700 shadow"><Trash2 size={15} /></button>
                   </div>
                   <button onClick={() => setViewing(template)} className="block w-full text-left">
                     <PacketPreview template={template} />
                     <div className="mt-4 flex items-center justify-between gap-3">
-                      <span className="rounded-full bg-lime-300/45 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-lime-950">{cat}</span>
-                      <span className="text-xs text-lime-950/55">{pageEstimate(template.content)} page{pageEstimate(template.content) === 1 ? "" : "s"}</span>
+                      <span className="rounded-full bg-[#8dbeb5]/25 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-[#f4f7f6]">{cat}</span>
+                      <span className="text-xs text-[#f4f7f6]/55">{pageEstimate(template.content)} page{pageEstimate(template.content) === 1 ? "" : "s"}</span>
                     </div>
-                    <h3 className="mt-3 text-xl font-semibold text-[#102015]">{template.name}</h3>
-                    <p className="mt-1 line-clamp-2 text-sm text-[#5c7f3b]">{packetSubtitle(template)}</p>
-                    <div className="mt-4 flex items-center justify-between border-t border-white/45 pt-3 text-xs text-lime-950/55">
+                    <h3 className="mt-3 text-xl font-semibold text-[#f4f7f6]">{template.name}</h3>
+                    <p className="mt-1 line-clamp-2 text-sm text-[#c8d2d1]">{packetSubtitle(template)}</p>
+                    <div className="mt-4 flex items-center justify-between border-t border-white/45 pt-3 text-xs text-[#f4f7f6]/55">
                       <span>Updated {new Date(template.updatedAt).toLocaleDateString()}</span>
-                      <span className="font-semibold text-lime-800">Open packet</span>
+                      <span className="font-semibold text-[#8dbeb5]">Open packet</span>
                     </div>
                   </button>
                 </motion.article>
               );
             })}
 
-            <button onClick={() => setCreating(true)} className="glass-card flex min-h-[390px] flex-col items-center justify-center rounded-[34px] border border-dashed border-lime-700/30 p-6 text-center hover:shadow-[0_0_60px_rgba(183,236,72,.25)]">
-              <div className="mb-4 rounded-full border border-lime-300/50 bg-lime-300/20 p-6 shadow-[0_0_35px_rgba(183,236,72,.35)]"><Plus size={34} /></div>
+            <button onClick={() => setCreating(true)} className="glass-card flex min-h-[390px] flex-col items-center justify-center rounded-[34px] border border-dashed border-white/25 p-6 text-center hover:shadow-[0_0_60px_rgba(141,190,181,.18)]">
+              <div className="mb-4 rounded-full border border-white/30 bg-[#8dbeb5]/20 p-6 shadow-[0_0_35px_rgba(141,190,181,.16)]"><Plus size={34} /></div>
               <h3 className="text-xl font-semibold">Add HTML Form</h3>
-              <p className="mt-2 max-w-xs text-sm text-lime-900/60">Upload or paste an Occu-Med form and it will become an embedded packet preview.</p>
+              <p className="mt-2 max-w-xs text-sm text-[#c8d2d1]/80">Upload or paste an Occu-Med form and it will become an embedded packet preview.</p>
             </button>
           </div>
         )}
