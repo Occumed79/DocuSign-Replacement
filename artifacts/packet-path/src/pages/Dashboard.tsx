@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 
 const statusConfig: Record<string, { label: string; color: string; bg: string; icon: React.ElementType }> = {
   draft: { label: "Draft", color: "text-slate-600", bg: "bg-slate-100", icon: FileText },
-  in_progress: { label: "In Progress", color: "text-blue-600", bg: "bg-blue-50", icon: Clock },
+  in_progress: { label: "In Progress", color: "text-[#8dbeb5]", bg: "bg-[#8dbeb5]/15", icon: Clock },
   complete: { label: "Complete", color: "text-emerald-600", bg: "bg-emerald-50", icon: CheckCircle },
   submitted: { label: "Submitted", color: "text-violet-600", bg: "bg-violet-50", icon: CheckCircle },
 };
@@ -135,23 +135,23 @@ export default function DashboardPage() {
 
 
       {isEmptyWorkspace && !isLoading && (
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="liquid-glass rounded-3xl p-5 mb-6 border border-indigo-200/40">
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="liquid-glass rounded-3xl p-5 mb-6 border border-white/20">
           <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 text-white flex items-center justify-center shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#8dbeb5] to-[#527b78] text-white flex items-center justify-center shrink-0">
               <Sparkles size={16} />
             </div>
             <div className="flex-1">
               <p className="text-sm font-semibold text-foreground">Workspace is empty — here’s the fastest way to see the full DocuSign-style flow</p>
               <div className="grid sm:grid-cols-3 gap-2 mt-3 text-xs">
-                <div className="rounded-xl bg-white/60 border border-white/50 px-3 py-2">
+                <div className="rounded-xl bg-[#052a32]/65 border border-white/20 px-3 py-2">
                   <Link href="/cases/new"><button className="text-left hover:underline">1. Create a case</button></Link>
                   <p className="mt-2 text-[11px] text-muted-foreground">Status: {(stats?.totalCases ?? 0) > 0 ? "Complete" : "Not started"}</p>
                 </div>
-                <div className="rounded-xl bg-white/60 border border-white/50 px-3 py-2">
+                <div className="rounded-xl bg-[#052a32]/65 border border-white/20 px-3 py-2">
                   <Link href="/signature-templates"><button className="text-left hover:underline">2. Create template</button></Link>
                   <p className="mt-2 text-[11px] text-muted-foreground">Status: {hasTemplate ? "Complete" : "Not started"}</p>
                 </div>
-                <div className="rounded-xl bg-white/60 border border-white/50 px-3 py-2">
+                <div className="rounded-xl bg-[#052a32]/65 border border-white/20 px-3 py-2">
                   <Link href="/esignatures"><button className="text-left hover:underline flex items-center gap-1">3. Send signature request <PenTool size={12} /></button></Link>
                   <p className="mt-2 text-[11px] text-muted-foreground">Status: {hasSignatureRequest ? "Complete" : "Not started"}</p>
                 </div>
@@ -249,7 +249,7 @@ export default function DashboardPage() {
                       </div>
                       <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                         <motion.div
-                          className="h-full bg-gradient-to-r from-blue-500 to-violet-500 rounded-full"
+                          className="h-full bg-gradient-to-r from-[#8dbeb5] to-[#527b78] rounded-full"
                           initial={{ width: 0 }}
                           animate={{ width: `${pct}%` }}
                           transition={{ duration: 0.8, ease: "easeOut" }}

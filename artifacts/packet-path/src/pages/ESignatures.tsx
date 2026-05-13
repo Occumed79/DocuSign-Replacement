@@ -36,7 +36,7 @@ interface Stats {
 const statusConfig: Record<string, { label: string; color: string; bg: string; icon: React.ElementType }> = {
   draft: { label: "Draft", color: "text-slate-600", bg: "bg-slate-100", icon: FileText },
   pending: { label: "Pending", color: "text-amber-600", bg: "bg-amber-50", icon: Clock },
-  partially_signed: { label: "In Progress", color: "text-blue-600", bg: "bg-blue-50", icon: PenTool },
+  partially_signed: { label: "In Progress", color: "text-[#8dbeb5]", bg: "bg-[#8dbeb5]/15", icon: PenTool },
   completed: { label: "Completed", color: "text-emerald-600", bg: "bg-emerald-50", icon: CheckCircle },
   voided: { label: "Voided", color: "text-red-600", bg: "bg-red-50", icon: XCircle },
   expired: { label: "Expired", color: "text-slate-500", bg: "bg-slate-100", icon: AlertCircle },
@@ -239,11 +239,11 @@ export default function ESignaturesPage() {
 
 
         {isEmptyWorkspace && !loading && (
-          <div className="liquid-glass rounded-3xl p-4 mb-5 border border-indigo-200/40">
+          <div className="liquid-glass rounded-3xl p-4 mb-5 border border-white/20">
             <p className="text-sm text-foreground font-medium">No templates or requests yet. Start with a template, then send for signature.</p>
             <div className="flex flex-wrap items-center gap-2 mt-3">
               <Link href="/signature-templates"><button className="px-3 py-2 text-xs rounded-xl bg-white/70 border border-white/50">Create Template</button></Link>
-              <button onClick={() => setShowCreate(true)} className="px-3 py-2 text-xs rounded-xl bg-indigo-600 text-white">Quick Request</button>
+              <button onClick={() => setShowCreate(true)} className="px-3 py-2 text-xs rounded-xl bg-[#8dbeb5] text-[#031219]">Quick Request</button>
             </div>
           </div>
         )}
@@ -264,7 +264,7 @@ export default function ESignaturesPage() {
               <p className="text-muted-foreground text-sm mb-5">Create your first request to send documents for signing.</p>
               <button
                 onClick={() => setShowCreate(true)}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-sm font-medium hover:opacity-90 transition-opacity"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#8dbeb5] to-[#527b78] text-white text-sm font-medium hover:opacity-90 transition-opacity"
               >
                 <Plus size={14} /> Create Request
               </button>
@@ -284,8 +284,8 @@ export default function ESignaturesPage() {
                 >
                   <div className="flex items-start gap-4">
                     {/* Icon */}
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/10 to-violet-500/10 flex items-center justify-center shrink-0 border border-indigo-200/30">
-                      <PenTool size={16} className="text-indigo-600" />
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#8dbeb5]/15 to-[#527b78]/15 flex items-center justify-center shrink-0 border border-white/20">
+                      <PenTool size={16} className="text-[#8dbeb5]" />
                     </div>
 
                     {/* Content */}
@@ -370,7 +370,7 @@ export default function ESignaturesPage() {
                             <motion.div
                               className={cn(
                                 "h-full rounded-full",
-                                req.status === "completed" ? "bg-emerald-500" : "bg-gradient-to-r from-indigo-500 to-violet-500"
+                                req.status === "completed" ? "bg-emerald-500" : "bg-gradient-to-r from-[#8dbeb5] to-[#527b78]"
                               )}
                               initial={{ width: 0 }}
                               animate={{ width: `${progress}%` }}
@@ -388,12 +388,12 @@ export default function ESignaturesPage() {
                             const rCfg = statusConfig[r.status] ?? statusConfig.pending;
                             return (
                               <div key={j} className="relative" title={`${r.name} (${r.status})`}>
-                                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-400 to-violet-500 flex items-center justify-center text-white text-xs font-bold border-2 border-background">
+                                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#8dbeb5] to-[#527b78] flex items-center justify-center text-white text-xs font-bold border-2 border-background">
                                   {r.name.charAt(0).toUpperCase()}
                                 </div>
                                 <div className={cn(
                                   "absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border border-background flex items-center justify-center",
-                                  r.status === "signed" ? "bg-emerald-500" : r.status === "viewed" ? "bg-blue-500" : r.status === "declined" ? "bg-red-500" : "bg-slate-400"
+                                  r.status === "signed" ? "bg-emerald-500" : r.status === "viewed" ? "bg-[#8dbeb5]/150" : r.status === "declined" ? "bg-red-500" : "bg-slate-400"
                                 )} />
                               </div>
                             );
@@ -414,8 +414,8 @@ export default function ESignaturesPage() {
         </div>
 
         {/* HIPAA notice */}
-        <div className="mt-8 glass-card rounded-xl p-4 flex items-start gap-3 border border-indigo-200/40">
-          <Shield size={15} className="text-indigo-500 mt-0.5 shrink-0" />
+        <div className="mt-8 glass-card rounded-xl p-4 flex items-start gap-3 border border-white/20">
+          <Shield size={15} className="text-[#8dbeb5] mt-0.5 shrink-0" />
           <p className="text-xs text-muted-foreground">
             All signatures are legally binding under the ESIGN Act (15 U.S.C. § 7001) and UETA. Each signature includes a tamper-evident
             document hash, signer IP address, timestamp, and user agent. Audit trail stored in compliance with HIPAA §164.312(b).
