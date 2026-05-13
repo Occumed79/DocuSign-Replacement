@@ -51,9 +51,9 @@ function OccuMedWordmark() {
   return (
     <div className="flex items-center gap-3 rounded-[28px] border border-white/25 bg-black/15 px-5 py-3 shadow-[0_0_32px_rgba(141,190,181,.18)] backdrop-blur-2xl">
       <div className="grid h-10 w-14 grid-cols-3 gap-1 rounded-2xl border border-white/30 bg-[#8dbeb5]/10 p-1.5 shadow-[0_0_22px_rgba(141,190,181,.16)]">
-        <div className="rounded-l-full border border-lime-200/90 bg-lime-300/20" />
-        <div className="rounded-t-full border border-yellow-200/90 bg-yellow-300/20" />
-        <div className="rounded-t-full border border-orange-300/90 bg-orange-400/20" />
+        <div className="rounded-l-full border border-white/35 bg-[#8dbeb5]/20" />
+        <div className="rounded-t-full border border-white/35 bg-[#8dbeb5]/15" />
+        <div className="rounded-t-full border border-white/35 bg-[#8dbeb5]/12" />
       </div>
       <div className="leading-none">
         <div className="text-[10px] uppercase tracking-[0.35em] text-[#c8d2d1]/80">Occu-Med</div>
@@ -105,7 +105,7 @@ function PacketViewer({ template, onClose }: { template: Template; onClose: () =
               <div className="rounded-2xl bg-white/5 px-3 py-2 text-white/45">Export PDF</div>
             </div>
             <div className="mt-6 rounded-3xl border border-white/20 bg-[#8dbeb5]/10 p-4">
-              <div className="text-[11px] uppercase tracking-[0.22em] text-lime-100">HIPAA Audit</div>
+              <div className="text-[11px] uppercase tracking-[0.22em] text-[#8dbeb5]/90">HIPAA Audit</div>
               <p className="mt-2 text-xs text-white/60">Viewer activity and PHI access are logged by PacketPath.</p>
             </div>
           </aside>
@@ -161,16 +161,16 @@ function TemplateEditor({ onSave, onClose, token }: { onSave: () => void; onClos
           <button onClick={onClose} className="rounded-full bg-white/40 p-2 hover:bg-white/70"><X size={18} /></button>
         </div>
         <div className="grid gap-4 p-6 md:grid-cols-3">
-          <input value={name} onChange={e => setName(e.target.value)} placeholder="Packet name" className="rounded-2xl border border-white/60 bg-white/60 px-4 py-3 outline-none" />
-          <select value={category} onChange={e => setCategory(e.target.value)} className="rounded-2xl border border-white/60 bg-white/60 px-4 py-3 outline-none">
+          <input value={name} onChange={e => setName(e.target.value)} placeholder="Packet name" className="rounded-2xl border border-white/60 bg-[#052a32]/70 text-[#f4f7f6] px-4 py-3 outline-none" />
+          <select value={category} onChange={e => setCategory(e.target.value)} className="rounded-2xl border border-white/60 bg-[#052a32]/70 text-[#f4f7f6] px-4 py-3 outline-none">
             {CATEGORIES.filter(c => c !== "All").map(c => <option key={c}>{c}</option>)}
           </select>
           <label className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-white/25 bg-white/10 px-4 py-3 font-medium text-[#f4f7f6] hover:bg-[#9bc8bf]/30">
             <Upload size={16} /> Upload HTML
             <input type="file" accept=".html,.htm,text/html" className="hidden" onChange={e => e.target.files?.[0] && importFile(e.target.files[0])} />
           </label>
-          <input value={description} onChange={e => setDescription(e.target.value)} placeholder="Short description" className="md:col-span-3 rounded-2xl border border-white/60 bg-white/60 px-4 py-3 outline-none" />
-          <textarea value={content} onChange={e => setContent(e.target.value)} rows={14} placeholder="Paste or upload the full HTML form here" className="md:col-span-3 rounded-3xl border border-white/60 bg-white/60 p-4 font-mono text-xs outline-none" />
+          <input value={description} onChange={e => setDescription(e.target.value)} placeholder="Short description" className="md:col-span-3 rounded-2xl border border-white/60 bg-[#052a32]/70 text-[#f4f7f6] px-4 py-3 outline-none" />
+          <textarea value={content} onChange={e => setContent(e.target.value)} rows={14} placeholder="Paste or upload the full HTML form here" className="md:col-span-3 rounded-3xl border border-white/60 bg-[#052a32]/70 text-[#f4f7f6] p-4 font-mono text-xs outline-none" />
         </div>
         <div className="flex justify-end gap-3 border-t border-white/35 px-6 py-4">
           <button onClick={onClose} className="rounded-2xl border border-white/50 bg-white/40 px-5 py-2.5">Cancel</button>
@@ -233,7 +233,7 @@ export default function SignatureTemplatesPage() {
         <div className="glass-card mb-8 rounded-[32px] p-4">
           <div className="grid gap-4 md:grid-cols-[1fr_auto]">
             <div className="flex items-center gap-3 rounded-[24px] border border-white/55 bg-white/45 px-4 py-3 backdrop-blur-xl">
-              <Search size={18} className="text-lime-900/55" />
+              <Search size={18} className="text-[#8dbeb5]/75" />
               <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search packets, forms, or categories..." className="w-full bg-transparent text-sm outline-none placeholder:text-[#f4f7f6]/35" />
             </div>
             <div className="flex flex-wrap gap-2">
@@ -275,10 +275,10 @@ export default function SignatureTemplatesPage() {
               );
             })}
 
-            <button onClick={() => setCreating(true)} className="glass-card flex min-h-[390px] flex-col items-center justify-center rounded-[34px] border border-dashed border-lime-700/30 p-6 text-center hover:shadow-[0_0_60px_rgba(183,236,72,.25)]">
-              <div className="mb-4 rounded-full border border-lime-300/50 bg-lime-300/20 p-6 shadow-[0_0_35px_rgba(141,190,181,.16)]"><Plus size={34} /></div>
+            <button onClick={() => setCreating(true)} className="glass-card flex min-h-[390px] flex-col items-center justify-center rounded-[34px] border border-dashed border-white/25 p-6 text-center hover:shadow-[0_0_60px_rgba(141,190,181,.18)]">
+              <div className="mb-4 rounded-full border border-white/30 bg-[#8dbeb5]/20 p-6 shadow-[0_0_35px_rgba(141,190,181,.16)]"><Plus size={34} /></div>
               <h3 className="text-xl font-semibold">Add HTML Form</h3>
-              <p className="mt-2 max-w-xs text-sm text-lime-900/60">Upload or paste an Occu-Med form and it will become an embedded packet preview.</p>
+              <p className="mt-2 max-w-xs text-sm text-[#c8d2d1]/80">Upload or paste an Occu-Med form and it will become an embedded packet preview.</p>
             </button>
           </div>
         )}

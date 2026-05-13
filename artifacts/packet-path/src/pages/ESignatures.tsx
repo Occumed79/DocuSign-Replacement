@@ -134,8 +134,8 @@ export default function ESignaturesPage() {
   const isEmptyWorkspace = stats.total === 0;
 
   const statCards = [
-    { label: "Total Requests", value: stats.total, icon: FileText, iconBg: "linear-gradient(135deg, #3b82f6, #4f46e5)" },
-    { label: "Awaiting Signature", value: stats.pending, icon: Clock, iconBg: "linear-gradient(135deg, #f59e0b, #ea580c)" },
+    { label: "Total Requests", value: stats.total, icon: FileText, iconBg: "linear-gradient(135deg, #527b78, #3f6461)" },
+    { label: "Awaiting Signature", value: stats.pending, icon: Clock, iconBg: "linear-gradient(135deg, #8dbeb5, #527b78)" },
     { label: "Completed", value: stats.completed, icon: CheckCircle, iconBg: "linear-gradient(135deg, #10b981, #14b8a6)" },
     { label: "Voided", value: stats.voided, icon: XCircle, iconBg: "linear-gradient(135deg, #64748b, #475569)" },
   ];
@@ -147,8 +147,8 @@ export default function ESignaturesPage() {
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{
-              background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
-              boxShadow: "0 4px 16px rgba(99, 102, 241, 0.25), inset 0 1px 0 rgba(255,255,255,0.15)",
+              background: "linear-gradient(135deg, #8dbeb5, #527b78)",
+              boxShadow: "0 4px 16px rgba(141,190,181,0.22), inset 0 1px 0 rgba(255,255,255,0.15)",
             }}>
               <PenTool size={18} className="text-white" />
             </div>
@@ -174,8 +174,8 @@ export default function ESignaturesPage() {
               onClick={() => setShowCreate(true)}
               className="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-white text-sm font-medium transition-all"
               style={{
-                background: "linear-gradient(135deg, hsl(210, 100%, 52%), hsl(250, 80%, 60%))",
-                boxShadow: "0 4px 16px rgba(56, 140, 255, 0.25), inset 0 1px 0 rgba(255,255,255,0.15)",
+                background: "linear-gradient(135deg, #8dbeb5, #527b78)",
+                boxShadow: "0 4px 16px rgba(141,190,181,0.22), inset 0 1px 0 rgba(255,255,255,0.15)",
                 border: "1px solid rgba(255,255,255,0.12)",
               }}
             >
@@ -219,13 +219,13 @@ export default function ESignaturesPage() {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search requests..."
-              className="w-full pl-9 pr-4 py-2.5 rounded-2xl bg-white/60 border border-white/40 text-sm outline-none focus:border-primary/50 text-foreground placeholder:text-muted-foreground transition-all backdrop-blur-sm"
+              className="w-full pl-9 pr-4 py-2.5 rounded-2xl bg-[#052a32]/65 border border-white/25 text-sm outline-none focus:border-primary/50 text-foreground placeholder:text-muted-foreground transition-all backdrop-blur-sm"
             />
           </div>
           <select
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}
-            className="px-3 py-2.5 rounded-2xl bg-white/60 border border-white/40 text-sm outline-none focus:border-primary/50 text-foreground transition-all backdrop-blur-sm"
+            className="px-3 py-2.5 rounded-2xl bg-[#052a32]/65 border border-white/25 text-sm outline-none focus:border-primary/50 text-foreground transition-all backdrop-blur-sm"
           >
             <option value="">All Status</option>
             <option value="draft">Draft</option>
@@ -329,7 +329,7 @@ export default function ESignaturesPage() {
                                 </Link>
                                 <button
                                   onClick={() => downloadPdf(req.id, req.title)}
-                                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-violet-600 hover:bg-violet-50 transition-colors text-left"
+                                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#8dbeb5] hover:bg-[#8dbeb5]/10 transition-colors text-left"
                                 >
                                   <Download size={13} /> Download PDF
                                 </button>

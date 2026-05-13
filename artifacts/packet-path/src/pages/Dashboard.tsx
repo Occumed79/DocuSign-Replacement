@@ -10,7 +10,7 @@ const statusConfig: Record<string, { label: string; color: string; bg: string; i
   draft: { label: "Draft", color: "text-slate-600", bg: "bg-slate-100", icon: FileText },
   in_progress: { label: "In Progress", color: "text-[#8dbeb5]", bg: "bg-[#8dbeb5]/15", icon: Clock },
   complete: { label: "Complete", color: "text-emerald-600", bg: "bg-emerald-50", icon: CheckCircle },
-  submitted: { label: "Submitted", color: "text-violet-600", bg: "bg-violet-50", icon: CheckCircle },
+  submitted: { label: "Submitted", color: "text-[#8dbeb5]", bg: "bg-[#8dbeb5]/15", icon: CheckCircle },
 };
 
 function StatCard({ label, value, sub, icon: Icon, iconBg }: {
@@ -98,8 +98,8 @@ export default function DashboardPage() {
               data-testid="btn-dashboard-new-case"
               className="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-white text-sm font-medium transition-all"
               style={{
-                background: "linear-gradient(135deg, hsl(210, 100%, 52%), hsl(250, 80%, 60%))",
-                boxShadow: "0 4px 16px rgba(56, 140, 255, 0.25), inset 0 1px 0 rgba(255,255,255,0.15)",
+                background: "linear-gradient(135deg, #8dbeb5, #527b78)",
+                boxShadow: "0 8px 20px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.12)",
                 border: "1px solid rgba(255,255,255,0.12)",
               }}
             >
@@ -121,15 +121,15 @@ export default function DashboardPage() {
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <StatCard label="Total Cases" value={stats?.totalCases ?? 0} icon={FileText}
-            iconBg="linear-gradient(135deg, #3b82f6, #2563eb)" />
+            iconBg="linear-gradient(135deg, #527b78, #3f6461)" />
           <StatCard label="In Progress" value={inProgress} icon={Clock}
-            iconBg="linear-gradient(135deg, #f59e0b, #ea580c)" />
+            iconBg="linear-gradient(135deg, #8dbeb5, #527b78)" />
           <StatCard label="Complete" value={complete + submitted}
             sub="Ready for review" icon={CheckCircle}
             iconBg="linear-gradient(135deg, #10b981, #14b8a6)" />
           <StatCard label="Avg Completion" value={`${stats?.avgCompletionPercent ?? 0}%`}
             sub="Across all cases" icon={TrendingUp}
-            iconBg="linear-gradient(135deg, #8b5cf6, #a855f7)" />
+            iconBg="linear-gradient(135deg, #8dbeb5, #527b78)" />
         </div>
       )}
 
