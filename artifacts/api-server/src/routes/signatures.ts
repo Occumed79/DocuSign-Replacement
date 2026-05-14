@@ -499,6 +499,17 @@ router.post("/signature-requests/:id/remind", async (req, res): Promise<void> =>
       baseUrl,
     });
     emailResults.push({ name: r.name, email: r.email, ...result });
+
+    await logSigAction({
+      userId,
+      userEmail: user?.email,
+      userName: user?.name,
+      action: result.sent ? "reminder_sent" : "reminder_failed",
+      resourceId: String(id),
+      details: `${r.name} <${r.email}> ${result.sent ? "reminder sent" : `reminder failed (${result.error ?? "unknown error"})`}`,
+      ip: getClientIp(req),
+      ua: req.headers["user-agent"],
+    });
   }
 
   const emailsSent = emailResults.filter(e => e.sent).length;
