@@ -334,19 +334,30 @@ router.post("/signature-requests", async (req, res): Promise<void> => {
   if (!userId) return;
 
   const { title, message, templateId, caseId, documentContent, formSchema, expiryDays, recipients } = req.body;
-  if (!title?.trim() || !documentContent?.trim()) { res.status(400).json({ error: "title and documentContent are required" }); return; }
+  if (!title?.trim()) { res.status(400).json({ error: "title is required" }); return; }
   if (!Array.isArray(recipients) || recipients.length === 0) { res.status(400).json({ error: "At least one recipient is required" }); return; }
 
   const [user] = await db.select({ email: usersTable.email, name: usersTable.name }).from(usersTable).where(eq(usersTable.id, userId));
 
-  // If templateId provided and no formSchema passed, pull from template
-  let resolvedFormSchema: any[] = Array.isArray(formSchema) ? formSchema : [];
-  if (templateId && resolvedFormSchema.length === 0) {
-    const [tmpl] = await db.select({ formSchema: signatureTemplatesTable.formSchema }).from(signatureTemplatesTable).where(eq(signatureTemplatesTable.id, templateId));
-    if (tmpl?.formSchema && Array.isArray(tmpl.formSchema)) resolvedFormSchema = tmpl.formSchema as any[];
+  // Resolve template-backed content/schema when caller only provides templateId.
+  let templateContent: string | null = null;
+  let templateFormSchema: any[] = [];
+  if (templateId) {
+    const [tmpl] = await db.select({ content: signatureTemplatesTable.content, formSchema: signatureTemplatesTable.formSchema }).from(signatureTemplatesTable).where(eq(signatureTemplatesTable.id, templateId));
+    if (tmpl) {
+      templateContent = tmpl.content;
+      if (Array.isArray(tmpl.formSchema)) templateFormSchema = tmpl.formSchema as any[];
+    }
   }
 
-  const docHash = sha256(documentContent);
+  const resolvedContent = (typeof documentContent === "string" && documentContent.trim().length > 0)
+    ? documentContent.trim()
+    : (templateContent?.trim() ?? "");
+  if (!resolvedContent) { res.status(400).json({ error: "documentContent is required (or provide a valid templateId)" }); return; }
+
+  let resolvedFormSchema: any[] = Array.isArray(formSchema) && formSchema.length > 0 ? formSchema : templateFormSchema;
+
+  const docHash = sha256(resolvedContent);
   const expiresAt = new Date(Date.now() + (expiryDays ?? 7) * 24 * 60 * 60 * 1000);
 
   const [request] = await db.insert(signatureRequestsTable).values({
@@ -354,7 +365,7 @@ router.post("/signature-requests", async (req, res): Promise<void> => {
     message: message?.trim() || null,
     templateId: templateId || null,
     caseId: caseId || null,
-    documentContent: documentContent.trim(),
+    documentContent: resolvedContent,
     documentHash: docHash,
     formSchema: resolvedFormSchema,
     status: "pending",
