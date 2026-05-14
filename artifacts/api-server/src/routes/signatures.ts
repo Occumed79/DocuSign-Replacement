@@ -6,7 +6,9 @@ import { sendSigningEmail, verifySmtpConnection, isEmailConfigured } from "../li
 import crypto from "crypto";
 
 function getBaseUrl(req: Request): string {
-  // Prefer the first published domain; fall back to dev domain; last resort: derived from host header
+  // Prefer explicit deploy URL first (Render/production), then Replit domains, then request host.
+  const explicit = process.env.APP_BASE_URL?.trim();
+  if (explicit) return explicit.replace(/\/$/, "");
   const domains = process.env.REPLIT_DOMAINS?.split(",")[0]?.trim();
   if (domains) return `https://${domains}`;
   const dev = process.env.REPLIT_DEV_DOMAIN?.trim();
@@ -390,6 +392,17 @@ router.post("/signature-requests", async (req, res): Promise<void> => {
       baseUrl,
     });
     emailResults.push({ name: r.name.trim(), email: r.email.trim().toLowerCase(), ...emailResult });
+
+    await logSigAction({
+      userId,
+      userEmail: user?.email,
+      userName: user?.name,
+      action: emailResult.sent ? "invitation_sent" : "invitation_failed",
+      resourceId: String(request.id),
+      details: `${r.name.trim()} <${r.email.trim().toLowerCase()}> ${emailResult.sent ? "invite sent" : `invite failed (${emailResult.error ?? "unknown error"})`}`,
+      ip: getClientIp(req),
+      ua: req.headers["user-agent"],
+    });
   }
 
   const emailsSent = emailResults.filter(e => e.sent).length;
@@ -486,6 +499,17 @@ router.post("/signature-requests/:id/remind", async (req, res): Promise<void> =>
       baseUrl,
     });
     emailResults.push({ name: r.name, email: r.email, ...result });
+
+    await logSigAction({
+      userId,
+      userEmail: user?.email,
+      userName: user?.name,
+      action: result.sent ? "reminder_sent" : "reminder_failed",
+      resourceId: String(id),
+      details: `${r.name} <${r.email}> ${result.sent ? "reminder sent" : `reminder failed (${result.error ?? "unknown error"})`}`,
+      ip: getClientIp(req),
+      ua: req.headers["user-agent"],
+    });
   }
 
   const emailsSent = emailResults.filter(e => e.sent).length;
