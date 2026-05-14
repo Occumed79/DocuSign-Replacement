@@ -552,6 +552,7 @@ router.post("/signature-requests/:id/remind", async (req, res): Promise<void> =>
     emailsSent,
     emailsTotal: toRemind.length,
     emailConfigured: isEmailConfigured(),
+    perRecipient: emailResults,
   });
 });
 

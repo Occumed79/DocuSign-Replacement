@@ -368,7 +368,7 @@ export default function SignatureRequestDetailPage({ requestId }: { requestId: n
             <div className="divide-y divide-border">
               {detail.auditEvents.map(event => (
                 <div key={event.id} className="px-5 py-3 flex items-center gap-3">
-                  <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#8dbeb5] shrink-0" />
                   <div className="flex-1">
                     <p className="text-sm text-foreground capitalize">{event.action.replace(/_/g, " ")}</p>
                     {event.details && <p className="text-xs text-muted-foreground">{event.details}</p>}
