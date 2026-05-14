@@ -58,22 +58,22 @@ export default function AgreementsPage() {
           <h1 className="text-2xl font-semibold">Agreements</h1>
           <p className="text-sm text-muted-foreground">{pendingCount} waiting for action</p>
         </div>
-        <Link href="/esignatures"><button className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm">New Agreement</button></Link>
+        <Link href="/esignatures"><button className="px-4 py-2 rounded-xl bg-[#8dbeb5] text-[#031219] text-sm">New Agreement</button></Link>
       </div>
 
       <div className="flex items-center gap-2 mb-4">
         <div className="relative flex-1 max-w-md">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search agreements..." className="w-full pl-9 pr-3 py-2 rounded-xl border bg-white/60" />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search agreements..." className="w-full pl-9 pr-3 py-2 rounded-xl border bg-[#052a32]/65 text-[#f4f7f6] border-white/25" />
         </div>
-        <select value={status} onChange={e => setStatus(e.target.value)} className="px-3 py-2 rounded-xl border bg-white/60">
+        <select value={status} onChange={e => setStatus(e.target.value)} className="px-3 py-2 rounded-xl border bg-[#052a32]/65 text-[#f4f7f6] border-white/25">
           <option value="">All Status</option><option value="pending">Pending</option><option value="partially_signed">In progress</option><option value="completed">Completed</option><option value="voided">Voided</option>
         </select>
       </div>
 
       <div className="liquid-glass rounded-2xl overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-white/50"><tr><th className="text-left p-3">Name</th><th className="text-left p-3">Status</th><th className="text-left p-3">Recipients</th><th className="text-left p-3">Updated</th><th className="text-right p-3">Actions</th></tr></thead>
+          <thead className="bg-[#052a32]/55"><tr><th className="text-left p-3">Name</th><th className="text-left p-3">Status</th><th className="text-left p-3">Recipients</th><th className="text-left p-3">Updated</th><th className="text-right p-3">Actions</th></tr></thead>
           <tbody>
             {loading ? <tr><td className="p-4" colSpan={5}>Loading…</td></tr> : rows.length === 0 ? <tr><td className="p-4" colSpan={5}>No agreements found.</td></tr> : rows.map(r => (
               <tr key={r.id} className="border-t border-white/30">
