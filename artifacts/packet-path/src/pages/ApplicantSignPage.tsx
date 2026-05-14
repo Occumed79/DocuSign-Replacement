@@ -130,6 +130,8 @@ export default function ApplicantSignPage({ token }: { token: string }) {
   const [drawnSig, setDrawnSig] = useState("");
   const [agreed, setAgreed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [declineReason, setDeclineReason] = useState("");
+  const [declining, setDeclining] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -169,6 +171,21 @@ export default function ApplicantSignPage({ token }: { token: string }) {
     setSubmitting(false);
     if (res.ok) setState("success");
     else alert("Signing failed. Please try again or contact Occu-Med.");
+  }
+
+
+
+  async function decline() {
+    if (!declineReason.trim()) return;
+    setDeclining(true);
+    const res = await fetch(`/api/sign/${token}/decline`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason: declineReason.trim() }),
+    });
+    setDeclining(false);
+    if (res.ok) setState("declined");
+    else alert("Decline request failed. Please try again.");
   }
 
   if (state === "loading") return <StatusPage state="loading" />;
@@ -244,6 +261,13 @@ export default function ApplicantSignPage({ token }: { token: string }) {
                 <input type="checkbox" checked={agreed} onChange={e => setAgreed(e.target.checked)} className="mt-1" />
                 <span>I agree to sign this document electronically and confirm the information provided is accurate.</span>
               </label>
+              <div className="mt-6 rounded-2xl border border-white/15 bg-[#031219]/40 p-4">
+                <p className="text-xs uppercase tracking-[0.18em] text-[#8dbeb5]/80">Optional: Decline to sign</p>
+                <textarea value={declineReason} onChange={e => setDeclineReason(e.target.value)} placeholder="Reason for decline" className="mt-2 w-full rounded-xl border border-white/20 bg-[#052a32]/70 p-3 text-sm text-[#f4f7f6] outline-none" rows={3} />
+                <div className="mt-3 flex justify-end">
+                  <button onClick={decline} disabled={declining || !declineReason.trim()} className="rounded-xl border border-red-300/30 bg-red-400/15 px-4 py-2 text-sm text-red-100 disabled:opacity-50">{declining ? "Declining..." : "Decline request"}</button>
+                </div>
+              </div>
               <div className="mt-6 flex justify-between gap-3">
                 <button onClick={() => setStep("review")} className="rounded-2xl border border-white/20 bg-white/10 px-5 py-3 text-white/70">Back</button>
                 <button onClick={complete} disabled={submitting || !agreed || (mode === "typed" ? !typedName.trim() : !drawnSig)} className="tahoe-button rounded-2xl px-6 py-3 font-semibold disabled:opacity-50">{submitting ? "Signing..." : "Sign document"}</button>
