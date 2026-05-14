@@ -38,6 +38,12 @@ interface RequestDetail {
     ipAddress: string | null;
     userAgent: string | null;
   }[];
+  formResponses: {
+    recipientId: number;
+    recipientName: string;
+    submittedAt: string | null;
+    responses: { fieldId?: string; label?: string; name?: string; value: string | boolean }[];
+  }[];
   completedSignatures: {
     id: number;
     recipientId: number;
@@ -171,8 +177,8 @@ export default function SignatureRequestDetailPage({ requestId }: { requestId: n
         {/* Header */}
         <div className="flex items-start justify-between mb-6">
           <div className="flex items-start gap-4">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500/10 to-violet-500/10 flex items-center justify-center border border-indigo-200/30">
-              <PenTool size={18} className="text-indigo-600" />
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#8dbeb5]/15 to-[#527b78]/15 flex items-center justify-center border border-white/20">
+              <PenTool size={18} className="text-[#8dbeb5]" />
             </div>
             <div>
               <div className="flex items-center gap-3 flex-wrap">
@@ -191,7 +197,7 @@ export default function SignatureRequestDetailPage({ requestId }: { requestId: n
               <button
                 onClick={sendReminder}
                 disabled={sendingReminder}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-indigo-200 text-indigo-600 text-sm hover:bg-indigo-50 transition-colors"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-indigo-200 text-[#8dbeb5] text-sm hover:bg-indigo-50 transition-colors"
               >
                 <Send size={13} /> Send Reminder
               </button>
@@ -199,7 +205,7 @@ export default function SignatureRequestDetailPage({ requestId }: { requestId: n
             <button
               onClick={downloadPdf}
               disabled={downloadingPdf}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-violet-200 text-violet-600 text-sm hover:bg-violet-50 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/25 text-[#8dbeb5] text-sm hover:bg-[#8dbeb5]/10 transition-colors disabled:opacity-50"
             >
               <Download size={13} className={downloadingPdf ? "animate-bounce" : ""} />
               {downloadingPdf ? "Generating…" : "Download PDF"}
@@ -215,7 +221,7 @@ export default function SignatureRequestDetailPage({ requestId }: { requestId: n
           </div>
           <div className="h-2 bg-muted rounded-full overflow-hidden">
             <motion.div
-              className={cn("h-full rounded-full", detail.status === "completed" ? "bg-emerald-500" : "bg-gradient-to-r from-indigo-500 to-violet-500")}
+              className={cn("h-full rounded-full", detail.status === "completed" ? "bg-emerald-500" : "bg-gradient-to-r from-[#8dbeb5] to-[#527b78]")}
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
               transition={{ duration: 0.8 }}
@@ -234,7 +240,7 @@ export default function SignatureRequestDetailPage({ requestId }: { requestId: n
         {/* Recipients */}
         <div className="glass-card rounded-2xl overflow-hidden mb-5">
           <div className="px-5 py-4 border-b border-border flex items-center gap-2">
-            <Users size={15} className="text-indigo-500" />
+            <Users size={15} className="text-[#8dbeb5]" />
             <h2 className="font-semibold text-foreground text-sm">Recipients</h2>
           </div>
           <div className="divide-y divide-border">
@@ -245,7 +251,7 @@ export default function SignatureRequestDetailPage({ requestId }: { requestId: n
                 <div key={r.id} className="px-5 py-4">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-400 to-violet-500 flex items-center justify-center text-white text-sm font-bold shrink-0">
+                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#8dbeb5] to-[#527b78] flex items-center justify-center text-white text-sm font-bold shrink-0">
                         {r.name.charAt(0).toUpperCase()}
                       </div>
                       <div>
@@ -300,6 +306,36 @@ export default function SignatureRequestDetailPage({ requestId }: { requestId: n
           </div>
         </div>
 
+
+        {/* Captured form responses */}
+        <div className="glass-card rounded-2xl overflow-hidden mb-5">
+          <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+            <FileText size={15} className="text-[#8dbeb5]" />
+            <h2 className="font-semibold text-foreground text-sm">Captured Form Responses</h2>
+          </div>
+          <div className="p-5">
+            {detail.formResponses.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No form field responses captured yet.</p>
+            ) : (
+              <div className="space-y-4">
+                {detail.formResponses.map((entry, idx) => (
+                  <div key={`${entry.recipientId}-${idx}`} className="rounded-xl border border-white/15 bg-[#031219]/35 p-4">
+                    <p className="text-sm font-semibold text-foreground">{entry.recipientName}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Submitted {entry.submittedAt ? new Date(entry.submittedAt).toLocaleString() : "Unknown"}</p>
+                    <div className="mt-3 grid gap-2">
+                      {entry.responses.map((resp, rIdx) => (
+                        <div key={rIdx} className="text-xs text-[#c8d2d1] flex justify-between gap-3">
+                          <span>{resp.label || resp.name || resp.fieldId || `Field ${rIdx + 1}`}</span>
+                          <span className="text-[#f4f7f6]">{String(resp.value)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
         {/* Document content toggle */}
         <div className="glass-card rounded-2xl overflow-hidden mb-5">
           <button
@@ -307,7 +343,7 @@ export default function SignatureRequestDetailPage({ requestId }: { requestId: n
             className="w-full px-5 py-4 flex items-center justify-between hover:bg-muted/20 transition-colors"
           >
             <div className="flex items-center gap-2">
-              <FileText size={15} className="text-indigo-500" />
+              <FileText size={15} className="text-[#8dbeb5]" />
               <span className="font-semibold text-foreground text-sm">Document Content</span>
               <span className="text-xs text-muted-foreground font-mono ml-2">SHA-256: {detail.documentHash.slice(0, 12)}...</span>
             </div>
@@ -326,7 +362,7 @@ export default function SignatureRequestDetailPage({ requestId }: { requestId: n
         {detail.auditEvents.length > 0 && (
           <div className="glass-card rounded-2xl overflow-hidden">
             <div className="px-5 py-4 border-b border-border flex items-center gap-2">
-              <Shield size={15} className="text-indigo-500" />
+              <Shield size={15} className="text-[#8dbeb5]" />
               <h2 className="font-semibold text-foreground text-sm">Audit Trail</h2>
             </div>
             <div className="divide-y divide-border">
