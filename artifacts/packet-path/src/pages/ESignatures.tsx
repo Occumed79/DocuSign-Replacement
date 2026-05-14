@@ -242,7 +242,7 @@ export default function ESignaturesPage() {
           <div className="liquid-glass rounded-3xl p-4 mb-5 border border-white/20">
             <p className="text-sm text-foreground font-medium">No templates or requests yet. Start with a template, then send for signature.</p>
             <div className="flex flex-wrap items-center gap-2 mt-3">
-              <Link href="/signature-templates"><button className="px-3 py-2 text-xs rounded-xl bg-white/70 border border-white/50">Create Template</button></Link>
+              <Link href="/signature-templates"><button className="px-3 py-2 text-xs rounded-xl bg-[#052a32]/70 border border-white/25 text-[#f4f7f6]">Create Template</button></Link>
               <button onClick={() => setShowCreate(true)} className="px-3 py-2 text-xs rounded-xl bg-[#8dbeb5] text-[#031219]">Quick Request</button>
             </div>
           </div>

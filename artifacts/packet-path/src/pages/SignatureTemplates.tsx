@@ -158,7 +158,7 @@ function TemplateEditor({ onSave, onClose, token }: { onSave: () => void; onClos
             <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-[#8dbeb5]">Add Packet</div>
             <h2 className="text-xl font-semibold">Import HTML Form</h2>
           </div>
-          <button onClick={onClose} className="rounded-full bg-white/40 p-2 hover:bg-white/70"><X size={18} /></button>
+          <button onClick={onClose} className="rounded-full bg-[#052a32]/75 p-2 hover:bg-[#527b78]/45"><X size={18} /></button>
         </div>
         <div className="grid gap-4 p-6 md:grid-cols-3">
           <input value={name} onChange={e => setName(e.target.value)} placeholder="Packet name" className="rounded-2xl border border-white/60 bg-[#052a32]/70 text-[#f4f7f6] px-4 py-3 outline-none" />
@@ -225,7 +225,7 @@ export default function SignatureTemplatesPage() {
             <h1 className="mt-2 text-5xl font-semibold tracking-tight text-[#f4f7f6]">Packet Library</h1>
             <p className="mt-2 max-w-2xl text-base text-[#c8d2d1]">Embedded Occu-Med forms, DD packet documents, agreements, and authorization forms in one luminous workspace.</p>
           </div>
-          <button onClick={() => setCreating(true)} className="rounded-[24px] bg-[#8dbeb5] px-6 py-3 font-semibold text-[#f4f7f6] shadow-[0_0_34px_rgba(183,236,72,.45)] hover:bg-[#9bc8bf]">
+          <button onClick={() => setCreating(true)} className="rounded-[24px] bg-[#8dbeb5] px-6 py-3 font-semibold text-[#f4f7f6] shadow-[0_0_34px_rgba(141,190,181,.20)] hover:bg-[#9bc8bf]">
             <span className="inline-flex items-center gap-2"><Plus size={18} /> Add Form</span>
           </button>
         </div>
@@ -255,8 +255,8 @@ export default function SignatureTemplatesPage() {
               return (
                 <motion.article key={template.id} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }} className="glass-card group relative overflow-hidden rounded-[34px] p-4">
                   <div className="absolute right-4 top-4 z-10 flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-                    <button onClick={() => setViewing(template)} className="rounded-full bg-white/70 p-2 text-[#f4f7f6] shadow"><ExternalLink size={15} /></button>
-                    <button onClick={() => deleteTemplate(template.id)} className="rounded-full bg-white/70 p-2 text-red-700 shadow"><Trash2 size={15} /></button>
+                    <button onClick={() => setViewing(template)} className="rounded-full bg-[#052a32]/80 p-2 text-[#f4f7f6] shadow border border-white/20"><ExternalLink size={15} /></button>
+                    <button onClick={() => deleteTemplate(template.id)} className="rounded-full bg-[#052a32]/80 p-2 text-red-300 shadow border border-white/20"><Trash2 size={15} /></button>
                   </div>
                   <button onClick={() => setViewing(template)} className="block w-full text-left">
                     <PacketPreview template={template} />
