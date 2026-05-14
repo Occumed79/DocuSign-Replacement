@@ -269,10 +269,11 @@ router.get("/signature-requests/:id", async (req, res): Promise<void> => {
   const [request] = await db.select().from(signatureRequestsTable).where(eq(signatureRequestsTable.id, id));
   if (!request) { res.status(404).json({ error: "Not found" }); return; }
 
-  const [recipients, completedSigs, auditEvents] = await Promise.all([
+  const [recipients, completedSigs, auditEvents, allFormResponses] = await Promise.all([
     db.select().from(signatureRecipientsTable).where(eq(signatureRecipientsTable.requestId, id)).orderBy(signatureRecipientsTable.order),
     db.select().from(completedSignaturesTable).where(eq(completedSignaturesTable.requestId, id)),
     getRequestAuditEvents(id),
+    db.select().from(formResponsesTable).where(eq(formResponsesTable.requestId, id)),
   ]);
 
   let patientName: string | null = null;
@@ -280,6 +281,16 @@ router.get("/signature-requests/:id", async (req, res): Promise<void> => {
     const [c] = await db.select({ patientName: casesTable.patientName }).from(casesTable).where(eq(casesTable.id, request.caseId));
     patientName = c?.patientName ?? null;
   }
+
+  const formResponses = allFormResponses.map(fr => {
+    const rec = recipients.find(r => r.id === fr.recipientId);
+    return {
+      recipientId: fr.recipientId,
+      recipientName: rec?.name ?? "Unknown",
+      submittedAt: fr.submittedAt?.toISOString?.() ?? null,
+      responses: (fr.responses as { fieldId?: string; label?: string; name?: string; value: string | boolean }[]) ?? [],
+    };
+  });
 
   res.json({
     id: request.id,
@@ -319,6 +330,7 @@ router.get("/signature-requests/:id", async (req, res): Promise<void> => {
       signedAt: s.signedAt.toISOString(),
       ipAddress: s.ipAddress,
     })),
+    formResponses,
     auditEvents: auditEvents.map(e => ({
       id: e.id,
       action: e.action,
