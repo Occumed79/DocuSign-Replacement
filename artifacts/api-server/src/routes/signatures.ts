@@ -252,7 +252,7 @@ router.get("/signature-requests", async (req, res): Promise<void> => {
 
   const stats = {
     total: statsResult[0]?.total ?? 0,
-    pending: statusCounts.find(s => s.status === "pending")?.count ?? 0 + (statusCounts.find(s => s.status === "partially_signed")?.count ?? 0),
+    pending: (statusCounts.find(s => s.status === "pending")?.count ?? 0) + (statusCounts.find(s => s.status === "partially_signed")?.count ?? 0),
     completed: statusCounts.find(s => s.status === "completed")?.count ?? 0,
     voided: statusCounts.find(s => s.status === "voided")?.count ?? 0,
   };
