@@ -132,6 +132,7 @@ export default function ApplicantSignPage({ token }: { token: string }) {
   const [submitting, setSubmitting] = useState(false);
   const [declineReason, setDeclineReason] = useState("");
   const [declining, setDeclining] = useState(false);
+  const reviewFrameRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
     async function load() {
@@ -154,10 +155,32 @@ export default function ApplicantSignPage({ token }: { token: string }) {
     load();
   }, [token]);
 
+
+
+  function collectFormResponses(): Array<{ name: string; value: string | boolean; type: string }> {
+    const doc = reviewFrameRef.current?.contentDocument;
+    if (!doc) return [];
+    const fields = Array.from(doc.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>("input, textarea, select"));
+    return fields
+      .filter((field) => field.name || field.id)
+      .map((field) => {
+        const key = field.name || field.id || "field";
+        if (field instanceof HTMLInputElement && field.type === "checkbox") {
+          return { name: key, value: field.checked, type: field.type };
+        }
+        if (field instanceof HTMLInputElement && field.type === "radio") {
+          return { name: key, value: field.checked ? field.value : "", type: field.type };
+        }
+        return { name: key, value: field.value, type: field instanceof HTMLInputElement ? field.type : field.tagName.toLowerCase() };
+      })
+      .filter((f) => !(f.type === "radio" && f.value === ""));
+  }
+
   async function complete() {
     const signatureData = mode === "typed" ? typedName.trim() : drawnSig;
     if (!signatureData || !agreed) return;
     setSubmitting(true);
+    const formResponses = collectFormResponses();
     const res = await fetch(`/api/sign/${token}/complete`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -165,7 +188,7 @@ export default function ApplicantSignPage({ token }: { token: string }) {
         signatureType: mode,
         signatureData,
         fullName: typedName.trim() || session?.recipientName || "Signer",
-        formResponses: [],
+        formResponses,
       }),
     });
     setSubmitting(false);
@@ -231,7 +254,7 @@ export default function ApplicantSignPage({ token }: { token: string }) {
         {step === "review" ? (
           <section className="grid gap-6 lg:grid-cols-[1fr_260px]">
             <div className="template-iframe-shell h-[70vh]">
-              <iframe title="Document to sign" srcDoc={session?.documentContent ?? ""} sandbox="allow-forms allow-same-origin" />
+              <iframe ref={reviewFrameRef} title="Document to sign" srcDoc={session?.documentContent ?? ""} sandbox="allow-forms allow-same-origin" />
             </div>
             <aside className="tahoe-panel flex flex-col justify-between rounded-[30px] p-5">
               <div>
