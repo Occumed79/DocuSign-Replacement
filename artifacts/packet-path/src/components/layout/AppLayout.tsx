@@ -150,7 +150,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
         className="flex flex-col h-full shrink-0 relative z-10"
         style={{
-          background: "linear-gradient(180deg, rgba(18, 22, 48, 0.92) 0%, rgba(10, 14, 35, 0.96) 100%)",
+          background: "linear-gradient(180deg, rgba(3, 18, 25, 0.96) 0%, rgba(5, 34, 42, 0.94) 100%)",
           backdropFilter: "blur(60px) saturate(180%)",
           WebkitBackdropFilter: "blur(60px) saturate(180%)",
           boxShadow: "4px 0 32px rgba(0,0,0,0.20), inset -1px 0 0 rgba(255,255,255,0.04)",
@@ -160,8 +160,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         <div className="flex items-center gap-3 px-4 h-16 border-b border-white/[0.06]">
           <div className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0"
             style={{
-              background: "linear-gradient(135deg, rgba(56, 140, 255, 0.75), rgba(120, 80, 255, 0.75))",
-              boxShadow: "0 4px 16px rgba(56, 140, 255, 0.25), inset 0 1px 0 rgba(255,255,255,0.15)",
+              background: "linear-gradient(135deg, rgba(141,190,181,0.55), rgba(82,123,120,0.65))",
+              boxShadow: "0 4px 16px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255,255,255,0.12)",
             }}>
             <Activity size={15} className="text-white" />
           </div>
@@ -173,8 +173,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 exit={{ opacity: 0, x: -8 }}
                 transition={{ duration: 0.15 }}
               >
-                <p className="text-white font-semibold text-sm tracking-tight">PacketPath</p>
-                <p className="text-white/40 text-xs">Occu-Med</p>
+                <p className="text-white font-semibold text-sm tracking-tight">Occu-Med</p>
+                <p className="text-white/55 text-xs">PacketPath</p>
               </motion.div>
             )}
           </AnimatePresence>
@@ -190,8 +190,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                     data-testid="btn-new-case-collapsed"
                     className="w-10 h-10 rounded-2xl flex items-center justify-center transition-all"
                     style={{
-                      background: "linear-gradient(135deg, rgba(56, 140, 255, 0.8), rgba(100, 80, 255, 0.8))",
-                      boxShadow: "0 2px 12px rgba(56, 140, 255, 0.3), inset 0 1px 0 rgba(255,255,255,0.15)",
+                      background: "linear-gradient(135deg, rgba(141,190,181,0.9), rgba(82,123,120,0.95))",
+                      boxShadow: "0 2px 12px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.12)",
                     }}
                   >
                     <Plus size={16} className="text-white" />
@@ -206,8 +206,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 data-testid="btn-new-case"
                 className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-2xl text-white text-sm font-medium transition-all"
                 style={{
-                  background: "linear-gradient(135deg, rgba(56, 140, 255, 0.8), rgba(100, 80, 255, 0.8))",
-                  boxShadow: "0 2px 12px rgba(56, 140, 255, 0.3), inset 0 1px 0 rgba(255,255,255,0.15)",
+                  background: "linear-gradient(135deg, rgba(141,190,181,0.9), rgba(82,123,120,0.95))",
+                  boxShadow: "0 2px 12px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.12)",
                   border: "1px solid rgba(255,255,255,0.10)",
                 }}
               >
