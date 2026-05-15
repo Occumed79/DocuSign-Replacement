@@ -170,6 +170,26 @@ describe("Cases routes require auth", () => {
     const res = await request(app).get("/api/cases/1/review");
     expect(res.status).toBe(401);
   });
+
+  it("PHI route with valid session logs audit with user attribution", async () => {
+    const dbMod = await import("@workspace/db");
+    const session = await import("./lib/session-store");
+
+    vi.mocked(session.getSessionUserId).mockResolvedValue(42);
+    (dbMod as any).db.where.mockResolvedValueOnce([{ email: "phi@example.com", name: "Phi User" }]);
+
+    await request(app).get("/api/cases").set("Authorization", "Bearer good-token");
+
+    const valuesCalls = (dbMod as any).db.values.mock.calls;
+    const phiAudit = valuesCalls
+      .map((call: any[]) => call[0])
+      .find((payload: any) => payload?.phiAccessed === true && payload?.resource === "cases");
+
+    expect(phiAudit).toBeDefined();
+    expect(phiAudit.userId).toBe(42);
+    expect(phiAudit.userEmail).toBe("phi@example.com");
+  });
+
 });
 
 
