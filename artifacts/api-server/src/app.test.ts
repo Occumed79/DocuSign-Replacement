@@ -11,7 +11,7 @@ vi.mock("@workspace/db", () => ({
     from: vi.fn().mockReturnThis(),
     where: vi.fn().mockReturnThis(),
     limit: vi.fn().mockResolvedValue([]),
-    values: vi.fn().mockReturnThis(),
+    values: vi.fn().mockResolvedValue([]),
     set: vi.fn().mockReturnThis(),
     returning: vi.fn().mockResolvedValue([]),
     orderBy: vi.fn().mockResolvedValue([]),
@@ -116,6 +116,49 @@ describe("Protected routes", () => {
 
   it("DELETE /api/users/1 without auth should return 401", async () => {
     const res = await request(app).delete("/api/users/1");
+    expect(res.status).toBe(401);
+  });
+});
+
+
+describe("Cases routes require auth", () => {
+  it("GET /api/cases without auth should return 401", async () => {
+    const res = await request(app).get("/api/cases");
+    expect(res.status).toBe(401);
+  });
+
+  it("POST /api/cases without auth should return 401", async () => {
+    const res = await request(app).post("/api/cases").send({ patientName: "P", examTypeId: 1 });
+    expect(res.status).toBe(401);
+  });
+
+  it("GET /api/cases/1 without auth should return 401", async () => {
+    const res = await request(app).get("/api/cases/1");
+    expect(res.status).toBe(401);
+  });
+
+  it("PATCH /api/cases/1 without auth should return 401", async () => {
+    const res = await request(app).patch("/api/cases/1").send({ patientName: "Updated" });
+    expect(res.status).toBe(401);
+  });
+
+  it("DELETE /api/cases/1 without auth should return 401", async () => {
+    const res = await request(app).delete("/api/cases/1");
+    expect(res.status).toBe(401);
+  });
+
+  it("GET /api/cases/1/answers without auth should return 401", async () => {
+    const res = await request(app).get("/api/cases/1/answers");
+    expect(res.status).toBe(401);
+  });
+
+  it("PUT /api/cases/1/answers without auth should return 401", async () => {
+    const res = await request(app).put("/api/cases/1/answers").send({ answers: [] });
+    expect(res.status).toBe(401);
+  });
+
+  it("GET /api/cases/1/review without auth should return 401", async () => {
+    const res = await request(app).get("/api/cases/1/review");
     expect(res.status).toBe(401);
   });
 });
