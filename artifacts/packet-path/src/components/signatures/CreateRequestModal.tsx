@@ -85,7 +85,7 @@ export default function CreateRequestModal({ token, onClose, onCreated }: Props)
     setRecipients(prev => prev.map((r, idx) => idx === i ? { ...r, [field]: value } : r));
   };
 
-  const isStep1Valid = title.trim() && documentContent.trim();
+  const isStep1Valid = title.trim() && (documentContent.trim() || selectedTemplateId);
   const isStep2Valid = recipients.every(r => r.name.trim() && /\S+@\S+\.\S+/.test(r.email));
 
   const submit = async () => {
@@ -99,13 +99,20 @@ export default function CreateRequestModal({ token, onClose, onCreated }: Props)
         message: message.trim() || null,
         templateId: selectedTemplateId || null,
         caseId: selectedCaseId || null,
-        documentContent,
+        documentContent: documentContent.trim() || null,
         expiryDays,
         recipients,
       }),
     });
     if (res.ok) {
-      toast({ title: "Signature request created & sent" });
+      const payload = await res.json().catch(() => null);
+      const failed = Array.isArray(payload?.perRecipient)
+        ? payload.perRecipient.filter((r: { sent?: boolean }) => !r.sent).length
+        : 0;
+      toast({
+        title: failed > 0 ? "Request created with some delivery failures" : "Signature request created & sent",
+        description: payload?.emailsTotal ? `${payload.emailsSent}/${payload.emailsTotal} email(s) sent` : undefined,
+      });
       onCreated();
     } else {
       const err = await res.json().catch(() => ({}));
@@ -132,7 +139,7 @@ export default function CreateRequestModal({ token, onClose, onCreated }: Props)
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#8dbeb5] to-[#527b78] flex items-center justify-center">
               <PenTool size={14} className="text-white" />
             </div>
             <div>
@@ -156,7 +163,7 @@ export default function CreateRequestModal({ token, onClose, onCreated }: Props)
               <div key={n} className="flex items-center gap-2 flex-1">
                 <div className={cn(
                   "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors",
-                  step === n ? "bg-indigo-600 text-white" : step > n ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground"
+                  step === n ? "bg-[#8dbeb5] text-[#031219]" : step > n ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground"
                 )}>
                   <Icon size={12} />
                 </div>
@@ -179,7 +186,7 @@ export default function CreateRequestModal({ token, onClose, onCreated }: Props)
                   value={title}
                   onChange={e => setTitle(e.target.value)}
                   placeholder="e.g. Pre-Employment Physical Consent"
-                  className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-indigo-400 transition-colors"
+                  className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-[#8dbeb5] transition-colors"
                 />
               </div>
 
@@ -189,16 +196,16 @@ export default function CreateRequestModal({ token, onClose, onCreated }: Props)
                   <select
                     value={selectedTemplateId}
                     onChange={e => selectTemplate(e.target.value ? Number(e.target.value) : "")}
-                    className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-indigo-400 transition-colors"
+                    className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-[#8dbeb5] transition-colors"
                   >
                     <option value="">No template</option>
                     {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                   </select>
                   {templates.length === 0 && (
-                    <div className="mt-2 rounded-lg border border-indigo-200 bg-indigo-50/60 px-2.5 py-2 flex items-center justify-between gap-2">
-                      <p className="text-[11px] text-indigo-700">No templates yet. Create a custom form template first.</p>
+                    <div className="mt-2 rounded-lg border border-white/20 bg-[#052a32]/60 px-2.5 py-2 flex items-center justify-between gap-2">
+                      <p className="text-[11px] text-[#c8d2d1]">No templates yet. Create a custom form template first.</p>
                       <Link href="/signature-templates">
-                        <button type="button" className="text-[11px] px-2 py-1 rounded bg-indigo-600 text-white">Open Templates</button>
+                        <button type="button" className="text-[11px] px-2 py-1 rounded bg-[#8dbeb5] text-[#031219]">Open Templates</button>
                       </Link>
                     </div>
                   )}
@@ -208,7 +215,7 @@ export default function CreateRequestModal({ token, onClose, onCreated }: Props)
                   <select
                     value={selectedCaseId}
                     onChange={e => setSelectedCaseId(e.target.value ? Number(e.target.value) : "")}
-                    className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-indigo-400 transition-colors"
+                    className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-[#8dbeb5] transition-colors"
                   >
                     <option value="">No case</option>
                     {cases.map(c => <option key={c.id} value={c.id}>{c.patientName}</option>)}
@@ -223,7 +230,7 @@ export default function CreateRequestModal({ token, onClose, onCreated }: Props)
                   onChange={e => setMessage(e.target.value)}
                   rows={2}
                   placeholder="Please review and sign this document..."
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-indigo-400 resize-none transition-colors"
+                  className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-[#8dbeb5] resize-none transition-colors"
                 />
               </div>
 
@@ -234,11 +241,11 @@ export default function CreateRequestModal({ token, onClose, onCreated }: Props)
                   onChange={e => setDocumentContent(e.target.value)}
                   rows={10}
                   placeholder={`<h2>Document Title</h2>\n<p>Document body content...</p>`}
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground text-sm font-mono outline-none focus:border-indigo-400 resize-none transition-colors"
+                  className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground text-sm font-mono outline-none focus:border-[#8dbeb5] resize-none transition-colors"
                 />
                 {!selectedTemplateId && templates.length > 0 && (
                   <p className="text-xs text-muted-foreground mt-1.5">
-                    <span className="text-indigo-500">Tip:</span> Select a template above to auto-fill this field.
+                    <span className="text-[#8dbeb5]">Tip:</span> Select a template above to auto-fill this field.
                   </p>
                 )}
               </div>
@@ -251,7 +258,7 @@ export default function CreateRequestModal({ token, onClose, onCreated }: Props)
                 <p className="text-sm text-muted-foreground">Add people who need to sign this document</p>
                 <button
                   onClick={addRecipient}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-indigo-200 text-indigo-600 text-xs hover:bg-indigo-50 transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/25 text-[#8dbeb5] text-xs hover:bg-[#8dbeb5]/10 transition-colors"
                 >
                   <Plus size={12} /> Add Recipient
                 </button>
@@ -261,7 +268,7 @@ export default function CreateRequestModal({ token, onClose, onCreated }: Props)
                 <div key={i} className="p-4 rounded-xl border border-border bg-muted/20">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-indigo-500 text-white text-xs flex items-center justify-center font-bold">
+                      <div className="w-6 h-6 rounded-full bg-[#8dbeb5] text-[#031219] text-xs flex items-center justify-center font-bold">
                         {i + 1}
                       </div>
                       <span className="text-sm font-medium text-foreground">Recipient {i + 1}</span>
@@ -280,19 +287,19 @@ export default function CreateRequestModal({ token, onClose, onCreated }: Props)
                       value={r.name}
                       onChange={e => updateRecipient(i, "name", e.target.value)}
                       placeholder="Full name *"
-                      className="px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm outline-none focus:border-indigo-400 transition-colors"
+                      className="px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm outline-none focus:border-[#8dbeb5] transition-colors"
                     />
                     <input
                       value={r.email}
                       onChange={e => updateRecipient(i, "email", e.target.value)}
                       type="email"
                       placeholder="Email address *"
-                      className="px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm outline-none focus:border-indigo-400 transition-colors"
+                      className="px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm outline-none focus:border-[#8dbeb5] transition-colors"
                     />
                     <select
                       value={r.role}
                       onChange={e => updateRecipient(i, "role", e.target.value)}
-                      className="px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm outline-none focus:border-indigo-400 transition-colors"
+                      className="px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm outline-none focus:border-[#8dbeb5] transition-colors"
                     >
                       {ROLES.map(role => <option key={role} value={role} className="capitalize">{role.charAt(0).toUpperCase() + role.slice(1)}</option>)}
                     </select>
@@ -305,7 +312,7 @@ export default function CreateRequestModal({ token, onClose, onCreated }: Props)
                 <select
                   value={expiryDays}
                   onChange={e => setExpiryDays(Number(e.target.value))}
-                  className="px-4 py-2.5 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-indigo-400 transition-colors"
+                  className="px-4 py-2.5 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-[#8dbeb5] transition-colors"
                 >
                   <option value={3}>3 days</option>
                   <option value={7}>7 days</option>
@@ -343,7 +350,7 @@ export default function CreateRequestModal({ token, onClose, onCreated }: Props)
                 <div className="space-y-2">
                   {recipients.map((r, i) => (
                     <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-muted/20 border border-border">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-violet-500 flex items-center justify-center text-white text-sm font-bold">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#8dbeb5] to-[#527b78] flex items-center justify-center text-white text-sm font-bold">
                         {r.name.charAt(0).toUpperCase()}
                       </div>
                       <div>
@@ -356,8 +363,8 @@ export default function CreateRequestModal({ token, onClose, onCreated }: Props)
               </div>
 
               {/* Legal notice */}
-              <div className="p-4 rounded-xl bg-indigo-50/40 border border-indigo-200/40 flex items-start gap-3">
-                <AlertCircle size={14} className="text-indigo-500 mt-0.5 shrink-0" />
+              <div className="p-4 rounded-xl bg-[#052a32]/45 border border-white/20 flex items-start gap-3">
+                <AlertCircle size={14} className="text-[#8dbeb5] mt-0.5 shrink-0" />
                 <p className="text-xs text-muted-foreground">
                   By sending this request, signing links will be created for each recipient. Each signature will be recorded with a timestamp,
                   IP address, and document hash to create a legally binding, HIPAA-compliant audit trail under the ESIGN Act.
@@ -379,7 +386,7 @@ export default function CreateRequestModal({ token, onClose, onCreated }: Props)
             <button
               onClick={() => setStep((step + 1) as 1 | 2 | 3)}
               disabled={step === 1 ? !isStep1Valid : !isStep2Valid}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#8dbeb5] to-[#527b78] text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Continue
             </button>
@@ -387,7 +394,7 @@ export default function CreateRequestModal({ token, onClose, onCreated }: Props)
             <button
               onClick={submit}
               disabled={submitting}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#8dbeb5] to-[#527b78] text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
             >
               {submitting ? (
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
