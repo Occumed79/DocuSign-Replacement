@@ -219,7 +219,7 @@ function signingEmailText({
     `Document: ${requestTitle}`,
     message ? `Message: "${message}"` : "",
     "",
-    `To review and sign, visit:`,
+    `Secure signing link:`,
     signingUrl,
     "",
     expiry ? `This link expires on ${expiry}.` : "",
@@ -266,8 +266,8 @@ export async function sendSigningEmail(params: SendSigningEmailParams): Promise<
       from: `"${cfg.fromName}" <${cfg.fromAddress}>`,
       to: `"${recipientName}" <${recipientEmail}>`,
       subject: isReminder
-        ? `Reminder: Please sign "${requestTitle}"`
-        : `Action Required: Please sign "${requestTitle}"`,
+        ? `Reminder: Occu-Med Secure Document Request — ${requestTitle}`
+        : `Occu-Med Secure Document Request`,
       html,
       text,
     });
