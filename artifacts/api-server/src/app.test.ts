@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeAll } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import request from "supertest";
 
 // Mock the database module before importing app
@@ -32,6 +32,10 @@ vi.mock("@workspace/db", () => ({
   formResponsesTable: {},
 }));
 
+vi.mock("./lib/mfa", () => ({
+  createMfaChallenge: vi.fn().mockResolvedValue("challenge-123"),
+}));
+
 vi.mock("./lib/session-store", () => ({
   generateToken: vi.fn().mockReturnValue("mock-token"),
   createSession: vi.fn().mockResolvedValue(undefined),
@@ -45,6 +49,11 @@ vi.mock("./lib/session-store", () => ({
 }));
 
 import app from "./app";
+import { hashPassword } from "./routes/auth";
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 describe("Health check endpoint", () => {
   it("GET /api/healthz should return 200", async () => {
@@ -160,5 +169,77 @@ describe("Cases routes require auth", () => {
   it("GET /api/cases/1/review without auth should return 401", async () => {
     const res = await request(app).get("/api/cases/1/review");
     expect(res.status).toBe(401);
+  });
+});
+
+
+describe("Auth login MFA behavior", () => {
+  it("MFA-disabled login returns normal token", async () => {
+    const dbMod = await import("@workspace/db");
+    const session = await import("./lib/session-store");
+
+    const passwordHash = await hashPassword("pw123456");
+    (dbMod as any).db.where.mockResolvedValueOnce([{
+      id: 1,
+      name: "User",
+      email: "user@example.com",
+      passwordHash,
+      role: "reviewer",
+      mfaEnabled: false,
+      createdAt: new Date(),
+    }]);
+
+    const res = await request(app).post("/api/auth/login").send({ email: "user@example.com", password: "pw123456" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.token).toBe("mock-token");
+    expect(res.body.mfaRequired).toBeUndefined();
+    expect(vi.mocked(session.createSession)).toHaveBeenCalled();
+  });
+
+  it("MFA-enabled login returns challenge and no session token", async () => {
+    const dbMod = await import("@workspace/db");
+    const session = await import("./lib/session-store");
+    const mfa = await import("./lib/mfa");
+
+    const passwordHash = await hashPassword("pw123456");
+    (dbMod as any).db.where.mockResolvedValueOnce([{
+      id: 2,
+      name: "MFA User",
+      email: "mfa@example.com",
+      passwordHash,
+      role: "reviewer",
+      mfaEnabled: true,
+      createdAt: new Date(),
+    }]);
+
+    const res = await request(app).post("/api/auth/login").send({ email: "mfa@example.com", password: "pw123456" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.mfaRequired).toBe(true);
+    expect(res.body.challengeToken).toBe("challenge-123");
+    expect(res.body.token).toBeUndefined();
+    expect(vi.mocked(mfa.createMfaChallenge as any)).toHaveBeenCalledWith(2);
+    expect(vi.mocked(session.createSession)).not.toHaveBeenCalled();
+  });
+
+  it("Invalid password still fails normally", async () => {
+    const dbMod = await import("@workspace/db");
+
+    const passwordHash = await hashPassword("different-password");
+    (dbMod as any).db.where.mockResolvedValueOnce([{
+      id: 3,
+      name: "Wrong Pw",
+      email: "wrong@example.com",
+      passwordHash,
+      role: "reviewer",
+      mfaEnabled: true,
+      createdAt: new Date(),
+    }]);
+
+    const res = await request(app).post("/api/auth/login").send({ email: "wrong@example.com", password: "pw123456" });
+
+    expect(res.status).toBe(401);
+    expect(res.body.error).toBe("Invalid email or password");
   });
 });
