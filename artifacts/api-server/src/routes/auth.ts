@@ -97,8 +97,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   await recordLoginAttempt(email, true, ip);
 
   // MFA gating: if enabled, return challenge token instead of issuing a full session.
-  const mfaEnabled = Boolean((user as { mfaEnabled?: unknown }).mfaEnabled);
-  if (mfaEnabled) {
+  if ((user as { mfaEnabled?: boolean }).mfaEnabled === true) {
     const challengeToken = await createMfaChallenge(user.id);
     await logSecurityEvent({
       eventType: "login_success",
