@@ -36,7 +36,7 @@ interface Stats {
 const statusConfig: Record<string, { label: string; color: string; bg: string; icon: React.ElementType }> = {
   draft: { label: "Draft", color: "text-slate-600", bg: "bg-slate-100", icon: FileText },
   pending: { label: "Pending", color: "text-amber-600", bg: "bg-amber-50", icon: Clock },
-  partially_signed: { label: "In Progress", color: "text-blue-600", bg: "bg-blue-50", icon: PenTool },
+  partially_signed: { label: "In Progress", color: "text-[#8dbeb5]", bg: "bg-[#8dbeb5]/15", icon: PenTool },
   completed: { label: "Completed", color: "text-emerald-600", bg: "bg-emerald-50", icon: CheckCircle },
   voided: { label: "Voided", color: "text-red-600", bg: "bg-red-50", icon: XCircle },
   expired: { label: "Expired", color: "text-slate-500", bg: "bg-slate-100", icon: AlertCircle },
@@ -108,7 +108,16 @@ export default function ESignaturesPage() {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (res.ok) toast({ title: "Reminder sent to pending signers" });
+    if (res.ok) {
+      const payload = await res.json().catch(() => null);
+      const failed = Array.isArray(payload?.perRecipient)
+        ? payload.perRecipient.filter((r: { sent?: boolean }) => !r.sent).length
+        : 0;
+      toast({
+        title: failed > 0 ? "Reminder sent with some failures" : "Reminder sent to pending signers",
+        description: payload?.emailsTotal ? `${payload.emailsSent}/${payload.emailsTotal} email(s) sent` : undefined,
+      });
+    }
     setActionOpen(null);
   };
 
@@ -134,8 +143,8 @@ export default function ESignaturesPage() {
   const isEmptyWorkspace = stats.total === 0;
 
   const statCards = [
-    { label: "Total Requests", value: stats.total, icon: FileText, iconBg: "linear-gradient(135deg, #3b82f6, #4f46e5)" },
-    { label: "Awaiting Signature", value: stats.pending, icon: Clock, iconBg: "linear-gradient(135deg, #f59e0b, #ea580c)" },
+    { label: "Total Requests", value: stats.total, icon: FileText, iconBg: "linear-gradient(135deg, #527b78, #3f6461)" },
+    { label: "Awaiting Signature", value: stats.pending, icon: Clock, iconBg: "linear-gradient(135deg, #8dbeb5, #527b78)" },
     { label: "Completed", value: stats.completed, icon: CheckCircle, iconBg: "linear-gradient(135deg, #10b981, #14b8a6)" },
     { label: "Voided", value: stats.voided, icon: XCircle, iconBg: "linear-gradient(135deg, #64748b, #475569)" },
   ];
@@ -147,8 +156,8 @@ export default function ESignaturesPage() {
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{
-              background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
-              boxShadow: "0 4px 16px rgba(99, 102, 241, 0.25), inset 0 1px 0 rgba(255,255,255,0.15)",
+              background: "linear-gradient(135deg, #8dbeb5, #527b78)",
+              boxShadow: "0 4px 16px rgba(141,190,181,0.22), inset 0 1px 0 rgba(255,255,255,0.15)",
             }}>
               <PenTool size={18} className="text-white" />
             </div>
@@ -174,8 +183,8 @@ export default function ESignaturesPage() {
               onClick={() => setShowCreate(true)}
               className="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-white text-sm font-medium transition-all"
               style={{
-                background: "linear-gradient(135deg, hsl(210, 100%, 52%), hsl(250, 80%, 60%))",
-                boxShadow: "0 4px 16px rgba(56, 140, 255, 0.25), inset 0 1px 0 rgba(255,255,255,0.15)",
+                background: "linear-gradient(135deg, #8dbeb5, #527b78)",
+                boxShadow: "0 4px 16px rgba(141,190,181,0.22), inset 0 1px 0 rgba(255,255,255,0.15)",
                 border: "1px solid rgba(255,255,255,0.12)",
               }}
             >
@@ -219,13 +228,13 @@ export default function ESignaturesPage() {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search requests..."
-              className="w-full pl-9 pr-4 py-2.5 rounded-2xl bg-white/60 border border-white/40 text-sm outline-none focus:border-primary/50 text-foreground placeholder:text-muted-foreground transition-all backdrop-blur-sm"
+              className="w-full pl-9 pr-4 py-2.5 rounded-2xl bg-[#052a32]/65 border border-white/25 text-sm outline-none focus:border-primary/50 text-foreground placeholder:text-muted-foreground transition-all backdrop-blur-sm"
             />
           </div>
           <select
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}
-            className="px-3 py-2.5 rounded-2xl bg-white/60 border border-white/40 text-sm outline-none focus:border-primary/50 text-foreground transition-all backdrop-blur-sm"
+            className="px-3 py-2.5 rounded-2xl bg-[#052a32]/65 border border-white/25 text-sm outline-none focus:border-primary/50 text-foreground transition-all backdrop-blur-sm"
           >
             <option value="">All Status</option>
             <option value="draft">Draft</option>
@@ -239,11 +248,11 @@ export default function ESignaturesPage() {
 
 
         {isEmptyWorkspace && !loading && (
-          <div className="liquid-glass rounded-3xl p-4 mb-5 border border-indigo-200/40">
+          <div className="liquid-glass rounded-3xl p-4 mb-5 border border-white/20">
             <p className="text-sm text-foreground font-medium">No templates or requests yet. Start with a template, then send for signature.</p>
             <div className="flex flex-wrap items-center gap-2 mt-3">
-              <Link href="/signature-templates"><button className="px-3 py-2 text-xs rounded-xl bg-white/70 border border-white/50">Create Template</button></Link>
-              <button onClick={() => setShowCreate(true)} className="px-3 py-2 text-xs rounded-xl bg-indigo-600 text-white">Quick Request</button>
+              <Link href="/signature-templates"><button className="px-3 py-2 text-xs rounded-xl bg-[#052a32]/70 border border-white/25 text-[#f4f7f6]">Create Template</button></Link>
+              <button onClick={() => setShowCreate(true)} className="px-3 py-2 text-xs rounded-xl bg-[#8dbeb5] text-[#031219]">Quick Request</button>
             </div>
           </div>
         )}
@@ -264,7 +273,7 @@ export default function ESignaturesPage() {
               <p className="text-muted-foreground text-sm mb-5">Create your first request to send documents for signing.</p>
               <button
                 onClick={() => setShowCreate(true)}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-sm font-medium hover:opacity-90 transition-opacity"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#8dbeb5] to-[#527b78] text-white text-sm font-medium hover:opacity-90 transition-opacity"
               >
                 <Plus size={14} /> Create Request
               </button>
@@ -284,8 +293,8 @@ export default function ESignaturesPage() {
                 >
                   <div className="flex items-start gap-4">
                     {/* Icon */}
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/10 to-violet-500/10 flex items-center justify-center shrink-0 border border-indigo-200/30">
-                      <PenTool size={16} className="text-indigo-600" />
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#8dbeb5]/15 to-[#527b78]/15 flex items-center justify-center shrink-0 border border-white/20">
+                      <PenTool size={16} className="text-[#8dbeb5]" />
                     </div>
 
                     {/* Content */}
@@ -329,7 +338,7 @@ export default function ESignaturesPage() {
                                 </Link>
                                 <button
                                   onClick={() => downloadPdf(req.id, req.title)}
-                                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-violet-600 hover:bg-violet-50 transition-colors text-left"
+                                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#8dbeb5] hover:bg-[#8dbeb5]/10 transition-colors text-left"
                                 >
                                   <Download size={13} /> Download PDF
                                 </button>
@@ -370,7 +379,7 @@ export default function ESignaturesPage() {
                             <motion.div
                               className={cn(
                                 "h-full rounded-full",
-                                req.status === "completed" ? "bg-emerald-500" : "bg-gradient-to-r from-indigo-500 to-violet-500"
+                                req.status === "completed" ? "bg-emerald-500" : "bg-gradient-to-r from-[#8dbeb5] to-[#527b78]"
                               )}
                               initial={{ width: 0 }}
                               animate={{ width: `${progress}%` }}
@@ -388,12 +397,12 @@ export default function ESignaturesPage() {
                             const rCfg = statusConfig[r.status] ?? statusConfig.pending;
                             return (
                               <div key={j} className="relative" title={`${r.name} (${r.status})`}>
-                                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-400 to-violet-500 flex items-center justify-center text-white text-xs font-bold border-2 border-background">
+                                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#8dbeb5] to-[#527b78] flex items-center justify-center text-white text-xs font-bold border-2 border-background">
                                   {r.name.charAt(0).toUpperCase()}
                                 </div>
                                 <div className={cn(
                                   "absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border border-background flex items-center justify-center",
-                                  r.status === "signed" ? "bg-emerald-500" : r.status === "viewed" ? "bg-blue-500" : r.status === "declined" ? "bg-red-500" : "bg-slate-400"
+                                  r.status === "signed" ? "bg-emerald-500" : r.status === "viewed" ? "bg-[#8dbeb5]/150" : r.status === "declined" ? "bg-red-500" : "bg-slate-400"
                                 )} />
                               </div>
                             );
@@ -414,8 +423,8 @@ export default function ESignaturesPage() {
         </div>
 
         {/* HIPAA notice */}
-        <div className="mt-8 glass-card rounded-xl p-4 flex items-start gap-3 border border-indigo-200/40">
-          <Shield size={15} className="text-indigo-500 mt-0.5 shrink-0" />
+        <div className="mt-8 glass-card rounded-xl p-4 flex items-start gap-3 border border-white/20">
+          <Shield size={15} className="text-[#8dbeb5] mt-0.5 shrink-0" />
           <p className="text-xs text-muted-foreground">
             All signatures are legally binding under the ESIGN Act (15 U.S.C. § 7001) and UETA. Each signature includes a tamper-evident
             document hash, signer IP address, timestamp, and user agent. Audit trail stored in compliance with HIPAA §164.312(b).
