@@ -65,7 +65,7 @@ interface RequestDetail {
 const statusConfig: Record<string, { label: string; color: string; bg: string; icon: React.ElementType }> = {
   draft: { label: "Draft", color: "text-slate-600", bg: "bg-slate-100", icon: FileText },
   pending: { label: "Pending", color: "text-amber-600", bg: "bg-amber-50", icon: Clock },
-  partially_signed: { label: "In Progress", color: "text-blue-600", bg: "bg-blue-50", icon: PenTool },
+  partially_signed: { label: "In Progress", color: "text-[#8dbeb5]", bg: "bg-[#8dbeb5]/15", icon: PenTool },
   completed: { label: "Completed", color: "text-emerald-600", bg: "bg-emerald-50", icon: CheckCircle },
   voided: { label: "Voided", color: "text-red-600", bg: "bg-red-50", icon: XCircle },
   expired: { label: "Expired", color: "text-slate-500", bg: "bg-slate-100", icon: AlertCircle },
@@ -73,7 +73,7 @@ const statusConfig: Record<string, { label: string; color: string; bg: string; i
 
 const recipientStatusConfig: Record<string, { label: string; color: string; bg: string }> = {
   pending: { label: "Pending", color: "text-slate-500", bg: "bg-slate-100" },
-  viewed: { label: "Viewed", color: "text-blue-600", bg: "bg-blue-50" },
+  viewed: { label: "Viewed", color: "text-[#8dbeb5]", bg: "bg-[#8dbeb5]/15" },
   signed: { label: "Signed", color: "text-emerald-600", bg: "bg-emerald-50" },
   declined: { label: "Declined", color: "text-red-600", bg: "bg-red-50" },
 };
@@ -197,7 +197,7 @@ export default function SignatureRequestDetailPage({ requestId }: { requestId: n
               <button
                 onClick={sendReminder}
                 disabled={sendingReminder}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-indigo-200 text-[#8dbeb5] text-sm hover:bg-indigo-50 transition-colors"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/25 text-[#8dbeb5] text-sm hover:bg-[#8dbeb5]/10 transition-colors"
               >
                 <Send size={13} /> Send Reminder
               </button>
@@ -368,7 +368,7 @@ export default function SignatureRequestDetailPage({ requestId }: { requestId: n
             <div className="divide-y divide-border">
               {detail.auditEvents.map(event => (
                 <div key={event.id} className="px-5 py-3 flex items-center gap-3">
-                  <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#8dbeb5] shrink-0" />
                   <div className="flex-1">
                     <p className="text-sm text-foreground capitalize">{event.action.replace(/_/g, " ")}</p>
                     {event.details && <p className="text-xs text-muted-foreground">{event.details}</p>}

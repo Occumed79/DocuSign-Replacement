@@ -108,7 +108,16 @@ export default function ESignaturesPage() {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (res.ok) toast({ title: "Reminder sent to pending signers" });
+    if (res.ok) {
+      const payload = await res.json().catch(() => null);
+      const failed = Array.isArray(payload?.perRecipient)
+        ? payload.perRecipient.filter((r: { sent?: boolean }) => !r.sent).length
+        : 0;
+      toast({
+        title: failed > 0 ? "Reminder sent with some failures" : "Reminder sent to pending signers",
+        description: payload?.emailsTotal ? `${payload.emailsSent}/${payload.emailsTotal} email(s) sent` : undefined,
+      });
+    }
     setActionOpen(null);
   };
 
