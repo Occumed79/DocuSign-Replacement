@@ -64,7 +64,7 @@ interface RequestDetail {
 
 const statusConfig: Record<string, { label: string; color: string; bg: string; icon: React.ElementType }> = {
   draft: { label: "Draft", color: "text-slate-600", bg: "bg-slate-100", icon: FileText },
-  pending: { label: "Pending", color: "text-amber-600", bg: "bg-amber-50", icon: Clock },
+  pending: { label: "Pending", color: "text-[#8dbeb5]", bg: "bg-[#8dbeb5]/15", icon: Clock },
   partially_signed: { label: "In Progress", color: "text-[#8dbeb5]", bg: "bg-[#8dbeb5]/15", icon: PenTool },
   completed: { label: "Completed", color: "text-emerald-600", bg: "bg-emerald-50", icon: CheckCircle },
   voided: { label: "Voided", color: "text-red-600", bg: "bg-red-50", icon: XCircle },
@@ -118,7 +118,17 @@ export default function SignatureRequestDetailPage({ requestId }: { requestId: n
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (res.ok) toast({ title: "Reminder sent to pending signers" });
+    if (res.ok) {
+      const payload = await res.json().catch(() => null);
+      const failed = Array.isArray(payload?.perRecipient)
+        ? payload.perRecipient.filter((r: { sent?: boolean }) => !r.sent).length
+        : 0;
+      toast({
+        title: failed > 0 ? "Reminder sent with some failures" : "Reminder sent to pending signers",
+        description: payload?.emailsTotal ? `${payload.emailsSent}/${payload.emailsTotal} email(s) sent` : undefined,
+      });
+      fetchDetail();
+    }
     setSendingReminder(false);
   };
 

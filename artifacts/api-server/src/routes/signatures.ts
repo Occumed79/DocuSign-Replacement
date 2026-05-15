@@ -449,6 +449,7 @@ router.post("/signature-requests", async (req, res): Promise<void> => {
     emailsSent,
     emailsTotal: recipients.length,
     emailConfigured: isEmailConfigured(),
+    perRecipient: emailResults,
   });
 });
 
