@@ -1,5 +1,6 @@
 import { Router, type IRouter, type Request } from "express";
 import { db, usersTable, auditLogsTable } from "@workspace/db";
+import { createMfaChallenge } from "../lib/mfa";
 import { eq } from "drizzle-orm";
 import { LoginBody } from "@workspace/api-zod";
 import bcrypt from "bcrypt";
@@ -94,6 +95,34 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   }
 
   await recordLoginAttempt(email, true, ip);
+
+  // MFA gating: if enabled, return challenge token instead of issuing a full session.
+  if ((user as typeof user & { mfaEnabled?: boolean }).mfaEnabled) {
+    const challengeToken = await createMfaChallenge(user.id);
+    await logSecurityEvent({
+      eventType: "login_success",
+      userId: user.id,
+      email: user.email,
+      ip,
+      userAgent: ua,
+      details: "Password verified; MFA challenge required",
+      severity: "info",
+    });
+
+    res.json({
+      mfaRequired: true,
+      challengeToken,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        createdAt: user.createdAt.toISOString(),
+      },
+    });
+    return;
+  }
+
   const token = generateToken(user.id);
   await createSession(user.id, token, ip, ua);
 
