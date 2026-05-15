@@ -8,17 +8,10 @@
 import { Router, type IRouter } from "express";
 import { db, signatureTemplatesTable, templateVersionsTable } from "@workspace/db";
 import { eq, desc, and } from "drizzle-orm";
-import { getSessionUserId } from "../lib/session-store.js";
+import { requireAuth } from "../lib/require-auth";
 
 const router: IRouter = Router();
 
-async function requireAuth(req: any, res: any): Promise<number | null> {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith("Bearer ")) { res.status(401).json({ error: "Unauthorized" }); return null; }
-  const userId = await getSessionUserId(authHeader.slice(7));
-  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return null; }
-  return userId;
-}
 
 // GET /api/signature-templates/:id/versions
 router.get("/signature-templates/:id/versions", async (req, res): Promise<void> => {
