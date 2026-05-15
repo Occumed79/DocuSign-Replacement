@@ -105,7 +105,14 @@ export default function CreateRequestModal({ token, onClose, onCreated }: Props)
       }),
     });
     if (res.ok) {
-      toast({ title: "Signature request created & sent" });
+      const payload = await res.json().catch(() => null);
+      const failed = Array.isArray(payload?.perRecipient)
+        ? payload.perRecipient.filter((r: { sent?: boolean }) => !r.sent).length
+        : 0;
+      toast({
+        title: failed > 0 ? "Request created with some delivery failures" : "Signature request created & sent",
+        description: payload?.emailsTotal ? `${payload.emailsSent}/${payload.emailsTotal} email(s) sent` : undefined,
+      });
       onCreated();
     } else {
       const err = await res.json().catch(() => ({}));
@@ -238,7 +245,7 @@ export default function CreateRequestModal({ token, onClose, onCreated }: Props)
                 />
                 {!selectedTemplateId && templates.length > 0 && (
                   <p className="text-xs text-muted-foreground mt-1.5">
-                    <span className="text-indigo-500">Tip:</span> Select a template above to auto-fill this field.
+                    <span className="text-[#8dbeb5]">Tip:</span> Select a template above to auto-fill this field.
                   </p>
                 )}
               </div>
@@ -251,7 +258,7 @@ export default function CreateRequestModal({ token, onClose, onCreated }: Props)
                 <p className="text-sm text-muted-foreground">Add people who need to sign this document</p>
                 <button
                   onClick={addRecipient}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-indigo-200 text-indigo-600 text-xs hover:bg-indigo-50 transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/25 text-[#8dbeb5] text-xs hover:bg-[#8dbeb5]/10 transition-colors"
                 >
                   <Plus size={12} /> Add Recipient
                 </button>
@@ -261,7 +268,7 @@ export default function CreateRequestModal({ token, onClose, onCreated }: Props)
                 <div key={i} className="p-4 rounded-xl border border-border bg-muted/20">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-indigo-500 text-white text-xs flex items-center justify-center font-bold">
+                      <div className="w-6 h-6 rounded-full bg-[#8dbeb5] text-[#031219] text-xs flex items-center justify-center font-bold">
                         {i + 1}
                       </div>
                       <span className="text-sm font-medium text-foreground">Recipient {i + 1}</span>
@@ -343,7 +350,7 @@ export default function CreateRequestModal({ token, onClose, onCreated }: Props)
                 <div className="space-y-2">
                   {recipients.map((r, i) => (
                     <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-muted/20 border border-border">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-violet-500 flex items-center justify-center text-white text-sm font-bold">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#8dbeb5] to-[#527b78] flex items-center justify-center text-white text-sm font-bold">
                         {r.name.charAt(0).toUpperCase()}
                       </div>
                       <div>
@@ -356,8 +363,8 @@ export default function CreateRequestModal({ token, onClose, onCreated }: Props)
               </div>
 
               {/* Legal notice */}
-              <div className="p-4 rounded-xl bg-indigo-50/40 border border-indigo-200/40 flex items-start gap-3">
-                <AlertCircle size={14} className="text-indigo-500 mt-0.5 shrink-0" />
+              <div className="p-4 rounded-xl bg-[#052a32]/45 border border-white/20 flex items-start gap-3">
+                <AlertCircle size={14} className="text-[#8dbeb5] mt-0.5 shrink-0" />
                 <p className="text-xs text-muted-foreground">
                   By sending this request, signing links will be created for each recipient. Each signature will be recorded with a timestamp,
                   IP address, and document hash to create a legally binding, HIPAA-compliant audit trail under the ESIGN Act.
