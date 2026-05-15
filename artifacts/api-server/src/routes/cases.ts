@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { getSessionUserId } from "../lib/session-store";
+import { requireAuth } from "../lib/require-auth";
 import { db, casesTable, examTypesTable, answersTable, questionsTable } from "@workspace/db";
 import { eq, and, desc, sql } from "drizzle-orm";
 import {

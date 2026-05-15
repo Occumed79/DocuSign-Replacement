@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request } from "express";
 import { db, signatureTemplatesTable, signatureRequestsTable, signatureRecipientsTable, completedSignaturesTable, formResponsesTable, auditLogsTable, usersTable, casesTable } from "@workspace/db";
 import { eq, desc, and, count, sql, or, ilike } from "drizzle-orm";
-import { getSessionUserId } from "../lib/session-store";
+import { requireAuth } from "../lib/require-auth";
 import { sendSigningEmail, verifySmtpConnection, isEmailConfigured } from "../lib/email";
 import crypto from "crypto";
 
@@ -33,15 +33,6 @@ function generateSigningToken(): string {
   return crypto.randomBytes(48).toString("base64url");
 }
 
-async function requireAuth(req: any, res: any): Promise<number | null> {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith("Bearer ")) { res.status(401).json({ error: "Unauthorized" }); return null; }
-  const token = authHeader.slice(7);
-  const userId = await getSessionUserId(token);
-  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return null; }
-  return userId;
-}
-
 async function getRequestAuditEvents(requestId: number) {
   return db
     .select({ id: auditLogsTable.id, action: auditLogsTable.action, details: auditLogsTable.details, createdAt: auditLogsTable.createdAt })
@@ -64,7 +55,7 @@ async function logSigAction(params: {
     userId: params.userId ?? null,
     userEmail: params.userEmail ?? null,
     userName: params.userName ?? null,
-    action: "create" as any,
+    action: params.action as any,
     resource: "signature_request",
     resourceId: params.resourceId,
     details: `[${params.action}] ${params.details}`,
@@ -234,7 +225,7 @@ router.get("/signature-requests", async (req, res): Promise<void> => {
         expiresAt: r.expiresAt?.toISOString() ?? null,
         completedAt: r.completedAt?.toISOString() ?? null,
         createdAt: r.createdAt.toISOString(),
-        recipients: recipients.map(rec => ({ ...rec, token: rec.token })),
+        recipients,
       };
     })
   );

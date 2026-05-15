@@ -39,6 +39,10 @@ function getClientIp(req: Request): string {
   return req.socket?.remoteAddress ?? "unknown";
 }
 
+
+function isMfaEnabled(user: { mfaEnabled?: boolean | null }): boolean {
+  return user.mfaEnabled === true;
+}
 router.post("/auth/login", async (req, res): Promise<void> => {
   const parsed = LoginBody.safeParse(req.body);
   if (!parsed.success) {
@@ -97,7 +101,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   await recordLoginAttempt(email, true, ip);
 
   // MFA gating: if enabled, return challenge token instead of issuing a full session.
-  if (user.mfaEnabled) {
+  if (isMfaEnabled(user as { mfaEnabled?: boolean | null })) {
     const challengeToken = await createMfaChallenge(user.id);
     await logSecurityEvent({
       eventType: "login_success",

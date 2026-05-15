@@ -9,17 +9,10 @@
 import { Router, type IRouter } from "express";
 import { db, casesTable, examTypesTable, signatureRequestsTable, signatureRecipientsTable, completedSignaturesTable } from "@workspace/db";
 import { eq, desc, sql, and, gte, lte, count } from "drizzle-orm";
-import { getSessionUserId } from "../lib/session-store.js";
+import { requireAuth } from "../lib/require-auth";
 
 const router: IRouter = Router();
 
-async function requireAuth(req: any, res: any): Promise<number | null> {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith("Bearer ")) { res.status(401).json({ error: "Unauthorized" }); return null; }
-  const userId = await getSessionUserId(authHeader.slice(7));
-  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return null; }
-  return userId;
-}
 
 // GET /api/analytics/time-to-complete
 router.get("/analytics/time-to-complete", async (req, res): Promise<void> => {
