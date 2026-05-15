@@ -1,35 +1,11 @@
 import { Router, type IRouter } from "express";
 import { db, auditLogsTable, securityEventsTable, activeSessionsTable, usersTable } from "@workspace/db";
 import { eq, desc, and, sql, count, gte, lt } from "drizzle-orm";
-import { getSessionUserId, getUserSessions, revokeSession, logSecurityEvent } from "../lib/session-store";
+import { getUserSessions, revokeSession, logSecurityEvent } from "../lib/session-store";
+import { requireAuth, requireAdmin } from "../lib/require-auth";
 
 const router: IRouter = Router();
 
-async function requireAuth(req: any, res: any): Promise<number | null> {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith("Bearer ")) {
-    res.status(401).json({ error: "Unauthorized" });
-    return null;
-  }
-  const token = authHeader.slice(7);
-  const userId = await getSessionUserId(token);
-  if (!userId) {
-    res.status(401).json({ error: "Unauthorized" });
-    return null;
-  }
-  return userId;
-}
-
-async function requireAdmin(req: any, res: any): Promise<number | null> {
-  const userId = await requireAuth(req, res);
-  if (!userId) return null;
-  const [user] = await db.select({ role: usersTable.role }).from(usersTable).where(eq(usersTable.id, userId));
-  if (!user || user.role !== "admin") {
-    res.status(403).json({ error: "Admin access required" });
-    return null;
-  }
-  return userId;
-}
 
 // GET /api/security/stats
 router.get("/security/stats", async (req, res): Promise<void> => {

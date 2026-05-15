@@ -2,7 +2,8 @@ import { Router, type IRouter, type Request } from "express";
 import { db, usersTable, auditLogsTable } from "@workspace/db";
 import { eq, ne } from "drizzle-orm";
 import { z } from "zod/v4";
-import { getSessionUserId, logSecurityEvent } from "../lib/session-store";
+import { logSecurityEvent } from "../lib/session-store";
+import { requireAuth, requireAdmin } from "../lib/require-auth";
 import { hashPassword } from "./auth";
 
 const router: IRouter = Router();
@@ -13,40 +14,6 @@ function getClientIp(req: Request): string {
   return req.socket?.remoteAddress ?? "unknown";
 }
 
-async function requireAdmin(req: Request, res: any): Promise<number | null> {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith("Bearer ")) {
-    res.status(401).json({ error: "Unauthorized" });
-    return null;
-  }
-  const token = authHeader.slice(7);
-  const userId = await getSessionUserId(token);
-  if (!userId) {
-    res.status(401).json({ error: "Invalid or expired session" });
-    return null;
-  }
-  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
-  if (!user || user.role !== "admin") {
-    res.status(403).json({ error: "Admin access required" });
-    return null;
-  }
-  return userId;
-}
-
-async function requireAuth(req: Request, res: any): Promise<number | null> {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith("Bearer ")) {
-    res.status(401).json({ error: "Unauthorized" });
-    return null;
-  }
-  const token = authHeader.slice(7);
-  const userId = await getSessionUserId(token);
-  if (!userId) {
-    res.status(401).json({ error: "Invalid or expired session" });
-    return null;
-  }
-  return userId;
-}
 
 const CreateUserBody = z.object({
   name: z.string().min(1).max(100),
