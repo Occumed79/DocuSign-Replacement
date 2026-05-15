@@ -13,16 +13,14 @@ import { z } from "zod/v4";
 import crypto from "crypto";
 import { db, webhooksTable, webhookDeliveriesTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
-import { getSessionUserId } from "../lib/session-store.js";
+import { requireAuth } from "../lib/require-auth";
 import { fireWebhookEvent } from "../lib/webhooks.js";
 
 const router: IRouter = Router();
 
 async function requireAdmin(req: any, res: any): Promise<number | null> {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith("Bearer ")) { res.status(401).json({ error: "Unauthorized" }); return null; }
-  const userId = await getSessionUserId(authHeader.slice(7));
-  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return null; }
+  const userId = await requireAuth(req, res);
+  if (!userId) return null;
   const { db: dbConn, usersTable } = await import("@workspace/db");
   const { eq: eqFn } = await import("drizzle-orm");
   const [user] = await dbConn.select().from(usersTable).where(eqFn(usersTable.id, userId));
