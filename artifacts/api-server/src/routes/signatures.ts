@@ -6,7 +6,9 @@ import { sendSigningEmail, verifySmtpConnection, isEmailConfigured } from "../li
 import crypto from "crypto";
 
 function getBaseUrl(req: Request): string {
-  // Prefer the first published domain; fall back to dev domain; last resort: derived from host header
+  // Prefer explicit deploy URL first (Render/production), then Replit domains, then request host.
+  const explicit = process.env.APP_BASE_URL?.trim();
+  if (explicit) return explicit.replace(/\/$/, "");
   const domains = process.env.REPLIT_DOMAINS?.split(",")[0]?.trim();
   if (domains) return `https://${domains}`;
   const dev = process.env.REPLIT_DEV_DOMAIN?.trim();
@@ -250,7 +252,7 @@ router.get("/signature-requests", async (req, res): Promise<void> => {
 
   const stats = {
     total: statsResult[0]?.total ?? 0,
-    pending: statusCounts.find(s => s.status === "pending")?.count ?? 0 + (statusCounts.find(s => s.status === "partially_signed")?.count ?? 0),
+    pending: (statusCounts.find(s => s.status === "pending")?.count ?? 0) + (statusCounts.find(s => s.status === "partially_signed")?.count ?? 0),
     completed: statusCounts.find(s => s.status === "completed")?.count ?? 0,
     voided: statusCounts.find(s => s.status === "voided")?.count ?? 0,
   };
@@ -267,10 +269,11 @@ router.get("/signature-requests/:id", async (req, res): Promise<void> => {
   const [request] = await db.select().from(signatureRequestsTable).where(eq(signatureRequestsTable.id, id));
   if (!request) { res.status(404).json({ error: "Not found" }); return; }
 
-  const [recipients, completedSigs, auditEvents] = await Promise.all([
+  const [recipients, completedSigs, auditEvents, allFormResponses] = await Promise.all([
     db.select().from(signatureRecipientsTable).where(eq(signatureRecipientsTable.requestId, id)).orderBy(signatureRecipientsTable.order),
     db.select().from(completedSignaturesTable).where(eq(completedSignaturesTable.requestId, id)),
     getRequestAuditEvents(id),
+    db.select().from(formResponsesTable).where(eq(formResponsesTable.requestId, id)),
   ]);
 
   let patientName: string | null = null;
@@ -278,6 +281,16 @@ router.get("/signature-requests/:id", async (req, res): Promise<void> => {
     const [c] = await db.select({ patientName: casesTable.patientName }).from(casesTable).where(eq(casesTable.id, request.caseId));
     patientName = c?.patientName ?? null;
   }
+
+  const formResponses = allFormResponses.map(fr => {
+    const rec = recipients.find(r => r.id === fr.recipientId);
+    return {
+      recipientId: fr.recipientId,
+      recipientName: rec?.name ?? "Unknown",
+      submittedAt: fr.submittedAt?.toISOString?.() ?? null,
+      responses: (fr.responses as { fieldId?: string; label?: string; name?: string; value: string | boolean }[]) ?? [],
+    };
+  });
 
   res.json({
     id: request.id,
@@ -317,6 +330,7 @@ router.get("/signature-requests/:id", async (req, res): Promise<void> => {
       signedAt: s.signedAt.toISOString(),
       ipAddress: s.ipAddress,
     })),
+    formResponses,
     auditEvents: auditEvents.map(e => ({
       id: e.id,
       action: e.action,
@@ -332,19 +346,30 @@ router.post("/signature-requests", async (req, res): Promise<void> => {
   if (!userId) return;
 
   const { title, message, templateId, caseId, documentContent, formSchema, expiryDays, recipients } = req.body;
-  if (!title?.trim() || !documentContent?.trim()) { res.status(400).json({ error: "title and documentContent are required" }); return; }
+  if (!title?.trim()) { res.status(400).json({ error: "title is required" }); return; }
   if (!Array.isArray(recipients) || recipients.length === 0) { res.status(400).json({ error: "At least one recipient is required" }); return; }
 
   const [user] = await db.select({ email: usersTable.email, name: usersTable.name }).from(usersTable).where(eq(usersTable.id, userId));
 
-  // If templateId provided and no formSchema passed, pull from template
-  let resolvedFormSchema: any[] = Array.isArray(formSchema) ? formSchema : [];
-  if (templateId && resolvedFormSchema.length === 0) {
-    const [tmpl] = await db.select({ formSchema: signatureTemplatesTable.formSchema }).from(signatureTemplatesTable).where(eq(signatureTemplatesTable.id, templateId));
-    if (tmpl?.formSchema && Array.isArray(tmpl.formSchema)) resolvedFormSchema = tmpl.formSchema as any[];
+  // Resolve template-backed content/schema when caller only provides templateId.
+  let templateContent: string | null = null;
+  let templateFormSchema: any[] = [];
+  if (templateId) {
+    const [tmpl] = await db.select({ content: signatureTemplatesTable.content, formSchema: signatureTemplatesTable.formSchema }).from(signatureTemplatesTable).where(eq(signatureTemplatesTable.id, templateId));
+    if (tmpl) {
+      templateContent = tmpl.content;
+      if (Array.isArray(tmpl.formSchema)) templateFormSchema = tmpl.formSchema as any[];
+    }
   }
 
-  const docHash = sha256(documentContent);
+  const resolvedContent = (typeof documentContent === "string" && documentContent.trim().length > 0)
+    ? documentContent.trim()
+    : (templateContent?.trim() ?? "");
+  if (!resolvedContent) { res.status(400).json({ error: "documentContent is required (or provide a valid templateId)" }); return; }
+
+  let resolvedFormSchema: any[] = Array.isArray(formSchema) && formSchema.length > 0 ? formSchema : templateFormSchema;
+
+  const docHash = sha256(resolvedContent);
   const expiresAt = new Date(Date.now() + (expiryDays ?? 7) * 24 * 60 * 60 * 1000);
 
   const [request] = await db.insert(signatureRequestsTable).values({
@@ -352,7 +377,7 @@ router.post("/signature-requests", async (req, res): Promise<void> => {
     message: message?.trim() || null,
     templateId: templateId || null,
     caseId: caseId || null,
-    documentContent: documentContent.trim(),
+    documentContent: resolvedContent,
     documentHash: docHash,
     formSchema: resolvedFormSchema,
     status: "pending",
@@ -390,6 +415,17 @@ router.post("/signature-requests", async (req, res): Promise<void> => {
       baseUrl,
     });
     emailResults.push({ name: r.name.trim(), email: r.email.trim().toLowerCase(), ...emailResult });
+
+    await logSigAction({
+      userId,
+      userEmail: user?.email,
+      userName: user?.name,
+      action: emailResult.sent ? "invitation_sent" : "invitation_failed",
+      resourceId: String(request.id),
+      details: `${r.name.trim()} <${r.email.trim().toLowerCase()}> ${emailResult.sent ? "invite sent" : `invite failed (${emailResult.error ?? "unknown error"})`}`,
+      ip: getClientIp(req),
+      ua: req.headers["user-agent"],
+    });
   }
 
   const emailsSent = emailResults.filter(e => e.sent).length;
@@ -413,6 +449,7 @@ router.post("/signature-requests", async (req, res): Promise<void> => {
     emailsSent,
     emailsTotal: recipients.length,
     emailConfigured: isEmailConfigured(),
+    perRecipient: emailResults,
   });
 });
 
@@ -486,6 +523,17 @@ router.post("/signature-requests/:id/remind", async (req, res): Promise<void> =>
       baseUrl,
     });
     emailResults.push({ name: r.name, email: r.email, ...result });
+
+    await logSigAction({
+      userId,
+      userEmail: user?.email,
+      userName: user?.name,
+      action: result.sent ? "reminder_sent" : "reminder_failed",
+      resourceId: String(id),
+      details: `${r.name} <${r.email}> ${result.sent ? "reminder sent" : `reminder failed (${result.error ?? "unknown error"})`}`,
+      ip: getClientIp(req),
+      ua: req.headers["user-agent"],
+    });
   }
 
   const emailsSent = emailResults.filter(e => e.sent).length;
@@ -505,6 +553,7 @@ router.post("/signature-requests/:id/remind", async (req, res): Promise<void> =>
     emailsSent,
     emailsTotal: toRemind.length,
     emailConfigured: isEmailConfigured(),
+    perRecipient: emailResults,
   });
 });
 
