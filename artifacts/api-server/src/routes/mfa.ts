@@ -12,7 +12,8 @@ import { Router, type IRouter } from "express";
 import { z } from "zod/v4";
 import { db, usersTable, mfaSecretsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { getSessionUserId, createSession, logSecurityEvent, generateToken } from "../lib/session-store.js";
+import { createSession, logSecurityEvent, generateToken } from "../lib/session-store.js";
+import { requireAuth } from "../lib/require-auth";
 import {
   setupMfa,
   enableMfa,
@@ -34,19 +35,6 @@ function getClientIp(req: any): string {
   return req.socket?.remoteAddress ?? "unknown";
 }
 
-async function requireAuth(req: any, res: any): Promise<number | null> {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith("Bearer ")) {
-    res.status(401).json({ error: "Unauthorized" });
-    return null;
-  }
-  const userId = await getSessionUserId(authHeader.slice(7));
-  if (!userId) {
-    res.status(401).json({ error: "Invalid or expired session" });
-    return null;
-  }
-  return userId;
-}
 
 // GET /api/mfa/status
 router.get("/mfa/status", async (req, res): Promise<void> => {

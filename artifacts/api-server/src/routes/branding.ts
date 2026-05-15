@@ -9,19 +9,10 @@ import { Router, type IRouter } from "express";
 import { z } from "zod/v4";
 import { db, clinicBrandingTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { requireAuth } from "../lib/require-auth";
+import { requireAdmin } from "../lib/require-auth";
 
 const router: IRouter = Router();
 
-async function requireAdmin(req: any, res: any): Promise<number | null> {
-  const userId = await requireAuth(req, res);
-  if (!userId) return null;
-  const { db: dbConn, usersTable } = await import("@workspace/db");
-  const { eq: eqFn } = await import("drizzle-orm");
-  const [user] = await dbConn.select().from(usersTable).where(eqFn(usersTable.id, userId));
-  if (!user || user.role !== "admin") { res.status(403).json({ error: "Admin only" }); return null; }
-  return userId;
-}
 
 const BrandingSchema = z.object({
   clinicName: z.string().min(1).max(200),
