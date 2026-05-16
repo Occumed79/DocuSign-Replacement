@@ -13,6 +13,8 @@ import {
 } from "@workspace/db";
 import { requireAuth } from "../lib/require-auth";
 import { storeFinalizedPdfArtifact, isArtifactStorageConfigured } from "../lib/artifact-storage";
+import { calculateSigningAnomalyScore } from "../lib/anomaly-detection";
+import { alertTamperDetected, alertHighRiskSigning } from "../lib/security-alerts";
 
 const router: IRouter = Router();
 
@@ -127,7 +129,38 @@ router.post("/signature-requests/:id/verify", async (req, res): Promise<void> =>
   const finalEvidenceHashValid = request.finalEvidenceHash
     ? request.finalEvidenceHash === recomputedFinalEvidenceHash
     : request.status !== "completed";
-  const tamperDetected = !documentHashValid || !evidenceHashesValid || !allSignedRecipientsHaveEvidence || !finalEvidenceHashValid;
+
+  const tamperDetected =
+    !documentHashValid ||
+    !evidenceHashesValid ||
+    !allSignedRecipientsHaveEvidence ||
+    !finalEvidenceHashValid;
+
+  const anomaly = calculateSigningAnomalyScore({
+    failedAttempts: tamperDetected ? 5 : 0,
+    rapidSigning: signatures.length >= 3,
+    ipChanges: new Set(signatures.map(s => s.ipAddress).filter(Boolean)).size,
+  });
+
+  if (tamperDetected) {
+    await alertTamperDetected({
+      requestId,
+      details: {
+        anomaly,
+        documentHashValid,
+        evidenceHashesValid,
+        finalEvidenceHashValid,
+      },
+    }).catch(() => {});
+  }
+
+  if (anomaly.severity === "high" || anomaly.severity === "critical") {
+    await alertHighRiskSigning({
+      requestId,
+      score: anomaly.score,
+      flags: anomaly.flags,
+    }).catch(() => {});
+  }
 
   await db.insert(auditLogsTable).values({
     userId,
@@ -143,6 +176,7 @@ router.post("/signature-requests/:id/verify", async (req, res): Promise<void> =>
   res.json({
     valid: !tamperDetected,
     tamperDetected,
+    anomaly,
     requestId,
     status: request.status,
     documentHashValid,
