@@ -10,6 +10,8 @@ vi.mock("@workspace/db", () => ({
     delete: vi.fn().mockReturnThis(),
     from: vi.fn().mockReturnThis(),
     where: vi.fn().mockReturnThis(),
+    leftJoin: vi.fn().mockReturnThis(),
+    innerJoin: vi.fn().mockReturnThis(),
     limit: vi.fn().mockResolvedValue([]),
     values: vi.fn().mockResolvedValue([]),
     set: vi.fn().mockReturnThis(),

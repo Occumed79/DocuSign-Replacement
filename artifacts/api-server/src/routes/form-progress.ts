@@ -8,7 +8,8 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod/v4";
 import crypto from "crypto";
-import { db, formProgressTable, signatureRecipientsTable, signatureRequestsTable } from "@workspace/db";
+import { db, signatureRecipientsTable, signatureRequestsTable } from "@workspace/db";
+import { formProgressTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import { sendProgressSaveEmail } from "../lib/email.js";
 
