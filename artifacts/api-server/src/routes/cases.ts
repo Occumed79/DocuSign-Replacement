@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { requireAuth } from "../lib/require-auth";
 import { db, casesTable, examTypesTable, answersTable, questionsTable } from "@workspace/db";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import {
   ListCasesQueryParams,
   CreateCaseBody,
@@ -16,15 +16,6 @@ import {
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
-
-async function requireAuth(req: any, res: any): Promise<number | null> {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith("Bearer ")) { res.status(401).json({ error: "Unauthorized" }); return null; }
-  const token = authHeader.slice(7);
-  const userId = await getSessionUserId(token);
-  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return null; }
-  return userId;
-}
 
 function formatCase(c: typeof casesTable.$inferSelect, examTypeName: string) {
   return {
