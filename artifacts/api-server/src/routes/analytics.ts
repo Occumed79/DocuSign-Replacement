@@ -9,17 +9,10 @@
 import { Router, type IRouter } from "express";
 import { db, casesTable, examTypesTable, signatureRequestsTable, signatureRecipientsTable, completedSignaturesTable } from "@workspace/db";
 import { eq, desc, sql, and, gte, lte, count } from "drizzle-orm";
-import { getSessionUserId } from "../lib/session-store.js";
+import { requireAuth } from "../lib/require-auth";
 
 const router: IRouter = Router();
 
-async function requireAuth(req: any, res: any): Promise<number | null> {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith("Bearer ")) { res.status(401).json({ error: "Unauthorized" }); return null; }
-  const userId = await getSessionUserId(authHeader.slice(7));
-  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return null; }
-  return userId;
-}
 
 // GET /api/analytics/time-to-complete
 router.get("/analytics/time-to-complete", async (req, res): Promise<void> => {
@@ -64,7 +57,7 @@ router.get("/analytics/signature-funnel", async (req, res): Promise<void> => {
 
   const [totalRequests] = await db.select({ count: count() }).from(signatureRequestsTable);
   const [sentRequests] = await db.select({ count: count() }).from(signatureRequestsTable)
-    .where(sql`${signatureRequestsTable.status} IN ('sent', 'partially_signed', 'completed')`);
+    .where(sql`${signatureRequestsTable.status} IN ('pending', 'partially_signed', 'completed')`);
   const [viewedRecipients] = await db.select({ count: count() }).from(signatureRecipientsTable)
     .where(sql`${signatureRecipientsTable.viewedAt} IS NOT NULL`);
   const [signedRecipients] = await db.select({ count: count() }).from(signatureRecipientsTable)
@@ -170,7 +163,7 @@ router.get("/analytics/bottlenecks", async (req, res): Promise<void> => {
     .orderBy(casesTable.updatedAt)
     .limit(20);
 
-  // Signature requests stuck in "sent" for more than threshold
+  // Signature requests stuck in "pending" for more than threshold
   const stuckSignatures = await db
     .select({
       id: signatureRequestsTable.id,
@@ -180,7 +173,7 @@ router.get("/analytics/bottlenecks", async (req, res): Promise<void> => {
     })
     .from(signatureRequestsTable)
     .where(and(
-      eq(signatureRequestsTable.status, "sent"),
+      eq(signatureRequestsTable.status, "pending"),
       lte(signatureRequestsTable.createdAt, threshold)
     ))
     .orderBy(signatureRequestsTable.createdAt)

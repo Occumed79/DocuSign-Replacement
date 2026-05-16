@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { requireAuth } from "../lib/require-auth";
 import { db, casesTable, examTypesTable, answersTable, questionsTable } from "@workspace/db";
 import { eq, and, desc, sql } from "drizzle-orm";
 import {
@@ -32,6 +33,8 @@ function formatCase(c: typeof casesTable.$inferSelect, examTypeName: string) {
 }
 
 router.get("/cases", async (req, res): Promise<void> => {
+  const userId = await requireAuth(req, res);
+  if (!userId) return;
   const params = ListCasesQueryParams.safeParse(req.query);
 
   let query = db
@@ -59,6 +62,8 @@ router.get("/cases", async (req, res): Promise<void> => {
 });
 
 router.post("/cases", async (req, res): Promise<void> => {
+  const userId = await requireAuth(req, res);
+  if (!userId) return;
   const parsed = CreateCaseBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -77,12 +82,15 @@ router.post("/cases", async (req, res): Promise<void> => {
     examTypeId: parsed.data.examTypeId,
     status: "draft",
     completionPercent: 0,
+    createdById: userId,
   }).returning();
 
   res.status(201).json(formatCase(newCase, examType.name));
 });
 
 router.get("/cases/:id", async (req, res): Promise<void> => {
+  const userId = await requireAuth(req, res);
+  if (!userId) return;
   const paramsResult = GetCaseParams.safeParse(req.params);
   if (!paramsResult.success) {
     res.status(400).json({ error: paramsResult.error.message });
@@ -104,6 +112,8 @@ router.get("/cases/:id", async (req, res): Promise<void> => {
 });
 
 router.patch("/cases/:id", async (req, res): Promise<void> => {
+  const userId = await requireAuth(req, res);
+  if (!userId) return;
   const paramsResult = UpdateCaseParams.safeParse(req.params);
   if (!paramsResult.success) {
     res.status(400).json({ error: paramsResult.error.message });
@@ -137,6 +147,8 @@ router.patch("/cases/:id", async (req, res): Promise<void> => {
 });
 
 router.delete("/cases/:id", async (req, res): Promise<void> => {
+  const userId = await requireAuth(req, res);
+  if (!userId) return;
   const paramsResult = DeleteCaseParams.safeParse(req.params);
   if (!paramsResult.success) {
     res.status(400).json({ error: paramsResult.error.message });
@@ -150,6 +162,8 @@ router.delete("/cases/:id", async (req, res): Promise<void> => {
 // --- ANSWERS ---
 
 router.get("/cases/:id/answers", async (req, res): Promise<void> => {
+  const userId = await requireAuth(req, res);
+  if (!userId) return;
   const paramsResult = GetCaseAnswersParams.safeParse(req.params);
   if (!paramsResult.success) {
     res.status(400).json({ error: paramsResult.error.message });
@@ -170,6 +184,8 @@ router.get("/cases/:id/answers", async (req, res): Promise<void> => {
 });
 
 router.put("/cases/:id/answers", async (req, res): Promise<void> => {
+  const userId = await requireAuth(req, res);
+  if (!userId) return;
   const paramsResult = UpsertCaseAnswersParams.safeParse(req.params);
   if (!paramsResult.success) {
     res.status(400).json({ error: paramsResult.error.message });
@@ -231,6 +247,8 @@ router.put("/cases/:id/answers", async (req, res): Promise<void> => {
 // --- REVIEW ---
 
 router.get("/cases/:id/review", async (req, res): Promise<void> => {
+  const userId = await requireAuth(req, res);
+  if (!userId) return;
   const paramsResult = GetCaseReviewParams.safeParse(req.params);
   if (!paramsResult.success) {
     res.status(400).json({ error: paramsResult.error.message });

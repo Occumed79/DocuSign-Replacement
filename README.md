@@ -62,11 +62,13 @@ cp .env.example .env
 DATABASE_URL=postgresql://packetpath:packetpath@localhost:5432/packetpath pnpm db:push
 ```
 
-### 5. Seed the Database
+### 5. Seed the Database (Local Development Only)
 
 ```bash
 DATABASE_URL=postgresql://packetpath:packetpath@localhost:5432/packetpath pnpm db:seed
 ```
+
+> ⚠️ Development-only: seeded demo credentials are for local use only. Do not run `db:seed` in production.
 
 ### 6. Run Tests
 
@@ -92,13 +94,15 @@ pnpm dev:web
 
 Open **http://localhost:5173** in your browser.
 
-### Login Credentials
+### Local Demo Credentials (Development Only)
 
 | Email | Password | Role |
 |-------|----------|------|
 | admin@occumed.com | admin123 | Admin |
 | examqa@occumed.com | admin123 | Exam QA |
 | reviewer@occumed.com | admin123 | Reviewer |
+
+> ⚠️ These credentials are for local development only. In production, use `/setup` to create the first admin and never rely on seeded accounts.
 
 ## Project Structure
 
@@ -168,14 +172,15 @@ pnpm install
 3. Copy the Neon **pooled** connection string and keep `sslmode=require`.
 4. Save that string as your production `DATABASE_URL`.
 
-#### 2) Push schema + seed data into Neon
+#### 2) Push schema into Neon (no seed in production)
 
-Run these commands from this repo on your machine:
+Run this command from this repo on your machine:
 
 ```bash
 DATABASE_URL='postgresql://<neon-connection-string>' pnpm db:push
-DATABASE_URL='postgresql://<neon-connection-string>' pnpm db:seed
 ```
+
+Do **not** run `pnpm db:seed` in production environments.
 
 #### 3) Deploy app on Render
 
@@ -194,9 +199,8 @@ After Render says deploy succeeded:
 
 1. Open: `https://<your-render-service>.onrender.com/api/health`
 2. Confirm response is healthy.
-3. Open app URL and log in with:
-   - `admin@occumed.com` / `admin123`
-4. Create one test case and complete one signature flow.
+3. Open app URL and complete initial setup at `/setup` to create the first admin user.
+4. Log in with that admin account, then create one test case and complete one signature flow.
 
 #### 5) Optional email setup (SMTP)
 

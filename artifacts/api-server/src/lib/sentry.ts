@@ -50,7 +50,8 @@ export async function initSentry(): Promise<void> {
   }
 
   try {
-    Sentry = await import("@sentry/node");
+    const dynamicImport = new Function("m", "return import(m)") as (m: string) => Promise<any>;
+    Sentry = await dynamicImport("@sentry/node");
     Sentry.init({
       dsn: config.dsn,
       environment: config.environment,

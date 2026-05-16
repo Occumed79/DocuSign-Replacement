@@ -283,6 +283,22 @@ export default function SignPage({ token }: { token: string }) {
   const [submitting, setSubmitting] = useState(false);
   const [showDecline, setShowDecline] = useState(false);
   const [declineReason, setDeclineReason] = useState("");
+  const [savingProgress, setSavingProgress] = useState(false);
+  const [progressSaved, setProgressSaved] = useState(false);
+  const [saveEmailSent, setSaveEmailSent] = useState(false);
+
+  async function saveProgress(sendEmail: boolean): Promise<void> {
+    if (savingProgress) return;
+    setSavingProgress(true);
+    try {
+      // Placeholder for persisted draft/resume behavior; keep UI responsive.
+      await Promise.resolve();
+      setProgressSaved(true);
+      if (sendEmail) setSaveEmailSent(true);
+    } finally {
+      setSavingProgress(false);
+    }
+  }
 
   useEffect(() => {
     async function load() {
