@@ -12,6 +12,7 @@ import {
   casesTable,
 } from "@workspace/db";
 import { requireAuth } from "../lib/require-auth";
+import { storeFinalizedPdfArtifact, isArtifactStorageConfigured } from "../lib/artifact-storage";
 
 const router: IRouter = Router();
 
@@ -156,6 +157,7 @@ router.post("/signature-requests/:id/verify", async (req, res): Promise<void> =>
     finalizedPdf: {
       finalPdfHash: request.finalPdfHash ?? null,
       finalPdfStoragePath: request.finalPdfStoragePath ?? null,
+      durableStorageConfigured: isArtifactStorageConfigured(),
     },
   });
 });
@@ -247,10 +249,19 @@ router.post("/signature-requests/:id/finalize-artifact", async (req, res): Promi
   const pdfBuffer = await streamToBuffer(pdfStream as any);
   const finalPdfHash = sha256(pdfBuffer);
   const finalEvidenceHash = computeFinalEvidenceHash(request, signatures);
-  const finalPdfStoragePath = `hash-only://signature-requests/${request.id}/final-pdf`;
+
+  const storageResult = await storeFinalizedPdfArtifact({
+    requestId,
+    pdfBuffer,
+    finalPdfHash,
+  });
 
   await db.update(signatureRequestsTable)
-    .set({ finalPdfHash, finalEvidenceHash, finalPdfStoragePath })
+    .set({
+      finalPdfHash,
+      finalEvidenceHash,
+      finalPdfStoragePath: storageResult.path,
+    })
     .where(eq(signatureRequestsTable.id, request.id));
 
   await db.insert(auditLogsTable).values({
@@ -267,8 +278,8 @@ router.post("/signature-requests/:id/finalize-artifact", async (req, res): Promi
     requestId,
     finalPdfHash,
     finalEvidenceHash,
-    finalPdfStoragePath,
-    storageNote: "Current implementation stores immutable hashes and a storage reference placeholder. Wire an object store to persist PDF bytes durably.",
+    artifactStorage: storageResult,
+    durableStorageConfigured: isArtifactStorageConfigured(),
   });
 });
 
