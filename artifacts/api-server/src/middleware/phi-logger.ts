@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
-import { db, auditLogsTable, activeSessionsTable, usersTable } from "@workspace/db";
-import { eq, and, gt } from "drizzle-orm";
+import { db, auditLogsTable, usersTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
+import { getSessionUserId } from "../lib/session-store";
 
 // Routes that access PHI (Protected Health Information)
 const PHI_ROUTES: Array<{ method: string; pattern: RegExp; resource: string }> = [
@@ -49,23 +50,13 @@ export async function phiLogger(req: Request, res: Response, next: NextFunction)
   if (authHeader?.startsWith("Bearer ")) {
     const token = authHeader.slice(7);
     try {
-      const [session] = await db
-        .select({ userId: activeSessionsTable.userId })
-        .from(activeSessionsTable)
-        .where(
-          and(
-            eq(activeSessionsTable.token, token),
-            gt(activeSessionsTable.expiresAt, new Date())
-          )
-        )
-        .limit(1);
-
-      if (session) {
-        userId = session.userId;
+      const resolvedUserId = await getSessionUserId(token);
+      if (resolvedUserId) {
+        userId = resolvedUserId;
         const [user] = await db
           .select({ email: usersTable.email, name: usersTable.name })
           .from(usersTable)
-          .where(eq(usersTable.id, session.userId));
+          .where(eq(usersTable.id, resolvedUserId));
         if (user) {
           userEmail = user.email;
           userName = user.name;
