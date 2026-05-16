@@ -1,0 +1,8 @@
+Contact: mailto:security@occu-med.com
+Contact: mailto:alex@occu-med.com
+Expires: 2027-12-31T23:59:59.000Z
+Preferred-Languages: en
+Canonical: https://packetpath.occu-med.com/.well-known/security.txt
+Policy: https://packetpath.occu-med.com/security
+Hiring: https://occu-med.com
+Acknowledgments: https://packetpath.occu-med.com/security/acknowledgments
