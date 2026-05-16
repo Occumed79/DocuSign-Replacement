@@ -39,6 +39,10 @@ function getClientIp(req: Request): string {
   return req.socket?.remoteAddress ?? "unknown";
 }
 
+
+function isMfaEnabled(user: { mfaEnabled?: boolean | null }): boolean {
+  return user.mfaEnabled === true;
+}
 router.post("/auth/login", async (req, res): Promise<void> => {
   const parsed = LoginBody.safeParse(req.body);
   if (!parsed.success) {
