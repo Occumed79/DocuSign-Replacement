@@ -1,5 +1,5 @@
 import {
-  pgTable, text, serial, timestamp, integer, pgEnum, boolean, jsonb
+  pgTable, text, serial, timestamp, integer, pgEnum, boolean, jsonb, uniqueIndex
 } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
 import { casesTable } from "./cases";
@@ -47,6 +47,9 @@ export const signatureRequestsTable = pgTable("signature_requests", {
   voidedAt: timestamp("voided_at", { withTimezone: true }),
   voidReason: text("void_reason"),
   completedAt: timestamp("completed_at", { withTimezone: true }),
+  finalEvidenceHash: text("final_evidence_hash"), // SHA-256 hash of the executed evidence bundle
+  finalPdfHash: text("final_pdf_hash"), // reserved for stored finalized PDF artifact hash
+  finalPdfStoragePath: text("final_pdf_storage_path"), // reserved for durable PDF storage path
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
@@ -59,7 +62,8 @@ export const signatureRecipientsTable = pgTable("signature_recipients", {
   email: text("email").notNull(),
   role: text("role").notNull().default("signer"), // signer, witness, approver
   order: integer("order").notNull().default(1), // signing order
-  token: text("token").notNull().unique(), // secure 48-byte random token for signing link
+  token: text("token"), // legacy plaintext token column kept temporarily for backward-compatible migration
+  tokenHash: text("token_hash").unique(), // SHA-256 of secure 48-byte random token for signing link
   tokenExpiresAt: timestamp("token_expires_at", { withTimezone: true }).notNull(),
   status: sigRecipientStatusEnum("status").notNull().default("pending"),
   viewedAt: timestamp("viewed_at", { withTimezone: true }),
@@ -82,9 +86,15 @@ export const completedSignaturesTable = pgTable("completed_signatures", {
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
   documentHash: text("document_hash").notNull(), // SHA-256 of document at time of signing
-  signatureHash: text("signature_hash").notNull(), // SHA-256 of signature data
+  signatureHash: text("signature_hash").notNull(), // legacy/simple signature hash
+  evidenceHash: text("evidence_hash"), // canonical SHA-256 hash of full signing evidence payload
+  evidencePayload: jsonb("evidence_payload"), // immutable signing evidence payload used to produce evidenceHash
+  electronicRecordConsent: boolean("electronic_record_consent").notNull().default(false),
+  consentText: text("consent_text"),
   signedAt: timestamp("signed_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, table => ({
+  uniqueRecipientSignature: uniqueIndex("completed_signatures_recipient_id_unique").on(table.recipientId),
+}));
 
 // Form responses — each recipient's filled-in answers
 export const formResponsesTable = pgTable("form_responses", {
@@ -93,7 +103,9 @@ export const formResponsesTable = pgTable("form_responses", {
   recipientId: integer("recipient_id").notNull().references(() => signatureRecipientsTable.id, { onDelete: "cascade" }),
   responses: jsonb("responses").notNull().default([]), // [{ fieldId, label, value }]
   submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, table => ({
+  uniqueRecipientResponses: uniqueIndex("form_responses_request_recipient_unique").on(table.requestId, table.recipientId),
+}));
 
 export type SignatureTemplate = typeof signatureTemplatesTable.$inferSelect;
 export type SignatureRequest = typeof signatureRequestsTable.$inferSelect;
