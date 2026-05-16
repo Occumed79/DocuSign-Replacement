@@ -10,3 +10,4 @@ export * from "./webhooks";
 export * from "./branding";
 export * from "./template-versions";
 export * from "./form-progress";
+export * from "./webauthn";
