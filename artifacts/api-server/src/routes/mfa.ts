@@ -10,7 +10,8 @@
 
 import { Router, type IRouter } from "express";
 import { z } from "zod/v4";
-import { db, usersTable, mfaSecretsTable } from "@workspace/db";
+import { db } from "@workspace/db";
+import { usersTable, mfaSecretsTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import { createSession, logSecurityEvent, generateToken } from "../lib/session-store.js";
 import { requireAuth } from "../lib/require-auth";

@@ -57,7 +57,7 @@ router.get("/analytics/signature-funnel", async (req, res): Promise<void> => {
 
   const [totalRequests] = await db.select({ count: count() }).from(signatureRequestsTable);
   const [sentRequests] = await db.select({ count: count() }).from(signatureRequestsTable)
-    .where(sql`${signatureRequestsTable.status} IN ('sent', 'partially_signed', 'completed')`);
+    .where(sql`${signatureRequestsTable.status} IN ('pending', 'partially_signed', 'completed')`);
   const [viewedRecipients] = await db.select({ count: count() }).from(signatureRecipientsTable)
     .where(sql`${signatureRecipientsTable.viewedAt} IS NOT NULL`);
   const [signedRecipients] = await db.select({ count: count() }).from(signatureRecipientsTable)
@@ -163,7 +163,7 @@ router.get("/analytics/bottlenecks", async (req, res): Promise<void> => {
     .orderBy(casesTable.updatedAt)
     .limit(20);
 
-  // Signature requests stuck in "sent" for more than threshold
+  // Signature requests stuck in "pending" for more than threshold
   const stuckSignatures = await db
     .select({
       id: signatureRequestsTable.id,
@@ -173,7 +173,7 @@ router.get("/analytics/bottlenecks", async (req, res): Promise<void> => {
     })
     .from(signatureRequestsTable)
     .where(and(
-      eq(signatureRequestsTable.status, "sent"),
+      eq(signatureRequestsTable.status, "pending"),
       lte(signatureRequestsTable.createdAt, threshold)
     ))
     .orderBy(signatureRequestsTable.createdAt)

@@ -5,7 +5,8 @@
  */
 
 import crypto from "crypto";
-import { db, webhooksTable, webhookDeliveriesTable } from "@workspace/db";
+import { db } from "@workspace/db";
+import { webhooksTable, webhookDeliveriesTable } from "@workspace/db/schema";
 import { eq, and, lte, lt } from "drizzle-orm";
 import { logger } from "./logger.js";
 

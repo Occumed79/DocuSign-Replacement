@@ -10,6 +10,8 @@ vi.mock("@workspace/db", () => ({
     delete: vi.fn().mockReturnThis(),
     from: vi.fn().mockReturnThis(),
     where: vi.fn().mockReturnThis(),
+    leftJoin: vi.fn().mockReturnThis(),
+    innerJoin: vi.fn().mockReturnThis(),
     limit: vi.fn().mockResolvedValue([]),
     values: vi.fn().mockResolvedValue([]),
     set: vi.fn().mockReturnThis(),
@@ -34,6 +36,7 @@ vi.mock("@workspace/db", () => ({
 
 vi.mock("./lib/mfa", () => ({
   createMfaChallenge: vi.fn().mockResolvedValue("challenge-123"),
+  getMfaStatus: vi.fn().mockResolvedValue({ enabled: false, verifiedAt: null }),
 }));
 
 vi.mock("./lib/session-store", () => ({
@@ -221,6 +224,7 @@ describe("Auth login MFA behavior", () => {
     const dbMod = await import("@workspace/db");
     const session = await import("./lib/session-store");
     const mfa = await import("./lib/mfa");
+    vi.mocked(mfa.getMfaStatus as any).mockResolvedValueOnce({ enabled: true, verifiedAt: new Date() });
 
     const passwordHash = await hashPassword("pw123456");
     (dbMod as any).db.where.mockResolvedValueOnce([{

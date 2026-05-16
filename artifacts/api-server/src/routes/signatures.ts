@@ -131,7 +131,7 @@ router.put("/signature-templates/:id", async (req, res): Promise<void> => {
   if (!current) { res.status(404).json({ error: "Not found" }); return; }
 
   // Determine next version number
-  const { templateVersionsTable } = await import("@workspace/db");
+  const { templateVersionsTable } = await import("@workspace/db/schema");
   const [latestVer] = await db
     .select({ version: templateVersionsTable.version })
     .from(templateVersionsTable)
@@ -420,7 +420,7 @@ router.post("/signature-requests", async (req, res): Promise<void> => {
   }
 
   const emailsSent = emailResults.filter(e => e.sent).length;
-  const emailDetail = emailResults.map(e => `${e.name} <${e.email}>: ${e.sent ? "sent" : `failed (${e.error})`}`).join("; ");
+  const emailDetail = emailResults.map(e => `${e.name} <${e.email}>: ${e.sent ? "pending" : `failed (${e.error})`}`).join("; ");
 
   await logSigAction({
     userId,
@@ -978,7 +978,7 @@ router.post("/signature-requests/bulk/remind", async (req, res): Promise<void> =
 
   for (const id of ids.slice(0, 20)) { // Max 20 requests at a time
     const [request] = await db.select().from(signatureRequestsTable).where(eq(signatureRequestsTable.id, Number(id)));
-    if (!request || request.status !== "sent") continue;
+    if (!request || request.status !== "pending") continue;
 
     const pendingRecipients = await db
       .select()

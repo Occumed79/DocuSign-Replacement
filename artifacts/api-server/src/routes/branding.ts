@@ -7,7 +7,8 @@
 
 import { Router, type IRouter } from "express";
 import { z } from "zod/v4";
-import { db, clinicBrandingTable } from "@workspace/db";
+import { db } from "@workspace/db";
+import { clinicBrandingTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import { requireAdmin } from "../lib/require-auth";
 
