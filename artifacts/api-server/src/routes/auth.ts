@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request } from "express";
 import { db, usersTable, auditLogsTable } from "@workspace/db";
-import { createMfaChallenge } from "../lib/mfa";
+import { createMfaChallenge, getMfaStatus } from "../lib/mfa";
 import { eq } from "drizzle-orm";
 import { LoginBody } from "@workspace/api-zod";
 import bcrypt from "bcrypt";
@@ -39,10 +39,6 @@ function getClientIp(req: Request): string {
   return req.socket?.remoteAddress ?? "unknown";
 }
 
-
-function isMfaEnabled(user: { mfaEnabled?: boolean | null }): boolean {
-  return user.mfaEnabled === true;
-}
 router.post("/auth/login", async (req, res): Promise<void> => {
   const parsed = LoginBody.safeParse(req.body);
   if (!parsed.success) {
@@ -101,7 +97,8 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   await recordLoginAttempt(email, true, ip);
 
   // MFA gating: if enabled, return challenge token instead of issuing a full session.
-  if (isMfaEnabled(user as { mfaEnabled?: boolean | null })) {
+  const mfaStatus = await getMfaStatus(user.id);
+  if (mfaStatus.enabled) {
     const challengeToken = await createMfaChallenge(user.id);
     await logSecurityEvent({
       eventType: "login_success",

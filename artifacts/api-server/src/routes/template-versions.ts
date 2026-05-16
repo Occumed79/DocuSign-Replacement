@@ -6,7 +6,8 @@
  */
 
 import { Router, type IRouter } from "express";
-import { db, signatureTemplatesTable, templateVersionsTable } from "@workspace/db";
+import { db } from "@workspace/db";
+import { signatureTemplatesTable, templateVersionsTable } from "@workspace/db/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { requireAuth } from "../lib/require-auth";
 

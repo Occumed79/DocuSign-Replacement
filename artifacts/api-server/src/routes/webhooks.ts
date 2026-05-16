@@ -11,7 +11,8 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod/v4";
 import crypto from "crypto";
-import { db, webhooksTable, webhookDeliveriesTable } from "@workspace/db";
+import { db } from "@workspace/db";
+import { webhooksTable, webhookDeliveriesTable } from "@workspace/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { requireAdmin } from "../lib/require-auth";
 import { fireWebhookEvent } from "../lib/webhooks.js";

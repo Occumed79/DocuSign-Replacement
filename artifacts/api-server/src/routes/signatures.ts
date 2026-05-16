@@ -131,7 +131,7 @@ router.put("/signature-templates/:id", async (req, res): Promise<void> => {
   if (!current) { res.status(404).json({ error: "Not found" }); return; }
 
   // Determine next version number
-  const { templateVersionsTable } = await import("@workspace/db");
+  const { templateVersionsTable } = await import("@workspace/db/schema");
   const [latestVer] = await db
     .select({ version: templateVersionsTable.version })
     .from(templateVersionsTable)

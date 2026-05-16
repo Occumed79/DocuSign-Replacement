@@ -10,7 +10,7 @@ import {
   mfaSecretsTable,
   mfaBackupCodesTable,
   mfaChallengesTable,
-} from "@workspace/db";
+} from "@workspace/db/schema";
 import { eq, and, isNull, gt } from "drizzle-orm";
 
 // ─── Encryption helpers ───────────────────────────────────────────────────────
