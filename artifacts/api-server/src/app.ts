@@ -35,6 +35,7 @@ function getAllowedOrigins(): string[] {
 }
 
 const allowedOrigins = getAllowedOrigins();
+const isProduction = process.env.NODE_ENV === "production";
 
 // Sentry request handler MUST be first (captures request context for error reports)
 app.use(sentryRequestHandler());
@@ -58,23 +59,64 @@ app.use(
     },
   }),
 );
+
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=()" );
+  res.setHeader("X-Permitted-Cross-Domain-Policies", "none");
+  res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
+  res.setHeader("Origin-Agent-Cluster", "?1");
+
+  if (isProduction) {
+    res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
+  }
+
+  next();
+});
+
 app.use(
   helmet({
     contentSecurityPolicy: {
+      useDefaults: true,
       directives: {
         defaultSrc: ["'self'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+        frameAncestors: ["'none'"],
+        objectSrc: ["'none'"],
         scriptSrc: ["'self'", "'unsafe-inline'"],
         styleSrc: ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", "data:", "blob:"],
+        fontSrc: ["'self'", "data:"],
         connectSrc: ["'self'", ...allowedOrigins],
-        fontSrc: ["'self'"],
-        objectSrc: ["'none'"],
-        upgradeInsecureRequests: [],
+        frameSrc: ["'none'"],
+        manifestSrc: ["'self'"],
+        mediaSrc: ["'self'"],
+        workerSrc: ["'self'", "blob:"],
+        upgradeInsecureRequests: isProduction ? [] : null,
       },
+      reportOnly: false,
     },
     crossOriginEmbedderPolicy: false,
+    crossOriginOpenerPolicy: { policy: "same-origin" },
+    crossOriginResourcePolicy: { policy: "same-origin" },
+    dnsPrefetchControl: { allow: false },
+    frameguard: { action: "deny" },
+    hidePoweredBy: true,
+    hsts: isProduction ? {
+      maxAge: 31536000,
+      includeSubDomains: true,
+      preload: true,
+    } : false,
+    ieNoOpen: true,
+    noSniff: true,
+    permittedCrossDomainPolicies: false,
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+    xssFilter: true,
   }),
 );
+
 app.use(cors({
   origin(origin, callback) {
     if (!origin) {
@@ -91,6 +133,7 @@ app.use(cors({
   },
   credentials: true,
 }));
+
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
