@@ -7,6 +7,7 @@ import {
   signatureRecipientsTable,
   completedSignaturesTable,
   formResponsesTable,
+  auditLogsTable,
   usersTable,
   casesTable,
 } from "@workspace/db";
@@ -47,7 +48,7 @@ async function getSignatureBundle(requestId: number) {
     db.select().from(signatureRecipientsTable).where(eq(signatureRecipientsTable.requestId, requestId)).orderBy(signatureRecipientsTable.order),
     db.select().from(completedSignaturesTable).where(eq(completedSignaturesTable.requestId, requestId)).orderBy(completedSignaturesTable.id),
     db.select().from(formResponsesTable).where(eq(formResponsesTable.requestId, requestId)),
-    db.select().from((await import("@workspace/db")).auditLogsTable).where(eq((await import("@workspace/db")).auditLogsTable.resourceId, String(requestId))).orderBy((await import("@workspace/db")).auditLogsTable.createdAt),
+    db.select().from(auditLogsTable).where(eq(auditLogsTable.resourceId, String(requestId))).orderBy(auditLogsTable.createdAt),
   ]);
 
   return { request, recipients, signatures, formResponses, auditEvents };
