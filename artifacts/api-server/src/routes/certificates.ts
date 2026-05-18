@@ -6,9 +6,8 @@ import {
   signatureRequestsTable,
   signatureRecipientsTable,
   completedSignaturesTable,
-  auditLogsTable,
 } from "@workspace/db";
-import { requireAuth } from "../lib/require-auth";
+import { requirePermission, logPrivilegedAction } from "../lib/rbac";
 import {
   buildCertificateOfCompletion,
   generateCertificateOfCompletionPdf,
@@ -112,8 +111,8 @@ async function buildCertificateInput(requestId: number): Promise<CertificateInpu
 }
 
 router.get("/signature-requests/:id/certificate.json", async (req, res): Promise<void> => {
-  const userId = await requireAuth(req, res);
-  if (!userId) return;
+  const user = await requirePermission(req, res, "signature:export_certificate");
+  if (!user) return;
 
   const requestId = Number(req.params.id);
   const input = await buildCertificateInput(requestId);
@@ -124,21 +123,21 @@ router.get("/signature-requests/:id/certificate.json", async (req, res): Promise
 
   const certificate = buildCertificateOfCompletion(input);
 
-  await db.insert(auditLogsTable).values({
-    userId,
+  await logPrivilegedAction({
+    user,
     action: "certificate_json_exported",
     resource: "signature_request",
     resourceId: String(requestId),
     details: `Certificate of Completion JSON exported: ${certificate.certificateId}`,
     phiAccessed: true,
-  }).catch(() => {});
+  });
 
   res.json(certificate);
 });
 
 router.get("/signature-requests/:id/certificate.pdf", async (req, res): Promise<void> => {
-  const userId = await requireAuth(req, res);
-  if (!userId) return;
+  const user = await requirePermission(req, res, "signature:export_certificate");
+  if (!user) return;
 
   const requestId = Number(req.params.id);
   const input = await buildCertificateInput(requestId);
@@ -154,21 +153,21 @@ router.get("/signature-requests/:id/certificate.pdf", async (req, res): Promise<
   res.setHeader("Content-Disposition", `attachment; filename="${certificate.certificateId}.pdf"`);
   res.setHeader("Cache-Control", "no-store");
 
-  await db.insert(auditLogsTable).values({
-    userId,
+  await logPrivilegedAction({
+    user,
     action: "certificate_pdf_exported",
     resource: "signature_request",
     resourceId: String(requestId),
     details: `Certificate of Completion PDF exported: ${certificate.certificateId}`,
     phiAccessed: true,
-  }).catch(() => {});
+  });
 
   (pdfStream as any).pipe(res);
 });
 
 router.post("/signature-requests/:id/certificate", async (req, res): Promise<void> => {
-  const userId = await requireAuth(req, res);
-  if (!userId) return;
+  const user = await requirePermission(req, res, "signature:export_certificate");
+  if (!user) return;
 
   const requestId = Number(req.params.id);
   const input = await buildCertificateInput(requestId);
@@ -179,14 +178,14 @@ router.post("/signature-requests/:id/certificate", async (req, res): Promise<voi
 
   const certificate = buildCertificateOfCompletion(input);
 
-  await db.insert(auditLogsTable).values({
-    userId,
+  await logPrivilegedAction({
+    user,
     action: "certificate_generated",
     resource: "signature_request",
     resourceId: String(requestId),
     details: `Certificate of Completion generated: ${certificate.certificateId}; hash: ${certificate.certificateHash}`,
     phiAccessed: true,
-  }).catch(() => {});
+  });
 
   res.json(certificate);
 });
