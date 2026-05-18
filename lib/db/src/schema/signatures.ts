@@ -38,9 +38,14 @@ export const signatureRequestsTable = pgTable("signature_requests", {
   message: text("message"),
   templateId: integer("template_id").references(() => signatureTemplatesTable.id),
   caseId: integer("case_id").references(() => casesTable.id),
-  documentContent: text("document_content").notNull(), // snapshot of document at time of send
-  documentHash: text("document_hash").notNull(), // SHA-256 of document content for tamper detection
+  documentContent: text("document_content").notNull(), // legacy/plaintext snapshot retained for backward-compatible migration
+  encryptedDocumentContent: jsonb("encrypted_document_content"), // AES-256-GCM encrypted document snapshot
+  wrappedDocumentKey: jsonb("wrapped_document_key"), // encrypted per-request data key
+  encryptionKeyId: text("encryption_key_id"),
+  documentHash: text("document_hash").notNull(), // SHA-256 of plaintext document content for tamper detection
   formSchema: jsonb("form_schema").notNull().default([]), // snapshot of form fields at time of send
+  encryptedFormSchema: jsonb("encrypted_form_schema"),
+  wrappedFormSchemaKey: jsonb("wrapped_form_schema_key"),
   status: sigRequestStatusEnum("status").notNull().default("draft"),
   expiresAt: timestamp("expires_at", { withTimezone: true }),
   createdById: integer("created_by_id").references(() => usersTable.id),
@@ -81,7 +86,9 @@ export const completedSignaturesTable = pgTable("completed_signatures", {
   recipientId: integer("recipient_id").notNull().references(() => signatureRecipientsTable.id, { onDelete: "cascade" }),
   requestId: integer("request_id").notNull().references(() => signatureRequestsTable.id, { onDelete: "cascade" }),
   signatureType: text("signature_type").notNull(), // "drawn" | "typed"
-  signatureData: text("signature_data").notNull(), // base64 PNG for drawn, typed name for typed
+  signatureData: text("signature_data").notNull(), // legacy/plaintext base64 PNG or typed name retained for migration
+  encryptedSignatureData: jsonb("encrypted_signature_data"),
+  wrappedSignatureKey: jsonb("wrapped_signature_key"),
   fullName: text("full_name").notNull(),
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
@@ -89,6 +96,8 @@ export const completedSignaturesTable = pgTable("completed_signatures", {
   signatureHash: text("signature_hash").notNull(), // legacy/simple signature hash
   evidenceHash: text("evidence_hash"), // canonical SHA-256 hash of full signing evidence payload
   evidencePayload: jsonb("evidence_payload"), // immutable signing evidence payload used to produce evidenceHash
+  encryptedEvidencePayload: jsonb("encrypted_evidence_payload"),
+  wrappedEvidenceKey: jsonb("wrapped_evidence_key"),
   electronicRecordConsent: boolean("electronic_record_consent").notNull().default(false),
   consentText: text("consent_text"),
   signedAt: timestamp("signed_at", { withTimezone: true }).notNull().defaultNow(),
@@ -101,7 +110,9 @@ export const formResponsesTable = pgTable("form_responses", {
   id: serial("id").primaryKey(),
   requestId: integer("request_id").notNull().references(() => signatureRequestsTable.id, { onDelete: "cascade" }),
   recipientId: integer("recipient_id").notNull().references(() => signatureRecipientsTable.id, { onDelete: "cascade" }),
-  responses: jsonb("responses").notNull().default([]), // [{ fieldId, label, value }]
+  responses: jsonb("responses").notNull().default([]), // legacy/plaintext [{ fieldId, label, value }]
+  encryptedResponses: jsonb("encrypted_responses"),
+  wrappedResponsesKey: jsonb("wrapped_responses_key"),
   submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
 }, table => ({
   uniqueRecipientResponses: uniqueIndex("form_responses_request_recipient_unique").on(table.requestId, table.recipientId),
