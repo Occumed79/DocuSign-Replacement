@@ -47,17 +47,18 @@ This checklist tracks official security frameworks, free security tooling, anti-
 
 | Status | Item | Implementation Notes | Evidence / Location |
 |---|---|---|---|
+| [x] | Certificate of Completion | Standalone certificate generator, JSON export, PDF export, certificate hash, signer records, verification summary, and audit logging added. | `artifacts/api-server/src/lib/certificate-of-completion.ts`, `artifacts/api-server/src/routes/certificates.ts`, `docs/security/certificate-of-completion-spec.md` |
 | [x] | Signed PDF immutability | Database fields and roadmap added for final PDF artifact hashing/storage. Full durable storage still needs provider wiring. | `lib/db/src/schema/signatures.ts`, `docs/security/signed-pdf-immutability.md` |
-| [~] | Immutable finalized PDF artifacts | Schema supports final PDF hash/path. Artifact storage implementation is the next engineering step. | `lib/db/src/schema/signatures.ts`, `docs/security/signed-pdf-immutability.md` |
-| [x] | Evidence verification endpoint | Verification design documented and endpoint specification added. | `docs/security/evidence-verification-endpoint.md` |
+| [~] | Immutable finalized PDF artifacts | Schema supports final PDF hash/path. Supabase storage adapter exists but production bucket/configuration must be set and tested. | `lib/db/src/schema/signatures.ts`, `artifacts/api-server/src/lib/artifact-storage.ts`, `docs/security/signed-pdf-immutability.md` |
+| [x] | Evidence verification endpoint | Verification design documented and endpoint implementation added. | `artifacts/api-server/src/routes/signature-verification.ts`, `docs/security/evidence-verification-endpoint.md` |
 | [x] | E-signature fraud controls | Fraud-control documentation added. | `docs/security/e-signature-fraud-controls.md` |
-| [~] | WebAuthn | Roadmap and design added. Backend/frontend implementation remains future work. | `docs/security/WebAuthn-roadmap.md` |
+| [~] | WebAuthn | Schema and challenge-route scaffolding exist; full attestation/assertion verification remains future work. | `lib/db/src/schema/webauthn.ts`, `artifacts/api-server/src/routes/webauthn.ts`, `docs/security/WebAuthn-roadmap.md` |
 | [~] | WebAuthn later | Same as above. Marked as planned, not current production behavior. | `docs/security/WebAuthn-roadmap.md` |
-| [~] | Geo anomaly detection | Design added. Requires IP intelligence/geolocation provider before production enforcement. | `docs/security/geo-anomaly-detection.md` |
-| [~] | SIEM forwarding | Design added. Requires destination such as Splunk, Datadog, Sentinel, or Elastic. | `docs/security/SIEM-forwarding.md` |
+| [~] | Geo anomaly detection | Design and scoring helpers added. Requires IP intelligence/geolocation provider before production enforcement. | `artifacts/api-server/src/lib/anomaly-detection.ts`, `docs/security/geo-anomaly-detection.md` |
+| [~] | SIEM forwarding | SIEM forwarding helper exists; production destination configuration and delivery testing still required. | `artifacts/api-server/src/lib/siem.ts`, `docs/security/SIEM-forwarding.md` |
 
 ## Current Completion Summary
 
-- Implemented in repo: security.txt, Dependabot, CodeQL, OWASP ASVS doc, NIST CSF doc, NIST SP 800-53 mapping, CVE/CWE mapping, EPSS doc, CISA KEV monitoring workflow/doc, OWASP Dependency-Check workflow, OpenSSF Scorecard workflow, SBOM workflow, Gitleaks secret scan workflow, e-signature anti-fraud documentation, security headers documentation.
-- Partially implemented: CISA Cyber Hygiene enrollment, GitHub branch protection enforcement, immutable finalized PDF storage, WebAuthn, geo anomaly detection, SIEM forwarding.
-- Next engineering target: implement durable finalized PDF artifact generation/storage and add a live evidence verification API endpoint.
+- Implemented in repo: security.txt, Dependabot, CodeQL, OWASP ASVS doc, NIST CSF doc, NIST SP 800-53 mapping, CVE/CWE mapping, EPSS doc, CISA KEV monitoring workflow/doc, OWASP Dependency-Check workflow, OpenSSF Scorecard workflow, SBOM workflow, Gitleaks secret scan workflow, e-signature anti-fraud documentation, security headers documentation, evidence verification endpoint, Certificate of Completion generator/export routes.
+- Partially implemented: CISA Cyber Hygiene enrollment, GitHub branch protection enforcement, immutable finalized PDF production storage configuration, WebAuthn, geo anomaly detection, SIEM forwarding.
+- Next engineering target: Upgrade #2, application-level AES-256 envelope encryption and key management.
