@@ -8,6 +8,7 @@ import {
   completedSignaturesTable,
 } from "@workspace/db";
 import { requirePermission, logPrivilegedAction } from "../lib/rbac";
+import { requirePrivilegedStepUp } from "../lib/privileged-step-up";
 import {
   buildCertificateOfCompletion,
   generateCertificateOfCompletionPdf,
@@ -110,9 +111,20 @@ async function buildCertificateInput(requestId: number): Promise<CertificateInpu
   };
 }
 
+async function requireCertificateStepUp(req: any, res: any, user: any): Promise<boolean> {
+  return requirePrivilegedStepUp({
+    req,
+    res,
+    user,
+    purpose: "certificate_export",
+    consume: true,
+  });
+}
+
 router.get("/signature-requests/:id/certificate.json", async (req, res): Promise<void> => {
   const user = await requirePermission(req, res, "signature:export_certificate");
   if (!user) return;
+  if (!(await requireCertificateStepUp(req, res, user))) return;
 
   const requestId = Number(req.params.id);
   const input = await buildCertificateInput(requestId);
@@ -138,6 +150,7 @@ router.get("/signature-requests/:id/certificate.json", async (req, res): Promise
 router.get("/signature-requests/:id/certificate.pdf", async (req, res): Promise<void> => {
   const user = await requirePermission(req, res, "signature:export_certificate");
   if (!user) return;
+  if (!(await requireCertificateStepUp(req, res, user))) return;
 
   const requestId = Number(req.params.id);
   const input = await buildCertificateInput(requestId);
@@ -168,6 +181,7 @@ router.get("/signature-requests/:id/certificate.pdf", async (req, res): Promise<
 router.post("/signature-requests/:id/certificate", async (req, res): Promise<void> => {
   const user = await requirePermission(req, res, "signature:export_certificate");
   if (!user) return;
+  if (!(await requireCertificateStepUp(req, res, user))) return;
 
   const requestId = Number(req.params.id);
   const input = await buildCertificateInput(requestId);
