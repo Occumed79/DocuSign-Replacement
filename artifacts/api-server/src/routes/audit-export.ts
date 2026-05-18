@@ -8,14 +8,14 @@ import {
   formResponsesTable,
   auditLogsTable,
 } from "@workspace/db";
-import { requireAuth } from "../lib/require-auth";
+import { requirePermission, logPrivilegedAction } from "../lib/rbac";
 import { buildAuditEvidenceBundle } from "../lib/audit-bundle";
 
 const router: IRouter = Router();
 
 router.get("/signature-requests/:id/audit-bundle", async (req, res): Promise<void> => {
-  const userId = await requireAuth(req, res);
-  if (!userId) return;
+  const user = await requirePermission(req, res, "signature:export_audit_bundle");
+  if (!user) return;
 
   const requestId = Number(req.params.id);
 
@@ -43,6 +43,15 @@ router.get("/signature-requests/:id/audit-bundle", async (req, res): Promise<voi
     signatures,
     formResponses,
     auditEvents,
+  });
+
+  await logPrivilegedAction({
+    user,
+    action: "audit_bundle_exported",
+    resource: "signature_request",
+    resourceId: String(requestId),
+    details: `Audit evidence bundle exported with hash: ${bundle.bundleHash}`,
+    phiAccessed: true,
   });
 
   res.json(bundle);
