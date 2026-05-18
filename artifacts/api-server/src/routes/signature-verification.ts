@@ -15,6 +15,7 @@ import { storeFinalizedPdfArtifact, isArtifactStorageConfigured } from "../lib/a
 import { calculateSigningAnomalyScore } from "../lib/anomaly-detection";
 import { alertTamperDetected, alertHighRiskSigning } from "../lib/security-alerts";
 import { requirePermission, logPrivilegedAction } from "../lib/rbac";
+import { requirePrivilegedStepUp } from "../lib/privileged-step-up";
 
 const router: IRouter = Router();
 
@@ -109,6 +110,15 @@ router.post("/signature-requests/:id/verify", async (req, res): Promise<void> =>
   const user = await requirePermission(req, res, "signature:verify_evidence");
   if (!user) return;
 
+  const stepUpOk = await requirePrivilegedStepUp({
+    req,
+    res,
+    user,
+    purpose: "evidence_verification",
+    consume: true,
+  });
+  if (!stepUpOk) return;
+
   const requestId = Number(req.params.id);
   const bundle = await getSignatureBundle(requestId);
   if (!bundle) {
@@ -199,6 +209,15 @@ router.post("/signature-requests/:id/verify", async (req, res): Promise<void> =>
 router.post("/signature-requests/:id/finalize-artifact", async (req, res): Promise<void> => {
   const user = await requirePermission(req, res, "signature:finalize_artifact");
   if (!user) return;
+
+  const stepUpOk = await requirePrivilegedStepUp({
+    req,
+    res,
+    user,
+    purpose: "artifact_finalization",
+    consume: true,
+  });
+  if (!stepUpOk) return;
 
   const requestId = Number(req.params.id);
   const bundle = await getSignatureBundle(requestId);
