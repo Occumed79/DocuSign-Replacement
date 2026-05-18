@@ -25,5 +25,17 @@ export const webauthnChallengesTable = pgTable("webauthn_challenges", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const webauthnStepUpSessionsTable = pgTable("webauthn_step_up_sessions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  purpose: text("purpose").notNull(),
+  tokenHash: text("token_hash").notNull().unique(),
+  verifiedAt: timestamp("verified_at", { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  consumedAt: timestamp("consumed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type WebAuthnCredential = typeof webauthnCredentialsTable.$inferSelect;
 export type WebAuthnChallenge = typeof webauthnChallengesTable.$inferSelect;
+export type WebAuthnStepUpSession = typeof webauthnStepUpSessionsTable.$inferSelect;
