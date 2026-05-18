@@ -9,6 +9,7 @@ import {
   auditLogsTable,
 } from "@workspace/db";
 import { requirePermission, logPrivilegedAction } from "../lib/rbac";
+import { requirePrivilegedStepUp } from "../lib/privileged-step-up";
 import { buildAuditEvidenceBundle } from "../lib/audit-bundle";
 
 const router: IRouter = Router();
@@ -16,6 +17,15 @@ const router: IRouter = Router();
 router.get("/signature-requests/:id/audit-bundle", async (req, res): Promise<void> => {
   const user = await requirePermission(req, res, "signature:export_audit_bundle");
   if (!user) return;
+
+  const stepUpOk = await requirePrivilegedStepUp({
+    req,
+    res,
+    user,
+    purpose: "audit_bundle_export",
+    consume: true,
+  });
+  if (!stepUpOk) return;
 
   const requestId = Number(req.params.id);
 
