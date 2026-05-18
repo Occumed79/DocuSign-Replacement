@@ -7,14 +7,13 @@ import {
   signatureRecipientsTable,
   completedSignaturesTable,
   formResponsesTable,
-  auditLogsTable,
   usersTable,
   casesTable,
 } from "@workspace/db";
-import { requireAuth } from "../lib/require-auth";
 import { storeFinalizedPdfArtifact, isArtifactStorageConfigured } from "../lib/artifact-storage";
 import { calculateSigningAnomalyScore } from "../lib/anomaly-detection";
 import { alertTamperDetected, alertHighRiskSigning } from "../lib/security-alerts";
+import { requirePermission, logPrivilegedAction } from "../lib/rbac";
 
 const router: IRouter = Router();
 
@@ -48,7 +47,7 @@ async function getSignatureBundle(requestId: number) {
     db.select().from(signatureRecipientsTable).where(eq(signatureRecipientsTable.requestId, requestId)).orderBy(signatureRecipientsTable.order),
     db.select().from(completedSignaturesTable).where(eq(completedSignaturesTable.requestId, requestId)).orderBy(completedSignaturesTable.id),
     db.select().from(formResponsesTable).where(eq(formResponsesTable.requestId, requestId)),
-    db.select().from(auditLogsTable).where(eq(auditLogsTable.resourceId, String(requestId))).orderBy(auditLogsTable.createdAt),
+    db.select().from((await import("@workspace/db")).auditLogsTable).where(eq((await import("@workspace/db")).auditLogsTable.resourceId, String(requestId))).orderBy((await import("@workspace/db")).auditLogsTable.createdAt),
   ]);
 
   return { request, recipients, signatures, formResponses, auditEvents };
@@ -106,8 +105,8 @@ function computeFinalEvidenceHash(request: any, signatures: any[]) {
 }
 
 router.post("/signature-requests/:id/verify", async (req, res): Promise<void> => {
-  const userId = await requireAuth(req, res);
-  if (!userId) return;
+  const user = await requirePermission(req, res, "signature:verify_evidence");
+  if (!user) return;
 
   const requestId = Number(req.params.id);
   const bundle = await getSignatureBundle(requestId);
@@ -162,8 +161,8 @@ router.post("/signature-requests/:id/verify", async (req, res): Promise<void> =>
     }).catch(() => {});
   }
 
-  await db.insert(auditLogsTable).values({
-    userId,
+  await logPrivilegedAction({
+    user,
     action: tamperDetected ? "evidence_verification_failed" : "evidence_verified",
     resource: "signature_request",
     resourceId: String(requestId),
@@ -171,7 +170,7 @@ router.post("/signature-requests/:id/verify", async (req, res): Promise<void> =>
       ? "Evidence verification found one or more integrity problems"
       : "Evidence verification completed successfully",
     phiAccessed: true,
-  }).catch(() => {});
+  });
 
   res.json({
     valid: !tamperDetected,
@@ -197,8 +196,8 @@ router.post("/signature-requests/:id/verify", async (req, res): Promise<void> =>
 });
 
 router.post("/signature-requests/:id/finalize-artifact", async (req, res): Promise<void> => {
-  const userId = await requireAuth(req, res);
-  if (!userId) return;
+  const user = await requirePermission(req, res, "signature:finalize_artifact");
+  if (!user) return;
 
   const requestId = Number(req.params.id);
   const bundle = await getSignatureBundle(requestId);
@@ -298,14 +297,14 @@ router.post("/signature-requests/:id/finalize-artifact", async (req, res): Promi
     })
     .where(eq(signatureRequestsTable.id, request.id));
 
-  await db.insert(auditLogsTable).values({
-    userId,
+  await logPrivilegedAction({
+    user,
     action: "final_artifact_hashed",
     resource: "signature_request",
     resourceId: String(requestId),
     details: `Final PDF artifact hash generated: ${finalPdfHash}`,
     phiAccessed: true,
-  }).catch(() => {});
+  });
 
   res.json({
     finalized: true,
