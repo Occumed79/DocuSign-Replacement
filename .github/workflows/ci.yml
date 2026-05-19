@@ -37,10 +37,10 @@ jobs:
           ${{ runner.os }}-pnpm-store-
           
     - name: Install dependencies
-      run: pnpm install --ignore-scripts
+      run: pnpm install --no-frozen-lockfile --ignore-scripts
       
     - name: Type check
-      run: pnpm run typecheck --filter=api-server
+      run: pnpm --filter @workspace/api-server run typecheck
       
     - name: Run tests
-      run: pnpm run test --filter=api-server
+      run: pnpm --filter @workspace/api-server run test
