@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { and, desc, eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { db, integrityLedgerTable } from "@workspace/db";
 
 export interface IntegrityLedgerPayload {
@@ -88,7 +88,7 @@ export async function verifyIntegrityLedgerChain(requestId: number) {
     .where(eq(integrityLedgerTable.requestId, requestId))
     .orderBy(integrityLedgerTable.createdAt, integrityLedgerTable.id);
 
-  let previousHash: string | null = null;
+  let expectedPreviousHash: string | null = null;
   const results = entries.map(entry => {
     const recomputedPayloadHash = sha256(canonicalJson(entry.eventPayload));
     const recomputedEntryHash = computeLedgerEntryHash({
@@ -100,22 +100,25 @@ export async function verifyIntegrityLedgerChain(requestId: number) {
       createdAt: entry.createdAt.toISOString(),
     });
 
-    const valid =
-      entry.eventPayloadHash === recomputedPayloadHash &&
-      entry.entryHash === recomputedEntryHash &&
-      entry.previousEntryHash === previousHash;
+    const payloadHashValid = entry.eventPayloadHash === recomputedPayloadHash;
+    const entryHashValid = entry.entryHash === recomputedEntryHash;
+    const previousEntryHashValid = entry.previousEntryHash === expectedPreviousHash;
+    const valid = payloadHashValid && entryHashValid && previousEntryHashValid;
 
-    previousHash = entry.entryHash;
+    expectedPreviousHash = entry.entryHash;
 
     return {
       id: entry.id,
       eventType: entry.eventType,
       valid,
+      payloadHashValid,
+      entryHashValid,
+      previousEntryHashValid,
       storedPayloadHash: entry.eventPayloadHash,
       recomputedPayloadHash,
       storedEntryHash: entry.entryHash,
       recomputedEntryHash,
-      previousEntryHashValid: entry.previousEntryHash === previousHash || entries.length === 1,
+      previousEntryHash: entry.previousEntryHash,
       createdAt: entry.createdAt,
     };
   });
@@ -123,6 +126,7 @@ export async function verifyIntegrityLedgerChain(requestId: number) {
   return {
     requestId,
     valid: results.every(r => r.valid),
+    headHash: entries.at(-1)?.entryHash ?? null,
     entries: results,
   };
 }
