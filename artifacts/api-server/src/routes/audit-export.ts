@@ -10,6 +10,7 @@ import {
 } from "@workspace/db";
 import { requirePermission, logPrivilegedAction } from "../lib/rbac";
 import { requirePrivilegedStepUp } from "../lib/privileged-step-up";
+import { appendIntegrityLedgerEvent } from "../lib/integrity-ledger";
 import { buildAuditEvidenceBundle } from "../lib/audit-bundle";
 
 const router: IRouter = Router();
@@ -54,6 +55,19 @@ router.get("/signature-requests/:id/audit-bundle", async (req, res): Promise<voi
     formResponses,
     auditEvents,
   });
+
+  await appendIntegrityLedgerEvent({
+    requestId,
+    actorUserId: user.id,
+    eventType: "audit_bundle_exported",
+    eventPayload: {
+      bundleHash: bundle.bundleHash,
+      recipientsCount: recipients.length,
+      signaturesCount: signatures.length,
+      formResponsesCount: formResponses.length,
+      auditEventsCount: auditEvents.length,
+    },
+  }).catch(() => {});
 
   await logPrivilegedAction({
     user,
