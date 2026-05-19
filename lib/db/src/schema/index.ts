@@ -11,3 +11,4 @@ export * from "./branding";
 export * from "./template-versions";
 export * from "./form-progress";
 export * from "./webauthn";
+export * from "./integrity-ledger";
