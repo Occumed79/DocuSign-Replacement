@@ -9,6 +9,7 @@ import {
 } from "@workspace/db";
 import { requirePermission, logPrivilegedAction } from "../lib/rbac";
 import { requirePrivilegedStepUp } from "../lib/privileged-step-up";
+import { appendIntegrityLedgerEvent } from "../lib/integrity-ledger";
 import {
   buildCertificateOfCompletion,
   generateCertificateOfCompletionPdf,
@@ -121,6 +122,26 @@ async function requireCertificateStepUp(req: any, res: any, user: any): Promise<
   });
 }
 
+async function appendCertificateLedgerEvent(params: {
+  requestId: number;
+  userId: number;
+  eventType: string;
+  certificateId: string;
+  certificateHash: string;
+  verificationValid: boolean;
+}) {
+  await appendIntegrityLedgerEvent({
+    requestId: params.requestId,
+    actorUserId: params.userId,
+    eventType: params.eventType,
+    eventPayload: {
+      certificateId: params.certificateId,
+      certificateHash: params.certificateHash,
+      verificationValid: params.verificationValid,
+    },
+  }).catch(() => {});
+}
+
 router.get("/signature-requests/:id/certificate.json", async (req, res): Promise<void> => {
   const user = await requirePermission(req, res, "signature:export_certificate");
   if (!user) return;
@@ -134,6 +155,15 @@ router.get("/signature-requests/:id/certificate.json", async (req, res): Promise
   }
 
   const certificate = buildCertificateOfCompletion(input);
+
+  await appendCertificateLedgerEvent({
+    requestId,
+    userId: user.id,
+    eventType: "certificate_json_exported",
+    certificateId: certificate.certificateId,
+    certificateHash: certificate.certificateHash,
+    verificationValid: input.verification.valid,
+  });
 
   await logPrivilegedAction({
     user,
@@ -166,6 +196,15 @@ router.get("/signature-requests/:id/certificate.pdf", async (req, res): Promise<
   res.setHeader("Content-Disposition", `attachment; filename="${certificate.certificateId}.pdf"`);
   res.setHeader("Cache-Control", "no-store");
 
+  await appendCertificateLedgerEvent({
+    requestId,
+    userId: user.id,
+    eventType: "certificate_pdf_exported",
+    certificateId: certificate.certificateId,
+    certificateHash: certificate.certificateHash,
+    verificationValid: input.verification.valid,
+  });
+
   await logPrivilegedAction({
     user,
     action: "certificate_pdf_exported",
@@ -191,6 +230,15 @@ router.post("/signature-requests/:id/certificate", async (req, res): Promise<voi
   }
 
   const certificate = buildCertificateOfCompletion(input);
+
+  await appendCertificateLedgerEvent({
+    requestId,
+    userId: user.id,
+    eventType: "certificate_generated",
+    certificateId: certificate.certificateId,
+    certificateHash: certificate.certificateHash,
+    verificationValid: input.verification.valid,
+  });
 
   await logPrivilegedAction({
     user,
