@@ -16,6 +16,7 @@ import { calculateSigningAnomalyScore } from "../lib/anomaly-detection";
 import { alertTamperDetected, alertHighRiskSigning } from "../lib/security-alerts";
 import { requirePermission, logPrivilegedAction } from "../lib/rbac";
 import { requirePrivilegedStepUp } from "../lib/privileged-step-up";
+import { appendIntegrityLedgerEvent } from "../lib/integrity-ledger";
 
 const router: IRouter = Router();
 
@@ -172,6 +173,23 @@ router.post("/signature-requests/:id/verify", async (req, res): Promise<void> =>
     }).catch(() => {});
   }
 
+  await appendIntegrityLedgerEvent({
+    requestId,
+    actorUserId: user.id,
+    eventType: tamperDetected ? "evidence_verification_failed" : "evidence_verified",
+    eventPayload: {
+      documentHashValid,
+      evidenceHashesValid,
+      allSignedRecipientsHaveEvidence,
+      finalEvidenceHashValid,
+      tamperDetected,
+      anomalyScore: anomaly.score,
+      anomalySeverity: anomaly.severity,
+      anomalyFlags: anomaly.flags,
+      recomputedFinalEvidenceHash,
+    },
+  }).catch(() => {});
+
   await logPrivilegedAction({
     user,
     action: tamperDetected ? "evidence_verification_failed" : "evidence_verified",
@@ -316,6 +334,19 @@ router.post("/signature-requests/:id/finalize-artifact", async (req, res): Promi
       finalPdfStoragePath: storageResult.path,
     })
     .where(eq(signatureRequestsTable.id, request.id));
+
+  await appendIntegrityLedgerEvent({
+    requestId,
+    actorUserId: user.id,
+    eventType: "final_artifact_hashed",
+    eventPayload: {
+      finalPdfHash,
+      finalEvidenceHash,
+      artifactStoragePath: storageResult.path,
+      artifactStorageProvider: storageResult.provider,
+      durableStorageConfigured: isArtifactStorageConfigured(),
+    },
+  }).catch(() => {});
 
   await logPrivilegedAction({
     user,
