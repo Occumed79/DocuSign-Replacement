@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import express, { type Express } from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -6,12 +7,11 @@ import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { phiLogger } from "./middleware/phi-logger";
+import { cspReportHandler } from "./middleware/csp-report";
 import { sentryRequestHandler, sentryErrorHandler } from "./lib/sentry";
 
 const app: Express = express();
 
-// Render and most production hosts sit behind a reverse proxy.
-// This keeps express-rate-limit from erroring on X-Forwarded-For headers.
 app.set("trust proxy", 1);
 
 function getAllowedOrigins(): string[] {
@@ -36,9 +36,15 @@ function getAllowedOrigins(): string[] {
 
 const allowedOrigins = getAllowedOrigins();
 const isProduction = process.env.NODE_ENV === "production";
+const cspReportOnly = process.env.CSP_REPORT_ONLY !== "false";
+const strictCsp = process.env.STRICT_CSP === "true";
 
-// Sentry request handler MUST be first (captures request context for error reports)
 app.use(sentryRequestHandler());
+
+app.use((req, res, next) => {
+  res.locals.cspNonce = crypto.randomBytes(16).toString("base64");
+  next();
+});
 
 app.use(
   pinoHttp({
@@ -63,10 +69,13 @@ app.use(
 app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=()" );
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=(), serial=()" );
   res.setHeader("X-Permitted-Cross-Domain-Policies", "none");
   res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
+  res.setHeader("Cross-Origin-Embedder-Policy", "credentialless");
   res.setHeader("Origin-Agent-Cluster", "?1");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Document-Policy", "js-profiling=()" );
 
   if (isProduction) {
     res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
@@ -85,8 +94,12 @@ app.use(
         formAction: ["'self'"],
         frameAncestors: ["'none'"],
         objectSrc: ["'none'"],
-        scriptSrc: ["'self'", "'unsafe-inline'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: strictCsp
+          ? ["'self'", (req, res) => `'nonce-${res.locals.cspNonce}'`, "'strict-dynamic'"]
+          : ["'self'", "'unsafe-inline'"],
+        styleSrc: strictCsp
+          ? ["'self'", (req, res) => `'nonce-${res.locals.cspNonce}'`]
+          : ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", "data:", "blob:"],
         fontSrc: ["'self'", "data:"],
         connectSrc: ["'self'", ...allowedOrigins],
@@ -94,9 +107,12 @@ app.use(
         manifestSrc: ["'self'"],
         mediaSrc: ["'self'"],
         workerSrc: ["'self'", "blob:"],
+        requireTrustedTypesFor: strictCsp ? ["'script'"] : null,
+        trustedTypes: strictCsp ? ["default"] : null,
+        reportUri: ["/api/security/csp-report"],
         upgradeInsecureRequests: isProduction ? [] : null,
       },
-      reportOnly: false,
+      reportOnly: cspReportOnly,
     },
     crossOriginEmbedderPolicy: false,
     crossOriginOpenerPolicy: { policy: "same-origin" },
@@ -132,13 +148,15 @@ app.use(cors({
     callback(new Error("Origin not allowed by CORS"));
   },
   credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token", "X-Step-Up-Token"],
 }));
 
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use(express.json({ limit: "5mb", type: ["application/json", "application/csp-report"] }));
+app.use(express.urlencoded({ extended: true, limit: "5mb", parameterLimit: 100 }));
 
-// Direct health checks before rate limiting/router mounting.
-// Render may use HEAD before GET, so support both.
+app.post("/api/security/csp-report", cspReportHandler);
+
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });
 });
@@ -152,7 +170,6 @@ app.head("/api/healthz", (_req, res) => {
   res.status(200).end();
 });
 
-// Global rate limiter: 200 requests per 15 minutes per IP
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 200,
@@ -162,7 +179,6 @@ const globalLimiter = rateLimit({
 });
 app.use("/api", globalLimiter);
 
-// Strict rate limiter for auth endpoints: 10 requests per 15 minutes per IP
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
@@ -176,10 +192,8 @@ app.use(phiLogger);
 
 app.use("/api", router);
 
-// Sentry error handler MUST be after all routes and before other error handlers
 app.use(sentryErrorHandler());
 
-// Global error handler — catches any unhandled errors and returns a clean JSON response
 app.use((err: any, _req: any, res: any, _next: any) => {
   logger.error({ err }, "Unhandled error");
   const status = err?.status ?? err?.statusCode ?? 500;
