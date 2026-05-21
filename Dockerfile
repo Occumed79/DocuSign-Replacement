@@ -13,7 +13,7 @@ COPY artifacts/api-server/package.json artifacts/api-server/
 COPY artifacts/packet-path/package.json artifacts/packet-path/
 COPY scripts/package.json scripts/
 COPY artifacts/mockup-sandbox/package.json artifacts/mockup-sandbox/
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --no-frozen-lockfile
 
 # ── Build frontend ────────────────────────────────────────────────────────────
 FROM deps AS build-frontend
@@ -36,7 +36,7 @@ COPY artifacts/api-server/package.json artifacts/api-server/
 COPY artifacts/packet-path/package.json artifacts/packet-path/
 COPY scripts/package.json scripts/
 COPY artifacts/mockup-sandbox/package.json artifacts/mockup-sandbox/
-RUN pnpm install --frozen-lockfile --prod
+RUN pnpm install --no-frozen-lockfile --prod
 
 # Copy built backend
 COPY --from=build-backend /app/artifacts/api-server/dist ./artifacts/api-server/dist
