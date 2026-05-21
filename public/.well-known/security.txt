@@ -1,0 +1,8 @@
+Contact: mailto:security@packetpath.com
+Contact: mailto:alex@packetpath.com
+Expires: 2027-12-31T23:59:59.000Z
+Preferred-Languages: en
+Canonical: https://packetpath.com/.well-known/security.txt
+Policy: https://packetpath.com/security
+Hiring: https://packetpath.com/careers
+Acknowledgments: https://packetpath.com/security/acknowledgments
