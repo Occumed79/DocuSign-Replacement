@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Link } from "wouter";
+import { Link, useSearch } from "wouter";
 import {
   PenTool, Plus, Search, Clock, CheckCircle, XCircle, AlertCircle,
   Eye, FileText, Users, Send, MoreHorizontal, ChevronRight, Trash2,
@@ -55,13 +55,30 @@ function timeSince(dateStr: string): string {
 export default function ESignaturesPage() {
   const { token } = useAuth();
   const { toast } = useToast();
+  // ── Query param handling for Start menu deep links ─────────────────────────
+  const searchStr = useSearch();
+  const qp = new URLSearchParams(searchStr);
+  const qTemplateId = qp.get("templateId") ? Number(qp.get("templateId")) : null;
+  const qFromTemplate = qp.get("from") === "template";
+  const qSelfSign = qp.get("mode") === "self";
+
   const [requests, setRequests] = useState<SignatureRequest[]>([]);
   const [stats, setStats] = useState<Stats>({ total: 0, pending: 0, completed: 0, voided: 0 });
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [showCreate, setShowCreate] = useState(false);
+  const [initialTemplateId, setInitialTemplateId] = useState<number | null>(null);
   const [actionOpen, setActionOpen] = useState<number | null>(null);
+
+  // Auto-open the create modal when arriving from a Start menu deep link
+  useEffect(() => {
+    if (qTemplateId || qFromTemplate || qSelfSign) {
+      if (qTemplateId) setInitialTemplateId(qTemplateId);
+      setShowCreate(true);
+    }
+    // Only run on mount — eslint-disable-next-line
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchRequests = useCallback(async () => {
     setLoading(true);
@@ -437,8 +454,9 @@ export default function ESignaturesPage() {
         {showCreate && (
           <CreateRequestModal
             token={token}
-            onClose={() => setShowCreate(false)}
-            onCreated={() => { setShowCreate(false); fetchRequests(); }}
+            initialTemplateId={initialTemplateId}
+            onClose={() => { setShowCreate(false); setInitialTemplateId(null); }}
+            onCreated={() => { setShowCreate(false); setInitialTemplateId(null); fetchRequests(); }}
           />
         )}
       </AnimatePresence>
