@@ -3,305 +3,134 @@ import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  LayoutDashboard, FolderOpen, Plus, LogOut, ChevronLeft, ChevronRight,
-  Activity, Shield, User, Users, ClipboardList, AlertTriangle, Clock, PenTool, Mail,
-  BarChart2, Webhook, Palette, FileSignature, ChevronDown, Send, FileText, Edit3
+  LayoutDashboard, FolderOpen, LogOut, ChevronLeft, ChevronRight,
+  Shield, Users, ClipboardList, AlertTriangle, PenTool, Mail,
+  BarChart2, Webhook, Palette, FileSignature, Send, FileText
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useLocation as useWouterLocation } from "wouter";
 
 const SESSION_TIMEOUT_MS = 8 * 60 * 60 * 1000;
 const WARN_BEFORE_MS = 5 * 60 * 1000;
 
 const navItems = [
-  { label: "Dashboard", icon: LayoutDashboard, href: "/" },
-  { label: "All Cases", icon: FolderOpen, href: "/cases" },
-  { label: "E-Signatures", icon: PenTool, href: "/esignatures" },
-  { label: "Agreements", icon: ClipboardList, href: "/agreements" },
-  { label: "Templates", icon: FileSignature, href: "/signature-templates" },
-  { label: "Analytics", icon: BarChart2, href: "/analytics" },
+  { label: "Dashboard",   icon: LayoutDashboard, href: "/" },
+  { label: "All Cases",   icon: FolderOpen,       href: "/cases" },
+  { label: "E-Signatures",icon: PenTool,          href: "/esignatures" },
+  { label: "Agreements",  icon: ClipboardList,    href: "/agreements" },
+  { label: "Templates",   icon: FileSignature,    href: "/signature-templates" },
+  { label: "Analytics",   icon: BarChart2,        href: "/analytics" },
 ];
 
 const adminItems = [
-  { label: "Admin", icon: Shield, href: "/admin" },
-  { label: "Users", icon: Users, href: "/users" },
-  { label: "Email Settings", icon: Mail, href: "/email-settings" },
-  { label: "Branding", icon: Palette, href: "/branding" },
-  { label: "Webhooks", icon: Webhook, href: "/webhooks" },
-  { label: "Security", icon: AlertTriangle, href: "/security" },
-  { label: "Audit Log", icon: ClipboardList, href: "/audit" },
+  { label: "Admin",         icon: Shield,        href: "/admin" },
+  { label: "Users",         icon: Users,         href: "/users" },
+  { label: "Email Settings",icon: Mail,          href: "/email-settings" },
+  { label: "Branding",      icon: Palette,       href: "/branding" },
+  { label: "Webhooks",      icon: Webhook,       href: "/webhooks" },
+  { label: "Security",      icon: AlertTriangle, href: "/security" },
+  { label: "Audit Log",     icon: ClipboardList, href: "/audit" },
 ];
 
-function NavItem({
-  item,
-  collapsed,
-  active,
-}: {
+function NavItem({ item, collapsed, active }: {
   item: { label: string; icon: React.ElementType; href: string };
-  collapsed: boolean;
-  active: boolean;
+  collapsed: boolean; active: boolean;
 }) {
-  const content = (
+  const Icon = item.icon;
+  const btn = (
     <Link href={item.href}>
-      <button
-        data-testid={`nav-${item.label.toLowerCase().replace(/ /g, "-")}`}
-        className={cn(
-          "transition-all duration-200",
-          collapsed
-            ? "w-10 h-10 rounded-2xl flex items-center justify-center"
-            : "w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-sm text-left",
-          active
-            ? "text-white font-medium"
-            : "text-white/50 hover:text-white/80 hover:bg-white/[0.06]"
-        )}
-        style={active ? {
-          background: "linear-gradient(135deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.05) 100%)",
-          border: "1px solid rgba(255,255,255,0.08)",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.06)",
-        } : undefined}
-      >
-        <item.icon size={collapsed ? 17 : 16} />
-        {!collapsed && item.label}
+      <button className={cn(
+        "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150",
+        "nav-item",
+        active && "active",
+        collapsed && "justify-center px-2"
+      )}>
+        <Icon className={cn("shrink-0", active ? "text-sky-300 w-4 h-4" : "w-4 h-4")} />
+        {!collapsed && <span className="truncate">{item.label}</span>}
       </button>
     </Link>
   );
-
   if (collapsed) {
     return (
       <Tooltip>
-        <TooltipTrigger asChild>{content}</TooltipTrigger>
-        <TooltipContent side="right">{item.label}</TooltipContent>
+        <TooltipTrigger asChild>{btn}</TooltipTrigger>
+        <TooltipContent side="right" className="glass-modal border-white/10 text-white/90 text-xs">
+          {item.label}
+        </TooltipContent>
       </Tooltip>
     );
   }
-  return content;
-}
-
-/** Start menu — Send / Use Template / Sign Document */
-function StartMenu({ collapsed }: { collapsed: boolean }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const [, navigate] = useWouterLocation();
-
-  useEffect(() => {
-    if (!open) return;
-    const handle = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handle);
-    return () => document.removeEventListener("mousedown", handle);
-  }, [open]);
-
-  const actions = [
-    {
-      label: "Send Document",
-      icon: Send,
-      desc: "Upload & send for signature",
-      href: "/esignatures",
-    },
-    {
-      label: "Use Template",
-      icon: FileText,
-      desc: "Send from a saved template",
-      href: "/esignatures?from=template",
-    },
-    {
-      label: "Sign Document",
-      icon: Edit3,
-      desc: "Self-sign / ad-hoc signing",
-      href: "/esignatures?mode=self",
-    },
-  ];
-
-  if (collapsed) {
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            onClick={() => navigate("/esignatures")}
-            className="w-10 h-10 rounded-2xl flex items-center justify-center transition-all"
-            style={{
-              background: "linear-gradient(135deg, rgba(141,190,181,0.9), rgba(82,123,120,0.95))",
-              boxShadow: "0 2px 12px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.12)",
-            }}
-          >
-            <Plus size={16} className="text-white" />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="right">Start</TooltipContent>
-      </Tooltip>
-    );
-  }
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-2xl text-white text-sm font-medium transition-all"
-        style={{
-          background: "linear-gradient(135deg, rgba(141,190,181,0.9), rgba(82,123,120,0.95))",
-          boxShadow: "0 2px 12px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.12)",
-        }}
-      >
-        <span className="flex items-center gap-2">
-          <Plus size={15} /> Start
-        </span>
-        <ChevronDown
-          size={13}
-          className={cn("transition-transform duration-200", open && "rotate-180")}
-        />
-      </button>
-
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, y: -6, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -6, scale: 0.97 }}
-            transition={{ duration: 0.13 }}
-            className="absolute left-0 right-0 top-full mt-1.5 z-50 rounded-2xl overflow-hidden"
-            style={{
-              background: "linear-gradient(180deg, rgba(5, 34, 42, 0.98) 0%, rgba(3, 18, 25, 0.98) 100%)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
-            }}
-          >
-            {actions.map((action) => (
-              <Link key={action.href} href={action.href}>
-                <button
-                  onClick={() => setOpen(false)}
-                  className="w-full flex items-start gap-3 px-3 py-2.5 text-left hover:bg-white/[0.06] transition-colors"
-                >
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
-                    style={{ background: "rgba(141,190,181,0.15)" }}>
-                    <action.icon size={13} className="text-[#8dbeb5]" />
-                  </div>
-                  <div>
-                    <p className="text-white text-xs font-medium">{action.label}</p>
-                    <p className="text-white/40 text-[11px]">{action.desc}</p>
-                  </div>
-                </button>
-              </Link>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-function SessionTimeoutWarning({ minutesLeft, onDismiss }: { minutesLeft: number; onDismiss: () => void }) {
-  return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -20 }}
-        className="fixed top-4 right-4 z-50 glass-card rounded-xl p-4 max-w-sm shadow-xl border border-amber-200"
-      >
-        <div className="flex items-start gap-3">
-          <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
-            <Clock size={16} className="text-amber-600" />
-          </div>
-          <div className="flex-1">
-            <p className="font-semibold text-foreground text-sm">Session Expiring</p>
-            <p className="text-muted-foreground text-xs mt-1">
-              Your session expires in {minutesLeft} minute{minutesLeft !== 1 ? "s" : ""}. Please save your work.
-            </p>
-          </div>
-          <button onClick={onDismiss} className="text-muted-foreground hover:text-foreground text-xs">✕</button>
-        </div>
-      </motion.div>
-    </AnimatePresence>
-  );
+  return btn;
 }
 
 export default function AppLayout({ children }: { children: ReactNode }) {
-  const [collapsed, setCollapsed] = useState(false);
   const { user, logout } = useAuth();
   const [location] = useLocation();
-  const [sessionWarning, setSessionWarning] = useState<number | null>(null);
-  const [dismissed, setDismissed] = useState(false);
-  const loginTimeRef = useRef(Date.now());
-  const lastActivityRef = useRef(Date.now());
+  const [collapsed, setCollapsed] = useState(false);
+  const [showWarn, setShowWarn] = useState(false);
+  const lastActivity = useRef(Date.now());
+  const warnTimer = useRef<ReturnType<typeof setTimeout>>();
+  const logoutTimer = useRef<ReturnType<typeof setTimeout>>();
 
-  const handleActivity = useCallback(() => {
-    lastActivityRef.current = Date.now();
-    setDismissed(false);
-  }, []);
+  const resetTimers = useCallback(() => {
+    lastActivity.current = Date.now();
+    setShowWarn(false);
+    clearTimeout(warnTimer.current);
+    clearTimeout(logoutTimer.current);
+    warnTimer.current = setTimeout(() => setShowWarn(true), SESSION_TIMEOUT_MS - WARN_BEFORE_MS);
+    logoutTimer.current = setTimeout(() => logout(), SESSION_TIMEOUT_MS);
+  }, [logout]);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      const now = Date.now();
-      const timeLeft = SESSION_TIMEOUT_MS - (now - loginTimeRef.current);
-      if (timeLeft <= 0) { logout(); return; }
-      if (timeLeft <= WARN_BEFORE_MS && !dismissed) {
-        setSessionWarning(Math.ceil(timeLeft / 60000));
-      } else {
-        setSessionWarning(null);
-      }
-    }, 30000);
-
-    window.addEventListener("mousemove", handleActivity, { passive: true });
-    window.addEventListener("keydown", handleActivity, { passive: true });
-
+    resetTimers();
+    const events = ["mousedown","keydown","touchstart","scroll"];
+    events.forEach(e => window.addEventListener(e, resetTimers, { passive: true }));
     return () => {
-      clearInterval(interval);
-      window.removeEventListener("mousemove", handleActivity);
-      window.removeEventListener("keydown", handleActivity);
+      events.forEach(e => window.removeEventListener(e, resetTimers));
+      clearTimeout(warnTimer.current);
+      clearTimeout(logoutTimer.current);
     };
-  }, [logout, dismissed, handleActivity]);
+  }, [resetTimers]);
+
+  const initials = user?.fullName
+    ? user.fullName.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()
+    : user?.email?.[0]?.toUpperCase() ?? "?";
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
-      {sessionWarning !== null && !dismissed && (
-        <SessionTimeoutWarning minutesLeft={sessionWarning} onDismiss={() => setDismissed(true)} />
-      )}
-
+    <div className="flex h-screen overflow-hidden atmo-bg">
+      {/* ── Sidebar ── */}
       <motion.aside
-        animate={{ width: collapsed ? 68 : 240 }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        className="flex flex-col h-full shrink-0 relative z-10"
-        style={{
-          background: "linear-gradient(180deg, rgba(3, 18, 25, 0.96) 0%, rgba(5, 34, 42, 0.94) 100%)",
-          backdropFilter: "blur(60px) saturate(180%)",
-          WebkitBackdropFilter: "blur(60px) saturate(180%)",
-          boxShadow: "4px 0 32px rgba(0,0,0,0.20), inset -1px 0 0 rgba(255,255,255,0.04)",
-        }}
+        animate={{ width: collapsed ? 64 : 224 }}
+        transition={{ duration: 0.2, ease: "easeInOut" }}
+        className="glass-sidebar flex flex-col shrink-0 overflow-hidden relative z-30"
       >
-        {/* Logo */}
-        <div className="flex items-center gap-3 px-4 h-16 border-b border-white/[0.06]">
-          <div className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0"
+        {/* Logo / Brand */}
+        <div className={cn(
+          "flex items-center gap-3 px-4 py-5 border-b border-white/[0.06]",
+          collapsed && "justify-center px-2"
+        )}>
+          {/* Occu-Med logo mark */}
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
             style={{
-              background: "linear-gradient(135deg, rgba(141,190,181,0.55), rgba(82,123,120,0.65))",
-              boxShadow: "0 4px 16px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255,255,255,0.12)",
+              background: "linear-gradient(135deg, rgba(56,160,255,0.9) 0%, rgba(99,50,220,0.85) 100%)",
+              boxShadow: "0 0 16px rgba(56,160,255,0.35), inset 0 1px 0 rgba(255,255,255,0.2)"
             }}>
-            <Activity size={15} className="text-white" />
+            <FileText className="w-4 h-4 text-white" />
           </div>
-          <AnimatePresence>
-            {!collapsed && (
-              <motion.div
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -8 }}
-                transition={{ duration: 0.15 }}
-              >
-                <p className="text-white font-semibold text-sm tracking-tight">Occu-Med</p>
-                <p className="text-white/55 text-xs">PacketPath</p>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {!collapsed && (
+            <div className="overflow-hidden">
+              <p className="text-sm font-bold text-white/90 leading-tight truncate">Occu-Med</p>
+              <p className="text-[10px] text-white/35 leading-tight truncate">PacketPath</p>
+            </div>
+          )}
         </div>
 
-        {/* Start Menu CTA */}
-        <div className="px-3 py-3">
-          <StartMenu collapsed={collapsed} />
-        </div>
-
-        {/* Main nav */}
-        <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto">
-          {navItems.map((item) => (
+        {/* Nav */}
+        <nav className="flex-1 overflow-y-auto px-2 py-4 space-y-0.5">
+          {!collapsed && (
+            <p className="text-[9px] font-bold text-white/25 uppercase tracking-widest px-3 mb-2">Workspace</p>
+          )}
+          {navItems.map(item => (
             <NavItem
               key={item.href}
               item={item}
@@ -312,61 +141,95 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
           {user?.role === "admin" && (
             <>
-              <div className="my-2 border-t border-white/[0.06]" />
-              {adminItems.map((item) => (
+              <div className="my-3 border-t border-white/[0.06]" />
+              {!collapsed && (
+                <p className="text-[9px] font-bold text-white/25 uppercase tracking-widest px-3 mb-2">Admin</p>
+              )}
+              {adminItems.map(item => (
                 <NavItem
                   key={item.href}
                   item={item}
                   collapsed={collapsed}
-                  active={location === item.href}
+                  active={location.startsWith(item.href)}
                 />
               ))}
             </>
           )}
         </nav>
 
-        {/* User footer */}
-        <div className="px-3 pb-4 pt-2 border-t border-white/[0.06]">
-          {collapsed ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button onClick={logout} className="w-10 h-10 rounded-2xl flex items-center justify-center text-white/40 hover:text-white/80 hover:bg-white/[0.06] transition-all">
-                  <LogOut size={15} />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right">Sign out</TooltipContent>
-            </Tooltip>
-          ) : (
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white/70 text-xs font-semibold shrink-0"
-                style={{ background: "rgba(141,190,181,0.2)" }}>
-                {user?.name?.charAt(0).toUpperCase() ?? <User size={14} />}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-white/80 text-xs font-medium truncate">{user?.name}</p>
-                <p className="text-white/35 text-[10px] truncate capitalize">{user?.role}</p>
-              </div>
-              <button onClick={logout} className="text-white/30 hover:text-white/70 transition-colors">
-                <LogOut size={14} />
-              </button>
+        {/* Bottom — user + collapse toggle */}
+        <div className="border-t border-white/[0.06] p-2 space-y-1">
+          {/* User row */}
+          <div className={cn(
+            "flex items-center gap-2.5 px-3 py-2.5 rounded-xl",
+            collapsed && "justify-center px-2"
+          )}>
+            <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
+              style={{
+                background: "linear-gradient(135deg, rgba(56,160,255,0.7) 0%, rgba(99,50,220,0.7) 100%)",
+                border: "1px solid rgba(255,255,255,0.15)"
+              }}>
+              {initials}
             </div>
-          )}
-        </div>
+            {!collapsed && (
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-white/80 truncate">{user?.fullName ?? user?.email}</p>
+                <p className="text-[10px] text-white/35 capitalize truncate">{user?.role}</p>
+              </div>
+            )}
+            {!collapsed && (
+              <button onClick={logout} className="text-white/25 hover:text-red-400 transition-colors p-1 rounded-lg hover:bg-red-500/10">
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
 
-        {/* Collapse toggle */}
-        <button
-          onClick={() => setCollapsed((v) => !v)}
-          className="absolute -right-3 top-20 w-6 h-6 rounded-full border border-white/10 flex items-center justify-center text-white/50 hover:text-white/80 transition-all z-20"
-          style={{ background: "rgba(5, 34, 42, 0.95)", boxShadow: "0 2px 8px rgba(0,0,0,0.3)" }}
-        >
-          {collapsed ? <ChevronRight size={11} /> : <ChevronLeft size={11} />}
-        </button>
+          {/* Collapse toggle */}
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className="w-full flex items-center justify-center py-2 rounded-xl text-white/25 hover:text-white/60 hover:bg-white/[0.05] transition-all text-xs gap-1.5"
+          >
+            {collapsed
+              ? <ChevronRight className="w-3.5 h-3.5" />
+              : <><ChevronLeft className="w-3.5 h-3.5" /><span className="text-[10px]">Collapse</span></>
+            }
+          </button>
+        </div>
       </motion.aside>
 
-      {/* Main content */}
-      <main className="flex-1 overflow-y-auto luminous-gradient">
-        {children}
-      </main>
+      {/* ── Main content ── */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <main className="flex-1 overflow-y-auto">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={location}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.2 }}
+              className="h-full"
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
+        </main>
+      </div>
+
+      {/* Session warning */}
+      <AnimatePresence>
+        {showWarn && (
+          <motion.div
+            initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 40 }}
+            className="fixed bottom-6 right-6 glass-modal rounded-2xl p-4 max-w-sm z-50"
+          >
+            <p className="text-sm font-semibold text-amber-400 mb-1">Session expiring soon</p>
+            <p className="text-xs text-white/50 mb-3">You'll be logged out in 5 minutes due to inactivity.</p>
+            <button onClick={resetTimers} className="text-xs font-semibold text-sky-400 hover:text-sky-300 transition-colors">
+              Stay logged in →
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
