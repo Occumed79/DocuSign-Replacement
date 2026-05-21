@@ -10,6 +10,7 @@ import {
   auditLogsTable,
   usersTable,
   casesTable,
+  templateVersionsTable,
 } from "@workspace/db";
 import { eq, desc, and, count, sql, ilike, or, lt } from "drizzle-orm";
 import { requireAuth } from "../lib/require-auth";
@@ -233,7 +234,6 @@ router.put("/signature-templates/:id", async (req, res): Promise<void> => {
   const templateId = Number(req.params.id);
   const [current] = await db.select().from(signatureTemplatesTable).where(eq(signatureTemplatesTable.id, templateId)).limit(1);
   if (!current) { res.status(404).json({ error: "Not found" }); return; }
-  const { templateVersionsTable } = await import("@workspace/db/schema");
   const [latestVer] = await db.select({ version: templateVersionsTable.version }).from(templateVersionsTable).where(eq(templateVersionsTable.templateId, templateId)).orderBy(desc(templateVersionsTable.version)).limit(1);
   const nextVersion = (latestVer?.version ?? 0) + 1;
   await db.insert(templateVersionsTable).values({
@@ -517,7 +517,7 @@ router.post("/signature-settings/test-email", async (req, res): Promise<void> =>
 // ─── PUBLIC SIGNING ENDPOINTS ────────────────────────────────────────────────
 
 router.get("/sign/:token", async (req, res): Promise<void> => {
-  const recipient = await findRecipientByToken(req.params.token);
+  const recipient = await findRecipientByToken(req.params.token as string);
   if (!recipient) { res.status(404).json({ error: "Invalid signing link" }); return; }
   if (recipient.status === "signed") { res.status(409).json({ status: "already_signed", error: "Already signed" }); return; }
   if (recipient.status === "declined") { res.status(410).json({ status: "declined", error: "Declined" }); return; }
@@ -530,7 +530,7 @@ router.get("/sign/:token", async (req, res): Promise<void> => {
 });
 
 router.post("/sign/:token/view", async (req, res): Promise<void> => {
-  const recipient = await findRecipientByToken(req.params.token);
+  const recipient = await findRecipientByToken(req.params.token as string);
   const ip = getClientIp(req);
   const ua = req.headers["user-agent"];
   if (!recipient) { res.status(404).json({ error: "Not found" }); return; }
@@ -547,7 +547,7 @@ router.post("/sign/:token/complete", signingCompletionLimiter, async (req, res):
   const ua = req.headers["user-agent"];
   if (!signatureType || !signatureData || !fullName) { res.status(400).json({ error: "signatureType, signatureData, and fullName are required" }); return; }
   if (electronicRecordConsent !== true) { res.status(400).json({ error: "Electronic records and signature consent is required" }); return; }
-  const recipient = await findRecipientByToken(req.params.token);
+  const recipient = await findRecipientByToken(req.params.token as string);
   if (!recipient) { res.status(404).json({ error: "Invalid signing link" }); return; }
   if (recipient.status === "signed") { res.status(409).json({ error: "Already signed" }); return; }
   if (recipient.status === "declined") { res.status(410).json({ error: "Recipient declined" }); return; }
@@ -581,7 +581,7 @@ router.post("/sign/:token/complete", signingCompletionLimiter, async (req, res):
 });
 
 router.post("/sign/:token/decline", async (req, res): Promise<void> => {
-  const recipient = await findRecipientByToken(req.params.token);
+  const recipient = await findRecipientByToken(req.params.token as string);
   const { reason } = req.body;
   const ip = getClientIp(req);
   const ua = req.headers["user-agent"];
