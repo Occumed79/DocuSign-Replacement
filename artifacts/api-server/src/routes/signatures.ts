@@ -712,4 +712,61 @@ router.get("/signature-settings/sms-status", async (req, res): Promise<void> => 
   res.json({ configured: isSmsConfigured(), vars: { TWILIO_ACCOUNT_SID: Boolean(process.env.TWILIO_ACCOUNT_SID), TWILIO_AUTH_TOKEN: Boolean(process.env.TWILIO_AUTH_TOKEN), TWILIO_FROM_NUMBER: Boolean(process.env.TWILIO_FROM_NUMBER) } });
 });
 
+
+// ── Renew an expired request — extend expiry by N days ──────────────────────
+router.post("/signature-requests/:id/renew", async (req, res): Promise<void> => {
+  const userId = await requireAuth(req, res);
+  if (!userId) return;
+  const id = Number(req.params.id);
+  const { expiryDays = 7 } = req.body;
+
+  const request = await getRequestOrNull(id);
+  if (!request) { res.status(404).json({ error: "Not found" }); return; }
+  if (!["expired", "pending", "partially_signed"].includes(request.status)) {
+    res.status(400).json({ error: "Only expired, pending, or partially_signed requests can be renewed" });
+    return;
+  }
+
+  const days = Math.min(Math.max(1, Number(expiryDays) || 7), 90);
+  const newExpiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+
+  const newStatus = request.status === "expired" ? "pending" : request.status;
+  await db
+    .update(signatureRequestsTable)
+    .set({ expiresAt: newExpiresAt, status: newStatus as any, updatedAt: new Date() })
+    .where(eq(signatureRequestsTable.id, id));
+
+  await db
+    .update(signatureRecipientsTable)
+    .set({ tokenExpiresAt: newExpiresAt })
+    .where(
+      and(
+        eq(signatureRecipientsTable.requestId, id),
+        sql`${signatureRecipientsTable.status} IN ('pending', 'viewed')`
+      )
+    );
+
+  const [user] = await db.select({ email: usersTable.email, name: usersTable.name })
+    .from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+
+  await logSigAction({
+    userId,
+    userEmail: user?.email,
+    userName: user?.name,
+    action: "request_renewed",
+    resourceId: String(id),
+    details: `Request renewed. New expiry: ${newExpiresAt.toISOString()}. Days extended: ${days}.`,
+    ip: getClientIp(req),
+    ua: req.headers["user-agent"],
+  });
+
+  res.json({
+    message: `Request renewed — expires ${newExpiresAt.toLocaleDateString()}`,
+    expiresAt: newExpiresAt.toISOString(),
+    status: newStatus,
+  });
+});
+
+
 export default router;
+
