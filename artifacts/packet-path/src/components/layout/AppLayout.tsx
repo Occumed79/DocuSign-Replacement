@@ -5,10 +5,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   LayoutDashboard, FolderOpen, Plus, LogOut, ChevronLeft, ChevronRight,
   Activity, Shield, User, Users, ClipboardList, AlertTriangle, Clock, PenTool, Mail,
-  BarChart2, Webhook, Palette, FileSignature
+  BarChart2, Webhook, Palette, FileSignature, ChevronDown, Send, FileText, Edit3
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useLocation as useWouterLocation } from "wouter";
 
 const SESSION_TIMEOUT_MS = 8 * 60 * 60 * 1000;
 const WARN_BEFORE_MS = 5 * 60 * 1000;
@@ -75,6 +76,119 @@ function NavItem({
     );
   }
   return content;
+}
+
+/** Start menu — Send / Use Template / Sign Document */
+function StartMenu({ collapsed }: { collapsed: boolean }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const [, navigate] = useWouterLocation();
+
+  useEffect(() => {
+    if (!open) return;
+    const handle = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, [open]);
+
+  const actions = [
+    {
+      label: "Send Document",
+      icon: Send,
+      desc: "Upload & send for signature",
+      href: "/esignatures",
+    },
+    {
+      label: "Use Template",
+      icon: FileText,
+      desc: "Send from a saved template",
+      href: "/esignatures?from=template",
+    },
+    {
+      label: "Sign Document",
+      icon: Edit3,
+      desc: "Self-sign / ad-hoc signing",
+      href: "/esignatures?mode=self",
+    },
+  ];
+
+  if (collapsed) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={() => navigate("/esignatures")}
+            className="w-10 h-10 rounded-2xl flex items-center justify-center transition-all"
+            style={{
+              background: "linear-gradient(135deg, rgba(141,190,181,0.9), rgba(82,123,120,0.95))",
+              boxShadow: "0 2px 12px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.12)",
+            }}
+          >
+            <Plus size={16} className="text-white" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="right">Start</TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-2xl text-white text-sm font-medium transition-all"
+        style={{
+          background: "linear-gradient(135deg, rgba(141,190,181,0.9), rgba(82,123,120,0.95))",
+          boxShadow: "0 2px 12px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.12)",
+        }}
+      >
+        <span className="flex items-center gap-2">
+          <Plus size={15} /> Start
+        </span>
+        <ChevronDown
+          size={13}
+          className={cn("transition-transform duration-200", open && "rotate-180")}
+        />
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ duration: 0.13 }}
+            className="absolute left-0 right-0 top-full mt-1.5 z-50 rounded-2xl overflow-hidden"
+            style={{
+              background: "linear-gradient(180deg, rgba(5, 34, 42, 0.98) 0%, rgba(3, 18, 25, 0.98) 100%)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+            }}
+          >
+            {actions.map((action) => (
+              <Link key={action.href} href={action.href}>
+                <button
+                  onClick={() => setOpen(false)}
+                  className="w-full flex items-start gap-3 px-3 py-2.5 text-left hover:bg-white/[0.06] transition-colors"
+                >
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
+                    style={{ background: "rgba(141,190,181,0.15)" }}>
+                    <action.icon size={13} className="text-[#8dbeb5]" />
+                  </div>
+                  <div>
+                    <p className="text-white text-xs font-medium">{action.label}</p>
+                    <p className="text-white/40 text-[11px]">{action.desc}</p>
+                  </div>
+                </button>
+              </Link>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
 }
 
 function SessionTimeoutWarning({ minutesLeft, onDismiss }: { minutesLeft: number; onDismiss: () => void }) {
@@ -180,113 +294,59 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </AnimatePresence>
         </div>
 
-        {/* New Case CTA */}
+        {/* Start Menu CTA */}
         <div className="px-3 py-3">
-          {collapsed ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Link href="/cases/new">
-                  <button
-                    data-testid="btn-new-case-collapsed"
-                    className="w-10 h-10 rounded-2xl flex items-center justify-center transition-all"
-                    style={{
-                      background: "linear-gradient(135deg, rgba(141,190,181,0.9), rgba(82,123,120,0.95))",
-                      boxShadow: "0 2px 12px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.12)",
-                    }}
-                  >
-                    <Plus size={16} className="text-white" />
-                  </button>
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent side="right">New Case</TooltipContent>
-            </Tooltip>
-          ) : (
-            <Link href="/cases/new">
-              <button
-                data-testid="btn-new-case"
-                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-2xl text-white text-sm font-medium transition-all"
-                style={{
-                  background: "linear-gradient(135deg, rgba(141,190,181,0.9), rgba(82,123,120,0.95))",
-                  boxShadow: "0 2px 12px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.12)",
-                  border: "1px solid rgba(255,255,255,0.10)",
-                }}
-              >
-                <Plus size={15} />
-                <span>New Case</span>
-              </button>
-            </Link>
-          )}
+          <StartMenu collapsed={collapsed} />
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 px-3 py-1 flex flex-col gap-1 overflow-y-auto">
-          {navItems.map((item) => {
-            const active = location === item.href || (item.href !== "/" && location.startsWith(item.href));
-            return <NavItem key={item.href} item={item} collapsed={collapsed} active={active} />;
-          })}
+        {/* Main nav */}
+        <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto">
+          {navItems.map((item) => (
+            <NavItem
+              key={item.href}
+              item={item}
+              collapsed={collapsed}
+              active={location === item.href || (item.href !== "/" && location.startsWith(item.href))}
+            />
+          ))}
 
           {user?.role === "admin" && (
-            <div className="mt-2 pt-2 border-t border-white/[0.06] flex flex-col gap-1">
-              {!collapsed && (
-                <p className="text-white/25 text-xs font-semibold uppercase tracking-widest px-3 py-1">Security</p>
-              )}
-              {adminItems.map((item) => {
-                const active = location.startsWith(item.href);
-                return <NavItem key={item.href} item={item} collapsed={collapsed} active={active} />;
-              })}
-            </div>
+            <>
+              <div className="my-2 border-t border-white/[0.06]" />
+              {adminItems.map((item) => (
+                <NavItem
+                  key={item.href}
+                  item={item}
+                  collapsed={collapsed}
+                  active={location === item.href}
+                />
+              ))}
+            </>
           )}
         </nav>
-
-        {/* PHI badge */}
-        {!collapsed && (
-          <div className="mx-3 mb-3 px-3 py-2.5 rounded-2xl" style={{
-            background: "rgba(16, 185, 129, 0.08)",
-            border: "1px solid rgba(16, 185, 129, 0.15)",
-            boxShadow: "inset 0 1px 0 rgba(16, 185, 129, 0.05)",
-          }}>
-            <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <p className="text-emerald-300 text-xs font-medium">HIPAA Audit Active</p>
-            </div>
-            <p className="text-emerald-400/60 text-xs mt-0.5">All PHI access is logged</p>
-          </div>
-        )}
 
         {/* User footer */}
         <div className="px-3 pb-4 pt-2 border-t border-white/[0.06]">
           {collapsed ? (
             <Tooltip>
               <TooltipTrigger asChild>
-                <button
-                  data-testid="btn-logout"
-                  onClick={logout}
-                  className="w-10 h-10 rounded-xl flex items-center justify-center text-white/40 hover:text-white/70 hover:bg-white/8 transition-all"
-                >
-                  <LogOut size={16} />
+                <button onClick={logout} className="w-10 h-10 rounded-2xl flex items-center justify-center text-white/40 hover:text-white/80 hover:bg-white/[0.06] transition-all">
+                  <LogOut size={15} />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="right">Logout</TooltipContent>
+              <TooltipContent side="right">Sign out</TooltipContent>
             </Tooltip>
           ) : (
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
-                style={{
-                  background: "linear-gradient(135deg, rgba(56, 140, 255, 0.7), rgba(120, 80, 255, 0.7))",
-                  boxShadow: "0 2px 8px rgba(56, 140, 255, 0.2)",
-                }}>
-                <User size={14} className="text-white" />
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white/70 text-xs font-semibold shrink-0"
+                style={{ background: "rgba(141,190,181,0.2)" }}>
+                {user?.name?.charAt(0).toUpperCase() ?? <User size={14} />}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-white/90 text-xs font-medium truncate">{user?.name}</p>
-                <p className="text-white/40 text-xs truncate capitalize">{user?.role}</p>
+                <p className="text-white/80 text-xs font-medium truncate">{user?.name}</p>
+                <p className="text-white/35 text-[10px] truncate capitalize">{user?.role}</p>
               </div>
-              <button
-                data-testid="btn-logout"
-                onClick={logout}
-                className="text-white/30 hover:text-white/60 transition-colors"
-                title="Logout"
-              >
+              <button onClick={logout} className="text-white/30 hover:text-white/70 transition-colors">
                 <LogOut size={14} />
               </button>
             </div>
@@ -295,25 +355,17 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
         {/* Collapse toggle */}
         <button
-          data-testid="btn-collapse-sidebar"
-          onClick={() => setCollapsed(!collapsed)}
-          className="absolute -right-3 top-20 w-6 h-6 rounded-full bg-background border border-border shadow flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors z-20"
+          onClick={() => setCollapsed((v) => !v)}
+          className="absolute -right-3 top-20 w-6 h-6 rounded-full border border-white/10 flex items-center justify-center text-white/50 hover:text-white/80 transition-all z-20"
+          style={{ background: "rgba(5, 34, 42, 0.95)", boxShadow: "0 2px 8px rgba(0,0,0,0.3)" }}
         >
-          {collapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
+          {collapsed ? <ChevronRight size={11} /> : <ChevronLeft size={11} />}
         </button>
       </motion.aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-y-auto luminous-gradient" style={{ position: "relative" }}>
-        <motion.div
-          key={location}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.2 }}
-          className="min-h-full"
-        >
-          {children}
-        </motion.div>
+      <main className="flex-1 overflow-y-auto luminous-gradient">
+        {children}
       </main>
     </div>
   );
