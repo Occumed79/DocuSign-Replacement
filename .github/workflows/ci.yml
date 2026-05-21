@@ -35,12 +35,15 @@ jobs:
         key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
         restore-keys: |
           ${{ runner.os }}-pnpm-store-
-          
+
     - name: Install dependencies
       run: pnpm install --no-frozen-lockfile --ignore-scripts
-      
-    - name: Type check
-      run: pnpm --filter @workspace/api-server run typecheck
+
+    - name: Build lib references
+      run: pnpm run typecheck:libs
+
+    - name: Type check api-server
+      run: pnpm --filter=@workspace/api-server run typecheck
       
     - name: Run tests
-      run: pnpm --filter @workspace/api-server run test
+      run: pnpm --filter=@workspace/api-server run test
