@@ -9,6 +9,10 @@ updates:
     labels:
       - "security"
       - "dependencies"
+    reviewers:
+      - "Occumed79"
+    commit-message:
+      prefix: "deps"
 
   - package-ecosystem: "docker"
     directory: "/"
@@ -17,3 +21,11 @@ updates:
     labels:
       - "security"
       - "docker"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "security"
+      - "github-actions"
