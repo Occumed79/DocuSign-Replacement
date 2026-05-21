@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
+import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { FileText, Plus, Edit2, Trash2, Copy, X, Save, Tag, ClipboardList, GitBranch } from "lucide-react";
+import { FileText, Plus, Edit2, Trash2, Copy, X, Save, Tag, ClipboardList, GitBranch, Search, LayoutGrid, List, Send } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import FormBuilder, { type FormField } from "@/components/signatures/FormBuilder";
+import { AnimatePresence } from "framer-motion";
 
 interface Template {
   id: number;
@@ -387,6 +389,9 @@ export default function SignatureTemplatesPage() {
   const [editing, setEditing] = useState<Template | undefined>(undefined);
   const [creating, setCreating] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState("");
+  const [search, setSearch] = useState("");
+  const [viewMode, setViewMode] = useState<"grid" | "table">("table");
+  const [, navigate] = useLocation();
 
   const fetchTemplates = useCallback(async () => {
     setLoading(true);
@@ -420,161 +425,288 @@ export default function SignatureTemplatesPage() {
     fetchTemplates();
   };
 
+  const useTemplate = (id: number) => {
+    navigate(`/esignatures?templateId=${id}`);
+  };
+
   const categories = Array.from(new Set(templates.map(t => t.category)));
-  const filtered = categoryFilter ? templates.filter(t => t.category === categoryFilter) : templates;
+
+  const filtered = templates.filter(t => {
+    const matchesCat = !categoryFilter || t.category === categoryFilter;
+    const matchesSearch = !search ||
+      t.name.toLowerCase().includes(search.toLowerCase()) ||
+      (t.description ?? "").toLowerCase().includes(search.toLowerCase()) ||
+      t.category.toLowerCase().includes(search.toLowerCase());
+    return matchesCat && matchesSearch;
+  });
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
+    <div className="p-8 max-w-6xl mx-auto">
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg"
+              style={{ background: "linear-gradient(135deg, rgba(141,190,181,0.7), rgba(82,123,120,0.85))" }}>
               <FileText size={18} className="text-white" />
             </div>
             <div>
               <h1 className="text-2xl font-semibold text-foreground tracking-tight">Document Templates</h1>
-              <p className="text-muted-foreground text-sm mt-0.5">Reusable templates with smart form fields and conditional logic</p>
+              <p className="text-muted-foreground text-sm mt-0.5">
+                {templates.length} template{templates.length !== 1 ? "s" : ""} · Reusable with smart form fields
+              </p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {templates.length === 0 && (
               <button
                 onClick={seedStarterTemplates}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border text-sm text-foreground hover:bg-muted/50 transition-colors"
+                className="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/20 text-sm text-white/70 hover:bg-white/5 transition-colors"
               >
-                <Copy size={14} /> Load Starter Templates
+                <Copy size={13} /> Load Starters
               </button>
             )}
             <button
               onClick={() => setCreating(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-sm font-medium hover:opacity-90 transition-opacity shadow-lg"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-white text-sm font-medium transition-all"
+              style={{
+                background: "linear-gradient(135deg, #8dbeb5, #527b78)",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.12)",
+              }}
             >
               <Plus size={14} /> New Template
             </button>
           </div>
         </div>
 
-        {/* Category filter */}
-        {categories.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-6">
-            <button
-              onClick={() => setCategoryFilter("")}
-              className={cn(
-                "px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
-                !categoryFilter ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
-              )}
-            >
-              All ({templates.length})
-            </button>
-            {categories.map(cat => (
+        {/* Search + filter toolbar */}
+        <div className="flex items-center gap-2 mb-4">
+          <div className="relative flex-1 max-w-sm">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search templates…"
+              className="w-full pl-9 pr-3 py-2 rounded-xl border text-sm bg-[#052a32]/65 text-[#f4f7f6] border-white/20 placeholder:text-white/30 focus:outline-none focus:border-white/40"
+            />
+          </div>
+
+          {/* Category pills */}
+          {categories.length > 0 && (
+            <div className="flex items-center gap-1.5 overflow-x-auto">
               <button
-                key={cat}
-                onClick={() => setCategoryFilter(cat)}
+                onClick={() => setCategoryFilter("")}
                 className={cn(
-                  "px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
-                  categoryFilter === cat ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
+                  "px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap",
+                  !categoryFilter ? "bg-white/15 text-white" : "text-white/40 hover:text-white/70"
                 )}
               >
-                {cat} ({templates.filter(t => t.category === cat).length})
+                All ({templates.length})
               </button>
-            ))}
-          </div>
-        )}
+              {categories.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setCategoryFilter(cat === categoryFilter ? "" : cat)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap",
+                    categoryFilter === cat ? "bg-white/15 text-white" : "text-white/40 hover:text-white/70"
+                  )}
+                >
+                  {cat} ({templates.filter(t => t.category === cat).length})
+                </button>
+              ))}
+            </div>
+          )}
 
-        {/* Template grid */}
+          {/* View toggle */}
+          <div className="ml-auto flex items-center gap-1 p-1 rounded-xl border border-white/15 shrink-0">
+            <button
+              onClick={() => setViewMode("table")}
+              className={cn("p-1.5 rounded-lg transition-all", viewMode === "table" ? "bg-white/15 text-white" : "text-white/40 hover:text-white/70")}
+              title="Table view"
+            >
+              <List size={13} />
+            </button>
+            <button
+              onClick={() => setViewMode("grid")}
+              className={cn("p-1.5 rounded-lg transition-all", viewMode === "grid" ? "bg-white/15 text-white" : "text-white/40 hover:text-white/70")}
+              title="Grid view"
+            >
+              <LayoutGrid size={13} />
+            </button>
+          </div>
+        </div>
+
+        {/* Content */}
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="glass-card rounded-2xl p-5 animate-pulse">
-                <div className="h-4 w-48 bg-muted rounded mb-2" />
-                <div className="h-3 w-32 bg-muted rounded" />
-              </div>
+          <div className="space-y-2">
+            {[1,2,3,4].map(i => (
+              <div key={i} className="liquid-glass rounded-2xl p-4 animate-pulse h-14" />
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="glass-card rounded-2xl p-16 text-center">
-            <FileText size={40} className="text-muted-foreground mx-auto mb-4 opacity-30" />
-            <p className="text-foreground font-medium mb-1">No templates yet</p>
-            <p className="text-muted-foreground text-sm mb-5">Create reusable document templates with smart conditional form fields.</p>
-            <div className="flex items-center justify-center gap-3">
-              <button
-                onClick={seedStarterTemplates}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-border text-sm text-foreground hover:bg-muted/50 transition-colors"
-              >
-                <Copy size={14} /> Load Starters
-              </button>
-              <button
-                onClick={() => setCreating(true)}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-sm font-medium hover:opacity-90 transition-opacity"
-              >
-                <Plus size={14} /> New Template
-              </button>
-            </div>
+          <div className="liquid-glass rounded-2xl p-16 text-center">
+            <FileText size={32} className="text-white/20 mx-auto mb-3" />
+            <p className="text-white/60 font-medium mb-1">No templates found</p>
+            <p className="text-white/30 text-sm mb-5">
+              {search || categoryFilter ? "Try clearing your filters." : "Create reusable document templates with smart form fields."}
+            </p>
+            {!search && !categoryFilter && (
+              <div className="flex items-center justify-center gap-3">
+                <button
+                  onClick={seedStarterTemplates}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/20 text-sm text-white/70 hover:bg-white/5 transition-colors"
+                >
+                  <Copy size={13} /> Load Starters
+                </button>
+                <button
+                  onClick={() => setCreating(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-white text-sm font-medium"
+                  style={{ background: "linear-gradient(135deg, #8dbeb5, #527b78)" }}
+                >
+                  <Plus size={13} /> New Template
+                </button>
+              </div>
+            )}
+          </div>
+        ) : viewMode === "table" ? (
+          /* ── TABLE VIEW ── */
+          <div className="liquid-glass rounded-2xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr style={{ background: "rgba(5, 42, 50, 0.55)" }}>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-white/50 uppercase tracking-wider">Name</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-white/50 uppercase tracking-wider">Category</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-white/50 uppercase tracking-wider">Fields</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-white/50 uppercase tracking-wider">Updated</th>
+                  <th className="text-right px-4 py-3 text-xs font-medium text-white/50 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <AnimatePresence>
+                  {filtered.map((template, i) => {
+                    const fieldCount = (template.formSchema ?? []).length;
+                    const conditionalCount = (template.formSchema ?? []).filter((f: any) => f.showWhen?.fieldId).length;
+                    return (
+                      <motion.tr
+                        key={template.id}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: i * 0.02 }}
+                        className="border-t border-white/[0.06] hover:bg-white/[0.02] transition-colors"
+                      >
+                        <td className="px-4 py-3">
+                          <p className="font-medium text-white/90 text-sm">{template.name}</p>
+                          {template.description && (
+                            <p className="text-white/40 text-xs mt-0.5 truncate max-w-xs">{template.description}</p>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
+                            style={{ background: "rgba(141,190,181,0.12)", color: "#8dbeb5" }}>
+                            <Tag size={9} /> {template.category}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-white/50 text-xs">
+                          {fieldCount > 0 ? (
+                            <span>{fieldCount} field{fieldCount !== 1 ? "s" : ""}{conditionalCount > 0 ? `, ${conditionalCount} conditional` : ""}</span>
+                          ) : (
+                            <span className="text-white/25">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-white/40 text-xs">
+                          {new Date(template.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex justify-end items-center gap-1">
+                            <button
+                              onClick={() => useTemplate(template.id)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all"
+                              style={{ background: "linear-gradient(135deg, #8dbeb5, #527b78)" }}
+                              title="Use this template"
+                            >
+                              <Send size={11} /> Use
+                            </button>
+                            <button
+                              onClick={() => setEditing(template)}
+                              className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white/80 transition-all"
+                              title="Edit"
+                            >
+                              <Edit2 size={13} />
+                            </button>
+                            <button
+                              onClick={() => deleteTemplate(template.id)}
+                              className="p-1.5 rounded-lg hover:bg-red-500/20 text-white/40 hover:text-red-400 transition-all"
+                              title="Delete"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </td>
+                      </motion.tr>
+                    );
+                  })}
+                </AnimatePresence>
+              </tbody>
+            </table>
           </div>
         ) : (
+          /* ── GRID VIEW ── */
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filtered.map((template, i) => {
               const fieldCount = (template.formSchema ?? []).length;
-              const conditionalCount = (template.formSchema ?? []).filter(f => f.showWhen?.fieldId).length;
+              const conditionalCount = (template.formSchema ?? []).filter((f: any) => f.showWhen?.fieldId).length;
               return (
                 <motion.div
                   key={template.id}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05 }}
-                  className="glass-card rounded-2xl p-5 hover:shadow-md transition-all group"
+                  className="liquid-glass rounded-2xl p-5 hover:shadow-md transition-all group glass-highlight"
                 >
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-foreground text-sm truncate">{template.name}</h3>
+                      <h3 className="font-semibold text-white/90 text-sm truncate">{template.name}</h3>
                       {template.description && (
-                        <p className="text-muted-foreground text-xs mt-0.5 line-clamp-2">{template.description}</p>
+                        <p className="text-white/40 text-xs mt-0.5 line-clamp-2">{template.description}</p>
                       )}
                     </div>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    <div className="flex items-center gap-1 shrink-0">
                       <button
-                        onClick={() => setEditing(template)}
-                        className="p-1.5 rounded-lg hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors"
-                        title="Edit"
+                        onClick={() => useTemplate(template.id)}
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-white"
+                        style={{ background: "linear-gradient(135deg, #8dbeb5, #527b78)" }}
                       >
+                        <Send size={10} /> Use
+                      </button>
+                      <button onClick={() => setEditing(template)} className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white/80 transition-all opacity-0 group-hover:opacity-100">
                         <Edit2 size={13} />
                       </button>
-                      <button
-                        onClick={() => deleteTemplate(template.id)}
-                        className="p-1.5 rounded-lg hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors"
-                        title="Delete"
-                      >
+                      <button onClick={() => deleteTemplate(template.id)} className="p-1.5 rounded-lg hover:bg-red-500/20 text-white/40 hover:text-red-400 transition-all opacity-0 group-hover:opacity-100">
                         <Trash2 size={13} />
                       </button>
                     </div>
                   </div>
-
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-indigo-50 text-indigo-600 text-xs font-medium">
-                      <Tag size={10} />
-                      {template.category}
+                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs" style={{ background: "rgba(141,190,181,0.12)", color: "#8dbeb5" }}>
+                      <Tag size={9} /> {template.category}
                     </span>
                     {fieldCount > 0 && (
-                      <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-50 text-emerald-600 text-xs font-medium">
-                        <ClipboardList size={10} />
-                        {fieldCount} field{fieldCount !== 1 ? "s" : ""}
+                      <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-xs">
+                        <ClipboardList size={9} /> {fieldCount} field{fieldCount !== 1 ? "s" : ""}
                       </span>
                     )}
                     {conditionalCount > 0 && (
-                      <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-violet-50 text-violet-600 text-xs font-medium">
-                        <GitBranch size={10} />
-                        {conditionalCount} conditional
+                      <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 text-xs">
+                        <GitBranch size={9} /> {conditionalCount} conditional
                       </span>
                     )}
-                    <span className="text-xs text-muted-foreground ml-auto">
-                      Updated {new Date(template.updatedAt).toLocaleDateString()}
+                    <span className="text-xs text-white/30 ml-auto">
+                      {new Date(template.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                     </span>
                   </div>
-
-                  {/* Content preview */}
-                  <div className="mt-3 p-3 rounded-lg bg-muted/20 border border-border/50 text-xs text-muted-foreground line-clamp-3" style={{ fontFamily: "Georgia, serif" }}>
-                    {htmlPreviewText(template.content).slice(0, 220) || "No preview text"}
+                  <div className="mt-3 p-3 rounded-lg bg-white/[0.03] border border-white/[0.06] text-xs text-white/30 line-clamp-2" style={{ fontFamily: "Georgia, serif" }}>
+                    {htmlPreviewText(template.content).slice(0, 180) || "No preview text"}
                   </div>
                 </motion.div>
               );
