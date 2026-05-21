@@ -232,7 +232,7 @@ router.post("/webauthn/authenticate/verify", async (req, res): Promise<void> => 
       expectedRPID: getRpId(),
       credential: {
         id: credential.credentialId,
-        publicKey: base64UrlToBuffer(credential.publicKey),
+        publicKey: base64UrlToBuffer(credential.publicKey) as Uint8Array<ArrayBuffer>,
         counter: credential.counter,
         transports: credential.transports ? credential.transports.split(",") as any : undefined,
       },
