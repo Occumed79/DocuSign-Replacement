@@ -10,4 +10,7 @@ export * from "./webhooks";
 export * from "./branding";
 export * from "./template-versions";
 export * from "./form-progress";
+export * from "./webauthn";
+export * from "./integrity-ledger";
+export * from "./security-operations";
 //# sourceMappingURL=index.d.ts.map
