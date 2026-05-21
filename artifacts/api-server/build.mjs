@@ -59,7 +59,6 @@ async function buildAll() {
       "@prisma/client",
       "@mikro-orm/*",
       "@grpc/*",
-      "@swc/*",
       "@aws-sdk/*",
       "@azure/*",
       "@opentelemetry/*",
@@ -124,3 +123,4 @@ buildAll().catch((err) => {
   console.error(err);
   process.exit(1);
 });
+
