@@ -4,6 +4,7 @@ import { logger } from "./lib/logger";
 import { initSentry } from "./lib/sentry";
 import { processWebhookRetries } from "./lib/webhooks";
 import { validateEnvironment } from "./lib/env";
+import { startScheduler } from "./lib/scheduler";
 
 const port = Number(process.env["PORT"] || "8080");
 
@@ -40,6 +41,17 @@ async function main() {
   setInterval(() => {
     processWebhookRetries().catch(err => logger.error({ err }, "Webhook retry processor error"));
   }, 5 * 60 * 1000);
+
+  // Start auto-reminder + expiry scheduler (runs every 48 hours)
+  startScheduler(() => {
+    const explicit = process.env.APP_BASE_URL?.trim();
+    if (explicit) return explicit.replace(/\/$/, "");
+    const domains = process.env.REPLIT_DOMAINS?.split(",")[0]?.trim();
+    if (domains) return `https://${domains}`;
+    const dev = process.env.REPLIT_DEV_DOMAIN?.trim();
+    if (dev) return `https://${dev}`;
+    return `http://localhost:${port}`;
+  });
 
   logger.info("PacketPath API server started");
 }
