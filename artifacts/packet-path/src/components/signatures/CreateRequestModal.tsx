@@ -29,11 +29,12 @@ interface Props {
   token: string | null;
   onClose: () => void;
   onCreated: () => void;
+  initialTemplateId?: number | null;
 }
 
 const ROLES = ["signer", "witness", "approver"];
 
-export default function CreateRequestModal({ token, onClose, onCreated }: Props) {
+export default function CreateRequestModal({ token, onClose, onCreated, initialTemplateId }: Props) {
   const { toast } = useToast();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -57,10 +58,23 @@ export default function CreateRequestModal({ token, onClose, onCreated }: Props)
       fetch("/api/signature-templates", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
       fetch("/api/cases", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
     ]).then(([tmpl, cas]) => {
-      setTemplates(Array.isArray(tmpl) ? tmpl : []);
+      const loadedTemplates = Array.isArray(tmpl) ? tmpl : [];
+      setTemplates(loadedTemplates);
       setCases(Array.isArray(cas) ? cas : []);
+
+      // Pre-select template if provided via query param (from Start menu "Use Template" or Templates "Use" CTA)
+      if (initialTemplateId) {
+        const t = loadedTemplates.find((t: Template) => t.id === initialTemplateId);
+        if (t) {
+          setSelectedTemplateId(t.id);
+          setDocumentContent(t.content);
+          if (!title) setTitle(t.name);
+          // Jump straight to step 2 (recipients) since template is already chosen
+          setStep(2);
+        }
+      }
     }).catch(() => {});
-  }, [token]);
+  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectTemplate = (id: number | "") => {
     setSelectedTemplateId(id);
