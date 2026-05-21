@@ -2,68 +2,47 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
-  Search, Download, BellRing, Ban, Eye, RefreshCw,
+  Search, Download, Send, Ban, Eye, RefreshCw,
   CheckCircle2, Clock, AlertCircle, FileText, Users,
-  ChevronRight, Plus, Filter
+  Plus, MoreHorizontal, ChevronRight, Copy, Filter
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Row = {
-  id: number;
-  title: string;
-  status: "draft" | "pending" | "partially_signed" | "completed" | "voided" | "expired";
-  recipientCount: number;
-  signedCount: number;
-  createdAt: string;
-  completedAt: string | null;
-  expiresAt: string | null;
+  id: number; title: string;
+  status: "draft"|"pending"|"partially_signed"|"completed"|"voided"|"expired";
+  recipientCount: number; signedCount: number;
+  createdAt: string; completedAt: string|null; expiresAt: string|null;
+  recipients?: { name: string; email: string; status: string; token?: string }[];
 };
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string }> = {
-  draft:            { label: "Draft",          color: "text-slate-400",   bg: "bg-slate-400/10",  dot: "bg-slate-400" },
-  pending:          { label: "Pending",         color: "text-amber-400",   bg: "bg-amber-400/10",  dot: "bg-amber-400" },
-  partially_signed: { label: "In Progress",     color: "text-[#8dbeb5]",   bg: "bg-[#8dbeb5]/10",  dot: "bg-[#8dbeb5]" },
-  completed:        { label: "Completed",       color: "text-emerald-400", bg: "bg-emerald-400/10",dot: "bg-emerald-400" },
-  voided:           { label: "Voided",          color: "text-red-400",     bg: "bg-red-400/10",    dot: "bg-red-400" },
-  expired:          { label: "Expired",         color: "text-slate-500",   bg: "bg-slate-500/10",  dot: "bg-slate-500" },
+const S: Record<string, { label:string; dot:string; text:string; badge:string }> = {
+  draft:            { label:"Draft",       dot:"bg-slate-500",   text:"text-slate-400",   badge:"badge-draft" },
+  pending:          { label:"Pending",     dot:"bg-amber-400",   text:"text-amber-300",   badge:"badge-pending" },
+  partially_signed: { label:"In Progress", dot:"bg-sky-400",     text:"text-sky-300",     badge:"badge-progress" },
+  completed:        { label:"Completed",   dot:"bg-emerald-400", text:"text-emerald-300", badge:"badge-complete" },
+  voided:           { label:"Voided",      dot:"bg-red-400",     text:"text-red-300",     badge:"badge-voided" },
+  expired:          { label:"Expired",     dot:"bg-slate-500",   text:"text-slate-400",   badge:"badge-expired" },
 };
 
-const NAV_TABS = [
-  { key: "",                label: "All",             icon: FileText },
-  { key: "pending",         label: "Inbox",           icon: Clock },
-  { key: "partially_signed",label: "In Progress",     icon: Users },
-  { key: "completed",       label: "Completed",       icon: CheckCircle2 },
-  { key: "voided,expired",  label: "Closed",          icon: AlertCircle },
+const TABS = [
+  { key:"",                 label:"All",         icon:FileText },
+  { key:"pending",          label:"Inbox",        icon:Clock },
+  { key:"partially_signed", label:"In Progress",  icon:Users },
+  { key:"completed",        label:"Completed",    icon:CheckCircle2 },
+  { key:"voided,expired",   label:"Closed",       icon:AlertCircle },
 ];
 
-function StatusBadge({ status }: { status: string }) {
-  const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.draft;
-  return (
-    <span className={cn("inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium", cfg.color, cfg.bg)}>
-      <span className={cn("w-1.5 h-1.5 rounded-full", cfg.dot)} />
-      {cfg.label}
-    </span>
-  );
-}
-
-function KpiCard({ label, value, icon: Icon, color }: { label: string; value: number; icon: React.ElementType; color: string }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="liquid-glass rounded-2xl p-4 flex items-center gap-3 glass-highlight"
-    >
-      <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0", color)}>
-        <Icon size={16} className="text-white" />
-      </div>
-      <div>
-        <p className="text-2xl font-semibold text-foreground leading-none">{value}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
-      </div>
-    </motion.div>
-  );
+function timeSince(d: string) {
+  const diff = Date.now() - new Date(d).getTime();
+  const h = Math.floor(diff / 3600000);
+  if (h < 1) return `${Math.floor(diff/60000)}m ago`;
+  if (h < 24) return `${h}h ago`;
+  const days = Math.floor(h/24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(d).toLocaleDateString("en-US",{month:"short",day:"numeric"});
 }
 
 export default function AgreementsPage() {
@@ -73,375 +52,282 @@ export default function AgreementsPage() {
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("");
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState<number | null>(null);
+  const [actionLoading, setActionLoading] = useState<number|null>(null);
+  const [menuOpen, setMenuOpen] = useState<number|null>(null);
 
   const fetchRows = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (search) params.set("search", search);
-      // Support multi-status filter for "Closed" tab
-      if (activeTab && activeTab.includes(",")) {
-        // Fetch both statuses separately and merge
-        const statuses = activeTab.split(",");
-        const allRows: Row[] = [];
-        await Promise.all(
-          statuses.map(async (s) => {
-            const p = new URLSearchParams();
-            if (search) p.set("search", search);
-            p.set("status", s);
-            const res = await fetch(`/api/signature-requests?${p.toString()}`, {
-              headers: { Authorization: `Bearer ${token}` },
-            });
-            if (res.ok) {
-              const data = await res.json();
-              allRows.push(...(data.requests ?? []));
-            }
-          })
-        );
-        setRows(allRows.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-      } else {
-        if (activeTab) params.set("status", activeTab);
-        const res = await fetch(`/api/signature-requests?${params.toString()}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setRows(data.requests ?? []);
-        }
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [search, activeTab, token]);
+      const r = await fetch("/api/signatures?limit=100", { headers: { Authorization: `Bearer ${token}` } });
+      const data = await r.json();
+      setRows(Array.isArray(data) ? data : data.requests ?? []);
+    } catch { toast({ title:"Failed to load agreements", variant:"destructive" }); }
+    finally { setLoading(false); }
+  }, [token, toast]);
 
   useEffect(() => { fetchRows(); }, [fetchRows]);
 
-  // Debounce search
-  useEffect(() => {
-    const t = setTimeout(() => fetchRows(), 300);
-    return () => clearTimeout(t);
-  }, [search]);
+  const filtered = useMemo(() => {
+    let r = rows;
+    if (search) r = r.filter(x => x.title.toLowerCase().includes(search.toLowerCase()));
+    if (activeTab) {
+      const keys = activeTab.split(",");
+      r = r.filter(x => keys.includes(x.status));
+    }
+    return r;
+  }, [rows, search, activeTab]);
 
-  const kpis = useMemo(() => {
-    const all = rows;
-    return {
-      actionRequired: all.filter(r => r.status === "pending" || r.status === "partially_signed").length,
-      waitingForOthers: all.filter(r => r.status === "partially_signed").length,
-      expiringSoon: all.filter(r => {
-        if (!r.expiresAt) return false;
-        const diff = new Date(r.expiresAt).getTime() - Date.now();
-        return diff > 0 && diff < 3 * 24 * 60 * 60 * 1000; // within 3 days
-      }).length,
-      completed: all.filter(r => r.status === "completed").length,
-    };
-  }, [rows]);
+  const counts = useMemo(() => ({
+    all: rows.length,
+    pending: rows.filter(r => r.status==="pending").length,
+    partial: rows.filter(r => r.status==="partially_signed").length,
+    completed: rows.filter(r => r.status==="completed").length,
+    closed: rows.filter(r => r.status==="voided"||r.status==="expired").length,
+  }), [rows]);
 
-  const remind = async (id: number) => {
+  const handleResend = async (id: number) => {
     setActionLoading(id);
     try {
-      const res = await fetch(`/api/signature-requests/${id}/remind`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        toast({ title: "Reminder sent" });
-      } else {
-        toast({ title: "Failed to send reminder", variant: "destructive" });
-      }
-    } finally {
-      setActionLoading(null);
-    }
+      await fetch(`/api/signatures/${id}/remind`, { method:"POST", headers:{ Authorization:`Bearer ${token}` } });
+      toast({ title:"Reminder sent" });
+    } catch { toast({ title:"Failed to send reminder", variant:"destructive" }); }
+    finally { setActionLoading(null); setMenuOpen(null); }
   };
 
-  const voidReq = async (id: number) => {
-    const reason = prompt("Reason for voiding this request?");
-    if (!reason) return;
+  const handleVoid = async (id: number) => {
+    if (!confirm("Void this signature request?")) return;
     setActionLoading(id);
     try {
-      const res = await fetch(`/api/signature-requests/${id}/void`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ reason }),
-      });
-      if (res.ok) {
-        toast({ title: "Request voided" });
-        fetchRows();
-      } else {
-        toast({ title: "Failed to void request", variant: "destructive" });
-      }
-    } finally {
-      setActionLoading(null);
-    }
+      await fetch(`/api/signatures/${id}/void`, { method:"POST", headers:{ Authorization:`Bearer ${token}` } });
+      toast({ title:"Request voided" }); fetchRows();
+    } catch { toast({ title:"Failed to void", variant:"destructive" }); }
+    finally { setActionLoading(null); setMenuOpen(null); }
   };
 
-  const renewReq = async (id: number) => {
-    setActionLoading(id);
+  const handleDownload = async (id: number) => {
     try {
-      const res = await fetch(`/api/signature-requests/${id}/renew`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ expiryDays: 7 }),
-      });
-      if (res.ok) {
-        toast({ title: "Request renewed — expiry extended 7 days" });
-        fetchRows();
-      } else {
-        const err = await res.json().catch(() => ({}));
-        toast({ title: err.error ?? "Failed to renew request", variant: "destructive" });
-      }
-    } finally {
-      setActionLoading(null);
-    }
+      const r = await fetch(`/api/signatures/${id}/download`, { headers:{ Authorization:`Bearer ${token}` } });
+      if (!r.ok) throw new Error();
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href=url; a.download=`agreement-${id}.pdf`; a.click();
+    } catch { toast({ title:"Download failed", variant:"destructive" }); }
   };
 
-  const copyLink = async (id: number) => {
-    try {
-      const res = await fetch(`/api/signature-requests/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const firstPending = data.recipients?.find((r: any) => r.status === "pending" || r.status === "viewed");
-        if (firstPending?.signingLink) {
-          await navigator.clipboard.writeText(firstPending.signingLink);
-          toast({ title: "Signing link copied" });
-        } else {
-          toast({ title: "No pending signing link found", variant: "destructive" });
-        }
-      }
-    } catch {
-      toast({ title: "Failed to copy link", variant: "destructive" });
-    }
-  };
-
-  const formatDate = (iso: string | null) => {
-    if (!iso) return "—";
-    return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-  };
-
-  const isExpiringSoon = (expiresAt: string | null) => {
-    if (!expiresAt) return false;
-    const diff = new Date(expiresAt).getTime() - Date.now();
-    return diff > 0 && diff < 3 * 24 * 60 * 60 * 1000;
+  const countForTab = (key: string) => {
+    if (!key) return counts.all;
+    if (key==="pending") return counts.pending;
+    if (key==="partially_signed") return counts.partial;
+    if (key==="completed") return counts.completed;
+    if (key==="voided,expired") return counts.closed;
+    return 0;
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, x: -12 }}
-        animate={{ opacity: 1, x: 0 }}
-        className="flex items-center justify-between mb-6"
-      >
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground tracking-tight">Agreements</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {kpis.actionRequired > 0
-              ? `${kpis.actionRequired} waiting for action`
-              : "All caught up"}
-          </p>
+    <div className="flex flex-col min-h-full">
+      {/* ── Page header ── */}
+      <div className="px-8 pt-7 pb-0">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-white/90 tracking-tight">Agreements</h1>
+            <p className="text-sm text-white/35 mt-0.5">All caught up</p>
+          </div>
+          <Link href="/esignatures">
+            <button className="btn-primary-glow flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-semibold">
+              <Plus className="w-4 h-4" />New Agreement
+            </button>
+          </Link>
         </div>
-        <Link href="/esignatures">
-          <button
-            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-white text-sm font-medium transition-all"
-            style={{
-              background: "linear-gradient(135deg, #8dbeb5, #527b78)",
-              boxShadow: "0 8px 20px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.12)",
-              border: "1px solid rgba(255,255,255,0.12)",
-            }}
-          >
-            <Plus size={15} /> New Agreement
-          </button>
-        </Link>
-      </motion.div>
 
-      {/* KPI strip */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        <KpiCard label="Action Required"    value={kpis.actionRequired}  icon={AlertCircle}   color="bg-amber-500/80" />
-        <KpiCard label="Waiting for Others" value={kpis.waitingForOthers} icon={Clock}         color="bg-[#527b78]/80" />
-        <KpiCard label="Expiring Soon"      value={kpis.expiringSoon}    icon={AlertCircle}   color="bg-rose-500/80" />
-        <KpiCard label="Completed"          value={kpis.completed}       icon={CheckCircle2}  color="bg-emerald-600/80" />
-      </div>
-
-      {/* Left-nav style tabs */}
-      <div className="flex items-center gap-1 mb-4 p-1 liquid-glass rounded-2xl w-fit">
-        {NAV_TABS.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all",
-              activeTab === tab.key
-                ? "bg-white/10 text-white"
-                : "text-white/50 hover:text-white/80"
-            )}
-          >
-            <tab.icon size={12} />
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Search + filter bar */}
-      <div className="flex items-center gap-2 mb-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search agreements…"
-            className="w-full pl-9 pr-3 py-2 rounded-xl border text-sm bg-[#052a32]/65 text-[#f4f7f6] border-white/20 placeholder:text-white/30 focus:outline-none focus:border-white/40"
-          />
+        {/* KPI row */}
+        <div className="grid grid-cols-4 gap-4 mb-6">
+          {[
+            { label:"Action Required",    value: counts.pending,   color:"text-amber-300",   dot:"bg-amber-400",   glow:"rgba(251,191,36,0.15)" },
+            { label:"Waiting for Others", value: counts.partial,   color:"text-sky-300",     dot:"bg-sky-400",     glow:"rgba(56,160,255,0.15)" },
+            { label:"Expiring Soon",      value: 0,                color:"text-red-300",     dot:"bg-red-400",     glow:"rgba(248,113,113,0.15)" },
+            { label:"Completed",          value: counts.completed, color:"text-emerald-300", dot:"bg-emerald-400", glow:"rgba(52,211,153,0.15)" },
+          ].map(s => (
+            <motion.div key={s.label} initial={{opacity:0,y:8}} animate={{opacity:1,y:0}}
+              className="stat-card p-4 flex items-center gap-3 cursor-pointer"
+              onClick={() => setActiveTab(s.label==="Action Required"?"pending":s.label==="Waiting for Others"?"partially_signed":s.label==="Completed"?"completed":"")}>
+              <div className={cn("w-2.5 h-2.5 rounded-full shrink-0", s.dot)}
+                style={{ boxShadow: `0 0 8px ${s.glow}` }} />
+              <div>
+                <p className={cn("text-2xl font-bold leading-none", s.color)}>{s.value}</p>
+                <p className="text-[11px] text-white/40 mt-0.5">{s.label}</p>
+              </div>
+            </motion.div>
+          ))}
         </div>
-        <button
-          onClick={fetchRows}
-          className="p-2 rounded-xl border border-white/20 text-white/50 hover:text-white/80 hover:bg-white/5 transition-all"
-          title="Refresh"
-        >
-          <RefreshCw size={14} />
-        </button>
+
+        {/* Tab bar + search */}
+        <div className="flex items-center justify-between gap-4 border-b border-white/[0.06] pb-0">
+          <div className="flex items-center gap-1">
+            {TABS.map(tab => {
+              const Icon = tab.icon;
+              const cnt = countForTab(tab.key);
+              const active = activeTab === tab.key;
+              return (
+                <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold border-b-2 transition-all -mb-px",
+                    active
+                      ? "text-sky-300 border-sky-400"
+                      : "text-white/40 border-transparent hover:text-white/65 hover:border-white/20"
+                  )}>
+                  <Icon className="w-3.5 h-3.5" />{tab.label}
+                  {cnt > 0 && <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full", active ? "bg-sky-500/20 text-sky-300" : "bg-white/[0.06] text-white/35")}>{cnt}</span>}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center gap-2 pb-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/25" />
+              <input
+                value={search} onChange={e => setSearch(e.target.value)}
+                placeholder="Search agreements..."
+                className="glass-input pl-9 pr-4 py-2 text-xs w-56 rounded-xl"
+              />
+            </div>
+            <button onClick={fetchRows} className="p-2 rounded-xl glass-card text-white/40 hover:text-white/70 transition-colors">
+              <RefreshCw className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Table */}
-      <div className="liquid-glass rounded-2xl overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr style={{ background: "rgba(5, 42, 50, 0.55)" }}>
-              <th className="text-left px-4 py-3 text-xs font-medium text-white/50 uppercase tracking-wider">Agreement</th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-white/50 uppercase tracking-wider">Status</th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-white/50 uppercase tracking-wider">Signers</th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-white/50 uppercase tracking-wider">Date</th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-white/50 uppercase tracking-wider">Expires</th>
-              <th className="text-right px-4 py-3 text-xs font-medium text-white/50 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <AnimatePresence>
-              {loading ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground text-sm">
-                    <div className="flex items-center justify-center gap-2">
-                      <div className="w-4 h-4 rounded-full border-2 border-[#8dbeb5] border-t-transparent animate-spin" />
-                      Loading…
+      {/* ── Table ── */}
+      <div className="flex-1 px-8 pt-0">
+        <div className="glass-card rounded-b-2xl rounded-t-none overflow-hidden border-t-0">
+          {/* Header */}
+          <div className="grid grid-cols-[1fr_180px_140px_120px_80px] gap-4 px-5 py-2.5 border-b border-white/[0.06] bg-white/[0.02]">
+            {["Agreement","Status","Signers","Last Change",""].map(h => (
+              <p key={h} className="text-[10px] font-bold text-white/30 uppercase tracking-widest">{h}</p>
+            ))}
+          </div>
+
+          {loading ? (
+            <div className="space-y-px">
+              {[1,2,3,4,5,6].map(i => <div key={i} className="h-14 bg-white/[0.02] animate-pulse border-b border-white/[0.03]"/>)}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 gap-3">
+              <FileText className="w-10 h-10 text-white/10" />
+              <p className="text-sm text-white/30">No agreements found</p>
+              <Link href="/esignatures">
+                <button className="text-xs text-sky-400/60 hover:text-sky-400 transition-colors flex items-center gap-1">
+                  Create your first <ChevronRight className="w-3 h-3" />
+                </button>
+              </Link>
+            </div>
+          ) : (
+            filtered.map(row => {
+              const cfg = S[row.status] ?? S.draft;
+              const isComplete = row.status === "completed";
+              const isVoided = row.status === "voided" || row.status === "expired";
+              const pendingRecipient = row.recipients?.find(r => r.status !== "completed");
+              return (
+                <div key={row.id}
+                  className="grid grid-cols-[1fr_180px_140px_120px_80px] gap-4 items-center px-5 py-3.5 border-b border-white/[0.04] last:border-0 hover:bg-white/[0.025] transition-colors group">
+
+                  {/* Name */}
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-white/80 truncate group-hover:text-white/95 transition-colors">{row.title}</p>
+                    {row.recipients?.[0] && (
+                      <p className="text-[11px] text-white/30 mt-0.5 truncate">
+                        To {row.recipients[0].name || row.recipients[0].email}
+                        {row.recipients.length > 1 ? `, +${row.recipients.length - 1} more` : ""}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Status with inline signer name like DocuSign */}
+                  <div className="flex flex-col gap-0.5">
+                    <div className="flex items-center gap-1.5">
+                      <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", cfg.dot)} />
+                      <span className={cn("text-xs font-medium", cfg.text)}>{cfg.label}</span>
                     </div>
-                  </td>
-                </tr>
-              ) : rows.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center">
-                    <FileText size={28} className="mx-auto text-white/20 mb-2" />
-                    <p className="text-white/40 text-sm">No agreements found.</p>
-                    <Link href="/esignatures">
-                      <button className="mt-3 text-[#8dbeb5] text-xs hover:underline">
-                        Create your first agreement →
+                    {!isComplete && !isVoided && pendingRecipient && (
+                      <p className="text-[10px] text-white/25 pl-3">
+                        Waiting for {pendingRecipient.name?.split(" ")[0] ?? "signer"}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Signers progress */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 bg-white/[0.06] rounded-full h-1">
+                      <div className="h-1 rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 transition-all"
+                        style={{ width: `${row.recipientCount ? (row.signedCount/row.recipientCount)*100 : 0}%` }} />
+                    </div>
+                    <span className="text-[10px] text-white/35 shrink-0">{row.signedCount}/{row.recipientCount}</span>
+                  </div>
+
+                  {/* Date */}
+                  <p className="text-xs text-white/40">{timeSince(row.completedAt ?? row.createdAt)}</p>
+
+                  {/* Action — exactly DocuSign pattern */}
+                  <div className="flex items-center justify-end gap-1">
+                    {isComplete ? (
+                      <button onClick={() => handleDownload(row.id)}
+                        className="px-3 py-1.5 rounded-lg border border-white/[0.10] bg-white/[0.04] text-xs font-semibold text-white/55 hover:bg-white/[0.08] hover:text-white/80 transition-all flex items-center gap-1.5">
+                        <Download className="w-3 h-3" />Download
                       </button>
-                    </Link>
-                  </td>
-                </tr>
-              ) : (
-                rows.map((row, idx) => (
-                  <motion.tr
-                    key={row.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: idx * 0.02 }}
-                    className="border-t border-white/[0.06] hover:bg-white/[0.02] transition-colors"
-                  >
-                    <td className="px-4 py-3">
-                      <Link href={`/signature-requests/${row.id}`}>
-                        <span className="font-medium text-white/90 hover:text-white cursor-pointer flex items-center gap-1 group">
-                          {row.title}
-                          <ChevronRight size={12} className="opacity-0 group-hover:opacity-60 transition-opacity" />
-                        </span>
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge status={row.status} />
-                    </td>
-                    <td className="px-4 py-3 text-white/60 text-xs">
-                      {row.signedCount}/{row.recipientCount} signed
-                      {row.recipientCount > 0 && (
-                        <div className="mt-1 w-16 h-1 rounded-full bg-white/10 overflow-hidden">
-                          <div
-                            className="h-full rounded-full bg-[#8dbeb5]"
-                            style={{ width: `${(row.signedCount / row.recipientCount) * 100}%` }}
-                          />
+                    ) : isVoided ? (
+                      <span className="text-[10px] text-white/25 px-2">{cfg.label}</span>
+                    ) : (
+                      <button onClick={() => handleResend(row.id)} disabled={actionLoading===row.id}
+                        className="px-3 py-1.5 rounded-lg border border-sky-500/25 bg-sky-500/8 text-xs font-semibold text-sky-300 hover:bg-sky-500/15 transition-all flex items-center gap-1.5 disabled:opacity-50">
+                        <Send className="w-3 h-3" />Resend
+                      </button>
+                    )}
+                    <div className="relative">
+                      <button onClick={() => setMenuOpen(menuOpen===row.id?null:row.id)}
+                        className="p-1.5 rounded-lg text-white/20 hover:text-white/60 hover:bg-white/[0.06] transition-all">
+                        <MoreHorizontal className="w-3.5 h-3.5" />
+                      </button>
+                      {menuOpen === row.id && (
+                        <div className="absolute right-0 top-full mt-1 glass-modal rounded-xl overflow-hidden z-50 min-w-[140px]">
+                          <Link href={`/esignatures/${row.id}`}>
+                            <button className="w-full text-left px-3.5 py-2.5 text-xs text-white/65 hover:bg-white/[0.06] hover:text-white/90 transition-all flex items-center gap-2 border-b border-white/[0.05]">
+                              <Eye className="w-3 h-3" />View details
+                            </button>
+                          </Link>
+                          {row.recipients?.[0]?.token && (
+                            <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/sign/${row.recipients![0].token}`); toast({title:"Link copied"}); setMenuOpen(null); }}
+                              className="w-full text-left px-3.5 py-2.5 text-xs text-white/65 hover:bg-white/[0.06] hover:text-white/90 transition-all flex items-center gap-2 border-b border-white/[0.05]">
+                              <Copy className="w-3 h-3" />Copy signing link
+                            </button>
+                          )}
+                          {!isComplete && !isVoided && (
+                            <button onClick={() => handleResend(row.id)}
+                              className="w-full text-left px-3.5 py-2.5 text-xs text-white/65 hover:bg-white/[0.06] hover:text-white/90 transition-all flex items-center gap-2 border-b border-white/[0.05]">
+                              <Send className="w-3 h-3" />Send reminder
+                            </button>
+                          )}
+                          {isComplete && (
+                            <button onClick={() => handleDownload(row.id)}
+                              className="w-full text-left px-3.5 py-2.5 text-xs text-white/65 hover:bg-white/[0.06] hover:text-white/90 transition-all flex items-center gap-2 border-b border-white/[0.05]">
+                              <Download className="w-3 h-3" />Download PDF
+                            </button>
+                          )}
+                          {!isComplete && !isVoided && (
+                            <button onClick={() => handleVoid(row.id)}
+                              className="w-full text-left px-3.5 py-2.5 text-xs text-red-400/70 hover:bg-red-500/8 hover:text-red-300 transition-all flex items-center gap-2">
+                              <Ban className="w-3 h-3" />Void
+                            </button>
+                          )}
                         </div>
                       )}
-                    </td>
-                    <td className="px-4 py-3 text-white/50 text-xs">
-                      {formatDate(row.completedAt ?? row.createdAt)}
-                    </td>
-                    <td className="px-4 py-3 text-xs">
-                      {row.expiresAt ? (
-                        <span className={cn(
-                          isExpiringSoon(row.expiresAt) ? "text-rose-400 font-medium" : "text-white/50"
-                        )}>
-                          {formatDate(row.expiresAt)}
-                          {isExpiringSoon(row.expiresAt) && " ⚠️"}
-                        </span>
-                      ) : "—"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end items-center gap-1">
-                        <Link href={`/signature-requests/${row.id}`}>
-                          <button
-                            className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white/80 transition-all"
-                            title="View"
-                          >
-                            <Eye size={13} />
-                          </button>
-                        </Link>
-                        {(row.status === "pending" || row.status === "partially_signed") && (
-                          <>
-                            <button
-                              onClick={() => remind(row.id)}
-                              disabled={actionLoading === row.id}
-                              className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white/80 transition-all disabled:opacity-40"
-                              title="Send reminder"
-                            >
-                              <BellRing size={13} />
-                            </button>
-                            <button
-                              onClick={() => voidReq(row.id)}
-                              disabled={actionLoading === row.id}
-                              className="p-1.5 rounded-lg hover:bg-red-500/20 text-white/40 hover:text-red-400 transition-all disabled:opacity-40"
-                              title="Void"
-                            >
-                              <Ban size={13} />
-                            </button>
-                          </>
-                        )}
-                        {row.status === "expired" && (
-                          <button
-                            onClick={() => renewReq(row.id)}
-                            disabled={actionLoading === row.id}
-                            className="p-1.5 rounded-lg hover:bg-[#8dbeb5]/20 text-white/40 hover:text-[#8dbeb5] transition-all disabled:opacity-40"
-                            title="Renew (extend 7 days)"
-                          >
-                            <RefreshCw size={13} />
-                          </button>
-                        )}
-                        {row.status === "completed" && (
-                          <button
-                            onClick={() =>
-                              window.open(`/api/signature-requests/${row.id}/pdf`, "_blank")
-                            }
-                            className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white/80 transition-all"
-                            title="Download PDF"
-                          >
-                            <Download size={13} />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </motion.tr>
-                ))
-              )}
-            </AnimatePresence>
-          </tbody>
-        </table>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
     </div>
   );
