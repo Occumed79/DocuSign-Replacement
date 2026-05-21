@@ -95,10 +95,10 @@ app.use(
         frameAncestors: ["'none'"],
         objectSrc: ["'none'"],
         scriptSrc: strictCsp
-          ? ["'self'", (req, res) => `'nonce-${res.locals.cspNonce}'`, "'strict-dynamic'"]
+          ? ["'self'", (req, res: any) => `'nonce-${res.locals.cspNonce}'`, "'strict-dynamic'"]
           : ["'self'", "'unsafe-inline'"],
         styleSrc: strictCsp
-          ? ["'self'", (req, res) => `'nonce-${res.locals.cspNonce}'`]
+          ? ["'self'", (req, res: any) => `'nonce-${res.locals.cspNonce}'`]
           : ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", "data:", "blob:"],
         fontSrc: ["'self'", "data:"],
