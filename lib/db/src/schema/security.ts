@@ -16,6 +16,7 @@ export const securityEventTypeEnum = pgEnum("security_event_type", [
 ]);
 
 export const auditActionEnum = pgEnum("audit_action", [
+  // Generic CRUD / auth
   "view",
   "create",
   "update",
@@ -24,6 +25,35 @@ export const auditActionEnum = pgEnum("audit_action", [
   "login",
   "logout",
   "permission_denied",
+  // Signature lifecycle
+  "created",
+  "viewed",
+  "signed",
+  "declined",
+  "voided",
+  "bulk_voided",
+  "completed",
+  "partially_signed",
+  "already_signed",
+  "expired",
+  // PDF / download
+  "pdf_downloaded",
+  // Invitations & reminders
+  "invitation_sent",
+  "invitation_failed",
+  "reminder_sent",
+  "reminder_failed",
+  // Certificates
+  "certificate_generated",
+  "certificate_json_exported",
+  "certificate_pdf_exported",
+  // Audit bundle
+  "audit_bundle_exported",
+  // Evidence / verification
+  "evidence_verified",
+  "evidence_verification_failed",
+  // Artifact integrity
+  "final_artifact_hashed",
 ]);
 
 export const auditLogsTable = pgTable("audit_logs", {
