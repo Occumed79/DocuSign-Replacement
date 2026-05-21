@@ -39,8 +39,8 @@ jobs:
     - name: Install dependencies
       run: pnpm install --no-frozen-lockfile --ignore-scripts
 
-    - name: Build lib references
-      run: pnpm run typecheck:libs
+    - name: Build lib references (force rebuild)
+      run: npx tsc --build --force
 
     - name: Type check api-server
       run: pnpm --filter=@workspace/api-server run typecheck
