@@ -19,6 +19,16 @@ export type Permission =
   | "phi:view"
   | "phi:export";
 
+export type AuditAction =
+  | "view"
+  | "create"
+  | "update"
+  | "delete"
+  | "export"
+  | "login"
+  | "logout"
+  | "permission_denied";
+
 export const ROLE_PERMISSIONS: Record<LegacyRole, Permission[]> = {
   admin: [
     "signature:read",
@@ -88,7 +98,7 @@ export async function requirePermission(req: Request, res: Response, permission:
       userId,
       userEmail: user?.email ?? null,
       userName: user?.name ?? null,
-      action: "permission_denied",
+      action: "permission_denied" as AuditAction,
       resource: "rbac",
       resourceId: permission,
       details: `Permission denied for ${permission}`,
@@ -104,7 +114,7 @@ export async function requirePermission(req: Request, res: Response, permission:
 
 export async function logPrivilegedAction(params: {
   user: AuthorizedUser;
-  action: string;
+  action: AuditAction;
   resource: string;
   resourceId: string;
   details: string;

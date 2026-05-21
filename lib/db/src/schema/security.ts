@@ -23,6 +23,7 @@ export const auditActionEnum = pgEnum("audit_action", [
   "export",
   "login",
   "logout",
+  "permission_denied",
 ]);
 
 export const auditLogsTable = pgTable("audit_logs", {
