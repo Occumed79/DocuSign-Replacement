@@ -97,12 +97,12 @@ app.use(
         objectSrc: ["'none'"],
         scriptSrc: strictCsp
           ? ["'self'", (req, res: any) => `'nonce-${res.locals.cspNonce}'`, "'strict-dynamic'"]
-          : ["'self'", "'unsafe-inline'"],
+          : ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         styleSrc: strictCsp
           ? ["'self'", (req, res: any) => `'nonce-${res.locals.cspNonce}'`]
           : ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", "data:", "blob:"],
-        fontSrc: ["'self'", "data:"],
+        fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
         connectSrc: ["'self'", ...allowedOrigins],
         frameSrc: ["'none'"],
         manifestSrc: ["'self'"],
