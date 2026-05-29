@@ -20,12 +20,13 @@ function getAllowedOrigins(): string[] {
     .map(origin => origin.trim())
     .filter(Boolean) ?? [];
 
+  // Always include APP_BASE_URL if set (the Render deployment URL)
+  const appBaseUrl = process.env.APP_BASE_URL?.trim().replace(/\/$/, "");
+  if (appBaseUrl) configured.push(appBaseUrl);
+
   if (configured.length > 0) return configured;
 
-  if (process.env.NODE_ENV === "production") {
-    return [];
-  }
-
+  // In development, allow localhost
   return [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -135,7 +136,14 @@ app.use(
 
 app.use(cors({
   origin(origin, callback) {
+    // No origin = same-origin request (Express serving its own frontend) — always allow
     if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    // In production with no configured origins, allow any HTTPS request to our own domain
+    if (allowedOrigins.length === 0 && process.env.NODE_ENV === "production") {
       callback(null, true);
       return;
     }
