@@ -18,11 +18,11 @@ services:
       - key: SESSION_SECRET
         generateValue: true
       - key: DB_ENCRYPTION_KEY
-        generateValue: true
+        sync: false
       - key: MFA_ENCRYPTION_KEY
-        generateValue: true
+        sync: false
       - key: BLIND_INDEX_KEY
-        generateValue: true
+        sync: false
       - key: ALLOWED_ORIGINS
         fromService:
           type: web

@@ -20,10 +20,7 @@ function isMissingOrPlaceholder(value: string | undefined): boolean {
 }
 
 function isValidHexKey(value: string | undefined): boolean {
-  if (!value || typeof value !== "string") return false;
-  const trimmed = value.trim();
-  // Accept either 64 hex chars OR any random string >= 32 chars (for Render auto-generated values)
-  return /^[a-fA-F0-9]{64}$/.test(trimmed) || trimmed.length >= 32;
+  return typeof value === "string" && /^[a-fA-F0-9]{64}$/.test(value.trim());
 }
 
 export function validateEnvironment(): void {

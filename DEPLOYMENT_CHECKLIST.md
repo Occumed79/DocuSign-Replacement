@@ -34,17 +34,32 @@ DB_ENCRYPTION_KEY=
 MFA_ENCRYPTION_KEY=
 BLIND_INDEX_KEY=
 
-Generate encryption keys using:
+**CRITICAL**: These keys must be exactly 64 hexadecimal characters (32 bytes) for AES-256-GCM encryption compliance.
 
+Generate all secrets at once using the provided script:
+
+```bash
+pnpm run generate-secrets
+```
+
+Or generate individually:
+
+```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+Copy each generated value to the corresponding environment variable in Render.
 
 ---
 
 ## IMPORTANT
 
-RUN_DB_PUSH_ON_STARTUP should remain FALSE after the initial controlled schema setup.
+**RUN_DB_PUSH_ON_STARTUP Warning:**
 
-Only temporarily set it to true when intentionally applying schema changes.
+- `RUN_DB_PUSH_ON_STARTUP=true` is set in render.yaml for initial deployment convenience
+- For production/compliance deployments, this should be set to `false` after initial schema setup
+- Use controlled migrations for schema changes in production environments
+- Automatic schema pushes on every startup are not recommended for HIPAA-compliant deployments
 
 ---
 

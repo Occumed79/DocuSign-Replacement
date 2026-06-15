@@ -182,7 +182,29 @@ DATABASE_URL='postgresql://<neon-connection-string>' pnpm db:push
 
 Do **not** run `pnpm db:seed` in production environments.
 
-#### 3) Deploy app on Render
+#### 3) Generate encryption keys
+
+Generate the required encryption keys for production:
+
+```bash
+pnpm run generate-secrets
+```
+
+This will output four 64-character hexadecimal keys:
+- `SESSION_SECRET`
+- `DB_ENCRYPTION_KEY`
+- `MFA_ENCRYPTION_KEY`
+- `BLIND_INDEX_KEY`
+
+**CRITICAL**: These keys must be exactly 64 hexadecimal characters (32 bytes) for AES-256-GCM encryption compliance. The encryption implementation will reject any keys that don't match this format.
+
+Alternatively, generate keys individually:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+#### 4) Deploy app on Render
 
 1. Push this repo to GitHub.
 2. In Render, create a new **Web Service** from the repo.
@@ -191,9 +213,13 @@ Do **not** run `pnpm db:seed` in production environments.
    - `DATABASE_URL` = your Neon connection string
    - `NODE_ENV` = `production`
    - `PORT` = `8080`
+   - `SESSION_SECRET` = (from step 3)
+   - `DB_ENCRYPTION_KEY` = (from step 3)
+   - `MFA_ENCRYPTION_KEY` = (from step 3)
+   - `BLIND_INDEX_KEY` = (from step 3)
 5. Click **Deploy**.
 
-#### 4) Verify deployment
+#### 5) Verify deployment
 
 After Render says deploy succeeded:
 
@@ -202,7 +228,7 @@ After Render says deploy succeeded:
 3. Open app URL and complete initial setup at `/setup` to create the first admin user.
 4. Log in with that admin account, then create one test case and complete one signature flow.
 
-#### 5) Optional email setup (SMTP)
+#### 6) Optional email setup (SMTP)
 
 Add these Render env vars only if you want outbound emails:
 - `SMTP_HOST`
