@@ -616,9 +616,10 @@ router.post("/sign/:token/complete", signingCompletionLimiter, async (req, res):
   const { payload, evidenceHash, signatureDataHash } = buildEvidencePayload({ requestId: request.id, recipientId: recipient.id, recipientEmail: recipient.email, documentHash: request.documentHash, signatureType, signatureData, fullName, ipAddress: ip, userAgent: ua, signedAt, formResponses: normalizedResponses });
   const sigHash = sha256(signatureData + fullName.trim() + ip + request.documentHash);
   
-  // Encrypt signature data and form responses
+  // Encrypt signature data, form responses, and evidence payload
   const signatureEncryption = encryptEnvelopeField(signatureData);
   const responsesEncryption = normalizedResponses.length > 0 ? encryptEnvelopeField(JSON.stringify(normalizedResponses)) : null;
+  const evidencePayloadEncryption = encryptEnvelopeField(JSON.stringify(payload));
   
   const txResult = await (db as any).transaction(async (tx: any) => {
     await tx.insert(completedSignaturesTable).values({ 
@@ -634,9 +635,9 @@ router.post("/sign/:token/complete", signingCompletionLimiter, async (req, res):
       documentHash: request.documentHash, 
       signatureHash: sigHash, 
       evidenceHash, 
-      evidencePayload: payload,
-      encryptedEvidencePayload: signatureEncryption.encryptedPayload,
-      wrappedEvidenceKey: signatureEncryption.wrappedDataKey,
+      evidencePayload: payload, // legacy plaintext for migration
+      encryptedEvidencePayload: evidencePayloadEncryption.encryptedPayload,
+      wrappedEvidenceKey: evidencePayloadEncryption.wrappedDataKey,
       electronicRecordConsent: true, 
       consentText: ELECTRONIC_RECORD_CONSENT_TEXT, 
       signedAt 

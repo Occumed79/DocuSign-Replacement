@@ -11,8 +11,8 @@ This document tracks gaps, remediation plans, and milestones for achieving FedRA
 
 ## Summary
 
-- **Total Items**: 25
-- **Open**: 5
+- **Total Items**: 26
+- **Open**: 6
 - **In Progress**: 0
 - **Closed**: 20
 - **Risk Level**: Medium
@@ -36,6 +36,7 @@ This document tracks gaps, remediation plans, and milestones for achieving FedRA
 | POAM-025 | SI-3 | Malware scanning fails open in production | NoOp scanner returns clean when not configured; must fail closed in PHI/CUI mode | Security | 2026-06-20 | Open | High |
 | POAM-026 | RA-5 | Security workflow uses wrong package manager | security-scan.yml uses npm audit instead of pnpm audit | Security | 2026-06-20 | Open | Medium |
 | POAM-027 | RA-5 | DAST scan targets non-running application | OWASP ZAP scans localhost:3000 without starting the app | Security | 2026-06-20 | Open | Medium |
+| POAM-028 | SC-12 | Legacy plaintext columns remain for migration | Drop documentContent, signatureData, responses, token columns after encrypted columns are backfilled | Security | 2026-07-15 | Open | Medium |
 
 ### Medium Priority
 
