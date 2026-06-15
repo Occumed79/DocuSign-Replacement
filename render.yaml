@@ -12,18 +12,24 @@ services:
       - key: PORT
         value: 8080
       - key: RUN_DB_PUSH_ON_STARTUP
-        value: false
+        value: true
       - key: DATABASE_URL
         sync: false
       - key: SESSION_SECRET
         generateValue: true
       - key: DB_ENCRYPTION_KEY
-        sync: false
+        generateValue: true
       - key: MFA_ENCRYPTION_KEY
-        sync: false
+        generateValue: true
       - key: BLIND_INDEX_KEY
-        sync: false
+        generateValue: true
       - key: ALLOWED_ORIGINS
-        sync: false
+        fromService:
+          type: web
+          name: packetpath-docusign-replacement
+          property: url
       - key: APP_BASE_URL
-        sync: false
+        fromService:
+          type: web
+          name: packetpath-docusign-replacement
+          property: url
