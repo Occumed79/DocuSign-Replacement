@@ -15,6 +15,7 @@ import {
 import { eq, desc, and, count, sql, ilike, or, lt } from "drizzle-orm";
 import { requireAuth } from "../lib/require-auth";
 import { sendSigningEmail, verifySmtpConnection, isEmailConfigured } from "../lib/email";
+import { encryptEnvelopeField, decryptEnvelopeField } from "../lib/envelope-encryption";
 import crypto from "crypto";
 
 const router: IRouter = Router();
@@ -87,7 +88,7 @@ async function findRecipientByToken(token: string) {
   const [recipient] = await db
     .select()
     .from(signatureRecipientsTable)
-    .where(or(eq(signatureRecipientsTable.tokenHash, tokenHash), eq(signatureRecipientsTable.token, token)))
+    .where(eq(signatureRecipientsTable.tokenHash, tokenHash))
     .limit(1);
   return recipient ?? null;
 }
@@ -287,7 +288,7 @@ router.get("/signature-requests", async (req, res): Promise<void> => {
     createdAt: signatureRequestsTable.createdAt,
   }).from(signatureRequestsTable).where(conditions.length > 0 ? and(...conditions) : undefined).orderBy(desc(signatureRequestsTable.createdAt));
   const requestsWithRecipients = await Promise.all(requests.map(async r => {
-    const recipients = await db.select({ id: signatureRecipientsTable.id, name: signatureRecipientsTable.name, email: signatureRecipientsTable.email, role: signatureRecipientsTable.role, status: signatureRecipientsTable.status, token: signatureRecipientsTable.token }).from(signatureRecipientsTable).where(eq(signatureRecipientsTable.requestId, r.id)).orderBy(signatureRecipientsTable.order);
+    const recipients = await db.select({ id: signatureRecipientsTable.id, name: signatureRecipientsTable.name, email: signatureRecipientsTable.email, role: signatureRecipientsTable.role, status: signatureRecipientsTable.status }).from(signatureRecipientsTable).where(eq(signatureRecipientsTable.requestId, r.id)).orderBy(signatureRecipientsTable.order);
     let patientName: string | null = null;
     if (r.caseId) {
       const [c] = await db.select({ patientName: casesTable.patientName }).from(casesTable).where(eq(casesTable.id, r.caseId));
@@ -364,7 +365,6 @@ router.get("/signature-requests/:id", async (req, res): Promise<void> => {
       role: r.role,
       order: r.order,
       status: r.status,
-      token: r.token,
       viewedAt: r.viewedAt?.toISOString() ?? null,
       signedAt: r.signedAt?.toISOString() ?? null,
       declinedAt: r.declinedAt?.toISOString() ?? null,
@@ -410,14 +410,24 @@ router.post("/signature-requests", async (req, res): Promise<void> => {
   const resolvedFormSchema: any[] = Array.isArray(formSchema) && formSchema.length > 0 ? formSchema : templateFormSchema;
   const docHash = sha256(resolvedContent);
   const expiresAt = new Date(Date.now() + (expiryDays ?? 7) * 24 * 60 * 60 * 1000);
+  
+  // Encrypt document content and form schema
+  const documentEncryption = encryptEnvelopeField(resolvedContent);
+  const formSchemaEncryption = resolvedFormSchema.length > 0 ? encryptEnvelopeField(JSON.stringify(resolvedFormSchema)) : null;
+  
   const [request] = await db.insert(signatureRequestsTable).values({
     title: title.trim(),
     message: message?.trim() || null,
     templateId: templateId || null,
     caseId: caseId || null,
-    documentContent: resolvedContent,
+    documentContent: resolvedContent, // legacy plaintext for migration
+    encryptedDocumentContent: documentEncryption.encryptedPayload,
+    wrappedDocumentKey: documentEncryption.wrappedDataKey,
+    encryptionKeyId: process.env.DB_ENCRYPTION_KEY_ID || "db-master-key-v1",
     documentHash: docHash,
-    formSchema: resolvedFormSchema,
+    formSchema: resolvedFormSchema, // legacy plaintext for migration
+    encryptedFormSchema: formSchemaEncryption?.encryptedPayload,
+    wrappedFormSchemaKey: formSchemaEncryption?.wrappedDataKey,
     status: "pending",
     expiresAt,
     createdById: userId,
@@ -511,7 +521,12 @@ router.post("/signature-requests/:id/remind", async (req, res): Promise<void> =>
   const baseUrl = getBaseUrl(req);
   const emailResults: { name: string; email: string; sent: boolean; error?: string }[] = [];
   for (const r of toRemind) {
-    const token = r.token ?? "";
+    // Regenerate token for reminder - never store or return raw tokens
+    const token = generateSigningToken();
+    await db.update(signatureRecipientsTable).set({ 
+      tokenHash: signingTokenHash(token),
+      tokenExpiresAt: r.tokenExpiresAt 
+    }).where(eq(signatureRecipientsTable.id, r.id));
     const result = await sendSigningEmail({ recipientName: r.name, recipientEmail: r.email, senderName: user?.name ?? "Occu-Med", requestTitle: request.title, message: request.message, signingToken: token, expiresAt: r.tokenExpiresAt, isReminder: true, baseUrl });
     emailResults.push({ name: r.name, email: r.email, ...result });
     await logSigAction({ userId, userEmail: user?.email, userName: user?.name, action: result.sent ? "reminder_sent" : "reminder_failed", resourceId: String(id), details: `${r.name} <${r.email}> ${result.sent ? "reminder sent" : `reminder failed (${result.error ?? "unknown error"})`}`, ip: getClientIp(req), ua: req.headers["user-agent"] });
@@ -600,10 +615,40 @@ router.post("/sign/:token/complete", signingCompletionLimiter, async (req, res):
   const normalizedResponses = Array.isArray(formResponses) ? formResponses : [];
   const { payload, evidenceHash, signatureDataHash } = buildEvidencePayload({ requestId: request.id, recipientId: recipient.id, recipientEmail: recipient.email, documentHash: request.documentHash, signatureType, signatureData, fullName, ipAddress: ip, userAgent: ua, signedAt, formResponses: normalizedResponses });
   const sigHash = sha256(signatureData + fullName.trim() + ip + request.documentHash);
+  
+  // Encrypt signature data and form responses
+  const signatureEncryption = encryptEnvelopeField(signatureData);
+  const responsesEncryption = normalizedResponses.length > 0 ? encryptEnvelopeField(JSON.stringify(normalizedResponses)) : null;
+  
   const txResult = await (db as any).transaction(async (tx: any) => {
-    await tx.insert(completedSignaturesTable).values({ recipientId: recipient.id, requestId: request.id, signatureType, signatureData, fullName: fullName.trim(), ipAddress: ip, userAgent: ua, documentHash: request.documentHash, signatureHash: sigHash, evidenceHash, evidencePayload: payload, electronicRecordConsent: true, consentText: ELECTRONIC_RECORD_CONSENT_TEXT, signedAt });
+    await tx.insert(completedSignaturesTable).values({ 
+      recipientId: recipient.id, 
+      requestId: request.id, 
+      signatureType, 
+      signatureData, // legacy plaintext for migration
+      encryptedSignatureData: signatureEncryption.encryptedPayload,
+      wrappedSignatureKey: signatureEncryption.wrappedDataKey,
+      fullName: fullName.trim(), 
+      ipAddress: ip, 
+      userAgent: ua, 
+      documentHash: request.documentHash, 
+      signatureHash: sigHash, 
+      evidenceHash, 
+      evidencePayload: payload,
+      encryptedEvidencePayload: signatureEncryption.encryptedPayload,
+      wrappedEvidenceKey: signatureEncryption.wrappedDataKey,
+      electronicRecordConsent: true, 
+      consentText: ELECTRONIC_RECORD_CONSENT_TEXT, 
+      signedAt 
+    });
     if (normalizedResponses.length > 0) {
-      await tx.insert(formResponsesTable).values({ requestId: request.id, recipientId: recipient.id, responses: normalizedResponses }).onConflictDoNothing();
+      await tx.insert(formResponsesTable).values({ 
+        requestId: request.id, 
+        recipientId: recipient.id, 
+        responses: normalizedResponses, // legacy plaintext for migration
+        encryptedResponses: responsesEncryption?.encryptedPayload,
+        wrappedResponsesKey: responsesEncryption?.wrappedDataKey
+      }).onConflictDoNothing();
     }
     await tx.update(signatureRecipientsTable).set({ status: "signed", signedAt, ipAddress: ip, userAgent: ua, tokenUsedAt: signedAt }).where(eq(signatureRecipientsTable.id, recipient.id));
     const allRecipients = await tx.select({ id: signatureRecipientsTable.id, status: signatureRecipientsTable.status }).from(signatureRecipientsTable).where(eq(signatureRecipientsTable.requestId, request.id));

@@ -19,12 +19,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Run npm audit
+      - name: Run pnpm audit
         run: |
           cd artifacts/api-server
-          npm audit --audit-level=high
+          pnpm audit --audit-level=high
           cd ../..
-          npm audit --audit-level=high
+          pnpm audit --audit-level=high
 
       - name: Run Snyk security scan
         uses: snyk/actions/node@master
@@ -138,9 +138,37 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build
+        run: pnpm build
+
+      - name: Start application
+        run: |
+          pnpm dev:api &
+          echo "Waiting for server to start..."
+          sleep 30
+          curl -f http://localhost:3000/api/health || exit 1
+
       - name: Run OWASP ZAP Baseline Scan
         uses: zaproxy/action-baseline@v0.10.0
         with:
           target: 'http://localhost:3000'
           rules_file_name: '.zap/rules.tsv'
           cmd_options: '-a'
+
+      - name: Stop application
+        if: always()
+        run: pkill -f "node.*api-server" || true

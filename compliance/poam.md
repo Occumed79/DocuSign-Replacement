@@ -11,11 +11,11 @@ This document tracks gaps, remediation plans, and milestones for achieving FedRA
 
 ## Summary
 
-- **Total Items**: 20
-- **Open**: 0
+- **Total Items**: 25
+- **Open**: 5
 - **In Progress**: 0
 - **Closed**: 20
-- **Risk Level**: Low
+- **Risk Level**: Medium
 
 ## POA&M Items
 
@@ -31,6 +31,11 @@ This document tracks gaps, remediation plans, and milestones for achieving FedRA
 | POAM-006 | SC-8 | Signing link revocation not implemented | Add link revocation functionality | Security | 2026-07-15 | Closed | Medium |
 | POAM-007 | SI-3 | Malware scanning not implemented | Add malware scanning adapter for file uploads | Security | 2026-08-01 | Closed | Medium |
 | POAM-008 | SI-7 | File type/size restrictions not documented | Document and implement file type/size limits | Security | 2026-07-01 | Closed | Medium |
+| POAM-023 | SC-12 | Encrypted columns not used in signing routes | Update signing routes to use encryptedDocumentContent, encryptedSignatureData, encryptedResponses | Security | 2026-06-20 | Open | High |
+| POAM-024 | SC-8 | Raw signing tokens still stored and exposed | Remove token column from API responses, use tokenHash only for storage/lookup | Security | 2026-06-20 | Open | High |
+| POAM-025 | SI-3 | Malware scanning fails open in production | NoOp scanner returns clean when not configured; must fail closed in PHI/CUI mode | Security | 2026-06-20 | Open | High |
+| POAM-026 | RA-5 | Security workflow uses wrong package manager | security-scan.yml uses npm audit instead of pnpm audit | Security | 2026-06-20 | Open | Medium |
+| POAM-027 | RA-5 | DAST scan targets non-running application | OWASP ZAP scans localhost:3000 without starting the app | Security | 2026-06-20 | Open | Medium |
 
 ### Medium Priority
 
@@ -86,8 +91,8 @@ This document tracks gaps, remediation plans, and milestones for achieving FedRA
 - [x] Link revocation
 - [x] File upload security
 - [x] Malware scanning adapter
-- [x] Secure cookie configuration
 - [x] HTTPS enforcement
+- [ ] Secure cookie configuration (N/A - bearer token mode)
 
 **Completed**: 2026-06-15
 
