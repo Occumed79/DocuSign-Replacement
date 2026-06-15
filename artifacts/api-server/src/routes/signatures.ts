@@ -468,6 +468,37 @@ router.post("/signature-requests/:id/void", async (req, res): Promise<void> => {
   res.json({ message: "Request voided" });
 });
 
+router.post("/signature-requests/:id/recipients/:recipientId/revoke", async (req, res): Promise<void> => {
+  const userId = await requireAuth(req, res);
+  if (!userId) return;
+  const id = Number(req.params.id);
+  const recipientId = Number(req.params.recipientId);
+  const { reason } = req.body;
+  const [user] = await db.select({ email: usersTable.email, name: usersTable.name }).from(usersTable).where(eq(usersTable.id, userId));
+  
+  // Verify the recipient belongs to this request
+  const [recipient] = await db.select().from(signatureRecipientsTable).where(
+    and(
+      eq(signatureRecipientsTable.id, recipientId),
+      eq(signatureRecipientsTable.requestId, id)
+    )
+  ).limit(1);
+  
+  if (!recipient) { res.status(404).json({ error: "Recipient not found" }); return; }
+  if (recipient.status === "signed") { res.status(409).json({ error: "Cannot revoke: recipient already signed" }); return; }
+  
+  // Revoke by setting tokenExpiresAt to past and clearing token
+  await db.update(signatureRecipientsTable).set({ 
+    tokenExpiresAt: new Date(0),
+    status: "declined",
+    declinedAt: new Date(),
+    declineReason: reason || "Signing link revoked by admin"
+  }).where(eq(signatureRecipientsTable.id, recipientId));
+  
+  await logSigAction({ userId, userEmail: user?.email, userName: user?.name, action: "link_revoked", resourceId: String(id), details: `Signing link revoked for ${recipient.name} (${recipient.email}): ${reason}`, ip: getClientIp(req), ua: req.headers["user-agent"] });
+  res.json({ message: "Signing link revoked" });
+});
+
 router.post("/signature-requests/:id/remind", async (req, res): Promise<void> => {
   const userId = await requireAuth(req, res);
   if (!userId) return;
