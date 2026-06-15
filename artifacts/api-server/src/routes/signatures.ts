@@ -552,6 +552,14 @@ router.post("/sign/:token/complete", signingCompletionLimiter, async (req, res):
   if (recipient.status === "signed") { res.status(409).json({ error: "Already signed" }); return; }
   if (recipient.status === "declined") { res.status(410).json({ error: "Recipient declined" }); return; }
   if (recipient.tokenExpiresAt < new Date()) { res.status(410).json({ error: "Token expired" }); return; }
+  
+  // Anti-replay check: reject if token was already used
+  if (recipient.tokenUsedAt) {
+    await logSigAction({ action: "permission_denied", resourceId: String(recipient.requestId), details: `Anti-replay: signing token already used at ${recipient.tokenUsedAt.toISOString()}`, ip, ua });
+    res.status(410).json({ error: "Signing link already used" });
+    return;
+  }
+  
   const request = await getRequestOrNull(recipient.requestId);
   if (!request || request.status === "voided") { res.status(410).json({ error: "Request voided or not found" }); return; }
   if (request.status === "completed") { res.status(409).json({ error: "Request already completed" }); return; }
@@ -566,7 +574,7 @@ router.post("/sign/:token/complete", signingCompletionLimiter, async (req, res):
     if (normalizedResponses.length > 0) {
       await tx.insert(formResponsesTable).values({ requestId: request.id, recipientId: recipient.id, responses: normalizedResponses }).onConflictDoNothing();
     }
-    await tx.update(signatureRecipientsTable).set({ status: "signed", signedAt, ipAddress: ip, userAgent: ua }).where(eq(signatureRecipientsTable.id, recipient.id));
+    await tx.update(signatureRecipientsTable).set({ status: "signed", signedAt, ipAddress: ip, userAgent: ua, tokenUsedAt: signedAt }).where(eq(signatureRecipientsTable.id, recipient.id));
     const allRecipients = await tx.select({ id: signatureRecipientsTable.id, status: signatureRecipientsTable.status }).from(signatureRecipientsTable).where(eq(signatureRecipientsTable.requestId, request.id));
     const allSigned = allRecipients.every((r: { status: string }) => r.status === "signed");
     const anySigned = allRecipients.some((r: { status: string }) => r.status === "signed");

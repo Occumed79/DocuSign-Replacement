@@ -70,6 +70,7 @@ export const signatureRecipientsTable = pgTable("signature_recipients", {
   token: text("token"), // legacy plaintext token column kept temporarily for backward-compatible migration
   tokenHash: text("token_hash").unique(), // SHA-256 of secure 48-byte random token for signing link
   tokenExpiresAt: timestamp("token_expires_at", { withTimezone: true }).notNull(),
+  tokenUsedAt: timestamp("token_used_at", { withTimezone: true }), // Anti-replay: tracks when token was first used
   status: sigRecipientStatusEnum("status").notNull().default("pending"),
   viewedAt: timestamp("viewed_at", { withTimezone: true }),
   signedAt: timestamp("signed_at", { withTimezone: true }),

@@ -2,7 +2,8 @@ import { db, activeSessionsTable, usersTable, securityEventsTable, loginAttempts
 import { eq, and, gt, lt, sql } from "drizzle-orm";
 import crypto from "crypto";
 
-const SESSION_DURATION_MS = 8 * 60 * 60 * 1000; // 8 hours
+const SESSION_DURATION_MS = 8 * 60 * 60 * 1000; // 8 hours max session
+const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes idle timeout
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
 
@@ -39,7 +40,7 @@ export async function createSession(
 export async function getSessionUserId(token: string): Promise<number | null> {
   const tokenHash = hashToken(token);
   const [session] = await db
-    .select({ userId: activeSessionsTable.userId })
+    .select({ userId: activeSessionsTable.userId, lastActivityAt: activeSessionsTable.lastActivityAt })
     .from(activeSessionsTable)
     .where(
       and(
@@ -51,6 +52,26 @@ export async function getSessionUserId(token: string): Promise<number | null> {
     .limit(1);
 
   if (!session) return null;
+
+  // Check idle timeout
+  const idleTime = Date.now() - session.lastActivityAt.getTime();
+  if (idleTime > IDLE_TIMEOUT_MS) {
+    // Revoke session due to idle timeout
+    await db
+      .update(activeSessionsTable)
+      .set({ revokedAt: new Date() })
+      .where(eq(activeSessionsTable.token, tokenHash));
+    
+    // Log session expiration
+    await logSecurityEvent({
+      eventType: "session_expired",
+      userId: session.userId,
+      details: "Session expired due to idle timeout",
+      severity: "info",
+    });
+    
+    return null;
+  }
 
   // Update last activity
   await db

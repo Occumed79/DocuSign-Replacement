@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { validateEnvironment } from "./env";
+import { validateEnvironment, getDataSensitivityMode, isProductionSensitivityMode, isDemoMode } from "./env";
 
 describe("validateEnvironment", () => {
   const originalEnv = process.env;
@@ -149,5 +149,85 @@ describe("validateEnvironment", () => {
       validateEnvironment();
       expect(process.env.PORT).toBe("8080");
     });
+
+    it("should throw when DATA_SENSITIVITY_MODE is invalid", () => {
+      process.env.DATABASE_URL = "postgresql://test";
+      process.env.SESSION_SECRET = "valid-secret";
+      process.env.DB_ENCRYPTION_KEY = "a".repeat(64);
+      process.env.MFA_ENCRYPTION_KEY = "b".repeat(64);
+      process.env.BLIND_INDEX_KEY = "c".repeat(64);
+      process.env.DATA_SENSITIVITY_MODE = "invalid-mode";
+      expect(() => validateEnvironment()).toThrow("DATA_SENSITIVITY_MODE must be one of");
+    });
+
+    it("should accept valid DATA_SENSITIVITY_MODE values", () => {
+      process.env.DATABASE_URL = "postgresql://test";
+      process.env.SESSION_SECRET = "valid-secret";
+      process.env.DB_ENCRYPTION_KEY = "a".repeat(64);
+      process.env.MFA_ENCRYPTION_KEY = "b".repeat(64);
+      process.env.BLIND_INDEX_KEY = "c".repeat(64);
+      
+      const validModes = ["demo", "commercial", "phi", "cui"];
+      for (const mode of validModes) {
+        process.env.DATA_SENSITIVITY_MODE = mode;
+        expect(() => validateEnvironment()).not.toThrow();
+      }
+    });
+
+    it("should default DATA_SENSITIVITY_MODE to demo when not set", () => {
+      delete process.env.DATA_SENSITIVITY_MODE;
+      validateEnvironment();
+      expect(process.env.DATA_SENSITIVITY_MODE).toBe("demo");
+    });
+  });
+});
+
+describe("DATA_SENSITIVITY_MODE helpers", () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    process.env = { ...originalEnv };
+  });
+
+  it("should return demo mode by default", () => {
+    delete process.env.DATA_SENSITIVITY_MODE;
+    expect(getDataSensitivityMode()).toBe("demo");
+  });
+
+  it("should return configured mode", () => {
+    process.env.DATA_SENSITIVITY_MODE = "phi";
+    expect(getDataSensitivityMode()).toBe("phi");
+  });
+
+  it("should return true for production sensitivity modes", () => {
+    process.env.DATA_SENSITIVITY_MODE = "phi";
+    expect(isProductionSensitivityMode()).toBe(true);
+    
+    process.env.DATA_SENSITIVITY_MODE = "cui";
+    expect(isProductionSensitivityMode()).toBe(true);
+  });
+
+  it("should return false for non-production sensitivity modes", () => {
+    process.env.DATA_SENSITIVITY_MODE = "demo";
+    expect(isProductionSensitivityMode()).toBe(false);
+    
+    process.env.DATA_SENSITIVITY_MODE = "commercial";
+    expect(isProductionSensitivityMode()).toBe(false);
+  });
+
+  it("should return true for demo mode", () => {
+    process.env.DATA_SENSITIVITY_MODE = "demo";
+    expect(isDemoMode()).toBe(true);
+  });
+
+  it("should return false for non-demo modes", () => {
+    process.env.DATA_SENSITIVITY_MODE = "commercial";
+    expect(isDemoMode()).toBe(false);
+    
+    process.env.DATA_SENSITIVITY_MODE = "phi";
+    expect(isDemoMode()).toBe(false);
+    
+    process.env.DATA_SENSITIVITY_MODE = "cui";
+    expect(isDemoMode()).toBe(false);
   });
 });

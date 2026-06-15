@@ -6,6 +6,8 @@ const REQUIRED_PRODUCTION_ENV = [
   "BLIND_INDEX_KEY",
 ] as const;
 
+const DATA_SENSITIVITY_MODES = ["demo", "commercial", "phi", "cui"] as const;
+
 const PLACEHOLDER_VALUES = new Set([
   "",
   "change-me",
@@ -28,6 +30,19 @@ export function validateEnvironment(): void {
 
   if (!process.env.PORT) {
     process.env.PORT = "8080";
+  }
+
+  // Validate DATA_SENSITIVITY_MODE
+  const dataSensitivityMode = process.env.DATA_SENSITIVITY_MODE?.toLowerCase();
+  if (dataSensitivityMode && !DATA_SENSITIVITY_MODES.includes(dataSensitivityMode as any)) {
+    throw new Error(
+      `DATA_SENSITIVITY_MODE must be one of: ${DATA_SENSITIVITY_MODES.join(", ")}. Got: ${dataSensitivityMode}`,
+    );
+  }
+
+  // Default to demo mode if not set
+  if (!dataSensitivityMode) {
+    process.env.DATA_SENSITIVITY_MODE = "demo";
   }
 
   if (!isProduction) {
@@ -57,4 +72,17 @@ export function validateEnvironment(): void {
       ].join("\n"),
     );
   }
+}
+
+export function getDataSensitivityMode(): "demo" | "commercial" | "phi" | "cui" {
+  return (process.env.DATA_SENSITIVITY_MODE || "demo") as "demo" | "commercial" | "phi" | "cui";
+}
+
+export function isProductionSensitivityMode(): boolean {
+  const mode = getDataSensitivityMode();
+  return mode === "phi" || mode === "cui";
+}
+
+export function isDemoMode(): boolean {
+  return getDataSensitivityMode() === "demo";
 }

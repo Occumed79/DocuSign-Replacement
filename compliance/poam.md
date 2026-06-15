@@ -12,9 +12,9 @@ This document tracks gaps, remediation plans, and milestones for achieving FedRA
 ## Summary
 
 - **Total Items**: 20
-- **Open**: 18
+- **Open**: 13
 - **In Progress**: 0
-- **Closed**: 2
+- **Closed**: 7
 - **Risk Level**: Medium
 
 ## POA&M Items
@@ -24,13 +24,13 @@ This document tracks gaps, remediation plans, and milestones for achieving FedRA
 | ID | Control | Gap | Remediation Plan | Owner | Target Date | Status | Risk |
 |----|---------|-----|-----------------|-------|-------------|--------|------|
 | POAM-001 | AC-2 | Access review procedure not documented | Create access review procedure and template | Security | 2026-07-15 | Open | High |
-| POAM-002 | AC-7 | Session timeout policy not documented | Document and implement session timeout (30 min idle, 8 hour max) | Security | 2026-07-01 | Open | High |
+| POAM-002 | AC-7 | Session timeout policy not documented | Document and implement session timeout (30 min idle, 8 hour max) | Security | 2026-07-01 | Closed | High |
 | POAM-003 | IA-3 | Device trust policy not documented | Create device trust policy and implement checks | Security | 2026-07-15 | Open | Medium |
-| POAM-004 | SC-7 | DATA_SENSITIVITY_MODE flag not implemented | Add DATA_SENSITIVITY_MODE env var and production safety checks | Security | 2026-07-01 | Open | High |
-| POAM-005 | SC-8 | Anti-replay checks not implemented | Add anti-replay checks for signing tokens | Security | 2026-07-15 | Open | Medium |
+| POAM-004 | SC-7 | DATA_SENSITIVITY_MODE flag not implemented | Add DATA_SENSITIVITY_MODE env var and production safety checks | Security | 2026-07-01 | Closed | High |
+| POAM-005 | SC-8 | Anti-replay checks not implemented | Add anti-replay checks for signing tokens | Security | 2026-07-15 | Closed | Medium |
 | POAM-006 | SC-8 | Signing link revocation not implemented | Add link revocation functionality | Security | 2026-07-15 | Open | Medium |
-| POAM-007 | SI-3 | Malware scanning not implemented | Add malware scanning adapter for file uploads | Security | 2026-08-01 | Open | Medium |
-| POAM-008 | SI-7 | File type/size restrictions not documented | Document and implement file type/size limits | Security | 2026-07-01 | Open | Medium |
+| POAM-007 | SI-3 | Malware scanning not implemented | Add malware scanning adapter for file uploads | Security | 2026-08-01 | Closed | Medium |
+| POAM-008 | SI-7 | File type/size restrictions not documented | Document and implement file type/size limits | Security | 2026-07-01 | Closed | Medium |
 
 ### Medium Priority
 
