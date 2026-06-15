@@ -160,6 +160,20 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token", "X-Step-Up-Token"],
 }));
 
+// Secure cookie configuration
+app.use((req, res, next) => {
+  const cookieOptions = {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "strict" as const : "lax" as const,
+    domain: process.env.COOKIE_DOMAIN,
+    path: "/",
+  };
+
+  res.locals.cookieOptions = cookieOptions;
+  next();
+});
+
 app.use(express.json({ limit: "5mb", type: ["application/json", "application/csp-report"] }));
 app.use(express.urlencoded({ extended: true, limit: "5mb", parameterLimit: 100 }));
 
