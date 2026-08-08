@@ -19,6 +19,7 @@ RUN pnpm install --no-frozen-lockfile
 FROM deps AS build-frontend
 COPY . .
 RUN pnpm --filter @workspace/packet-path run build
+RUN node scripts/verify-frontend-build.mjs artifacts/packet-path/dist/public
 
 # ── Build backend ─────────────────────────────────────────────────────────────
 FROM deps AS build-backend

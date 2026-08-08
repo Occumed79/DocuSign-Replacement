@@ -175,6 +175,11 @@ describe("validateEnvironment", () => {
     });
 
     it("should default DATA_SENSITIVITY_MODE to demo when not set", () => {
+      process.env.DATABASE_URL = "postgresql://test";
+      process.env.SESSION_SECRET = "valid-secret";
+      process.env.DB_ENCRYPTION_KEY = "a".repeat(64);
+      process.env.MFA_ENCRYPTION_KEY = "b".repeat(64);
+      process.env.BLIND_INDEX_KEY = "c".repeat(64);
       delete process.env.DATA_SENSITIVITY_MODE;
       validateEnvironment();
       expect(process.env.DATA_SENSITIVITY_MODE).toBe("demo");
