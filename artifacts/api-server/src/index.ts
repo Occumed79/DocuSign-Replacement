@@ -5,6 +5,7 @@ import { initSentry } from "./lib/sentry";
 import { processWebhookRetries } from "./lib/webhooks";
 import { validateEnvironment } from "./lib/env";
 import { startScheduler } from "./lib/scheduler";
+import { validateFrontendBuild } from "./lib/frontend-build";
 
 const port = Number(process.env["PORT"] || "8080");
 
@@ -18,15 +19,61 @@ async function main() {
   const { default: app } = await import("./app.js");
   const express = (await import("express")).default;
 
-  // In production, serve the built frontend static files
+  // In production, serve the built frontend static files.
+  // Validate the artifact before starting so a bad deploy cannot silently
+  // degrade into the dark HTML shell with no React application mounted.
   const clientDir = path.resolve(__dirname, "public");
   if (existsSync(clientDir)) {
-    app.use(express.static(clientDir));
-    // SPA fallback: serve index.html for all non-API routes
-    app.get(/^(?!\/api).*/, (_req, res) => {
-      res.sendFile(path.join(clientDir, "index.html"));
+    const frontendBuild = validateFrontendBuild(clientDir);
+
+    app.use(
+      express.static(clientDir, {
+        index: true,
+        setHeaders(res, filePath) {
+          // Never let index.html become stale across deploys; a stale index can
+          // reference hashed assets that no longer exist in the new release.
+          if (path.resolve(filePath) === path.resolve(frontendBuild.indexPath)) {
+            res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+            return;
+          }
+
+          // Vite's hashed production assets are safe to cache forever.
+          const assetsSegment = `${path.sep}assets${path.sep}`;
+          if (filePath.includes(assetsSegment)) {
+            res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+          }
+        },
+      }),
+    );
+
+    // SPA fallback: serve index.html only for extensionless browser routes.
+    // Never return index.html for missing .js/.css/.map/etc. requests. Doing so
+    // turns a missing asset into HTTP 200 text/html, which browsers reject as a
+    // module/stylesheet and leaves users staring at an apparently blank page.
+    app.get(/^(?!\/api).*/, (req, res, next) => {
+      if (path.extname(req.path)) {
+        res.status(404).type("text/plain").send("Static asset not found");
+        return;
+      }
+
+      if (!req.accepts("html")) {
+        next();
+        return;
+      }
+
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+      res.sendFile(frontendBuild.indexPath);
     });
-    logger.info({ clientDir }, "Serving frontend static files");
+
+    logger.info(
+      { clientDir, assetCount: frontendBuild.assetPaths.length },
+      "Validated and serving frontend static files",
+    );
+  } else if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      `Production frontend build is missing at ${clientDir}. ` +
+        "Build packet-path and copy dist/public into the API dist/public directory before starting.",
+    );
   }
 
   app.listen(port, (err?: Error) => {
