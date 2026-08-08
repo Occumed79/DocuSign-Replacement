@@ -1,4 +1,4 @@
-import { isDemoMode, isProductionSensitivityMode } from "./env";
+import { isProductionSensitivityMode } from "./env";
 
 // Allowed file types for document uploads
 const ALLOWED_DOCUMENT_TYPES = [
@@ -95,7 +95,8 @@ export function generateSafeFilename(originalFilename: string): string {
   const sanitized = sanitizeFilename(originalFilename);
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(2, 10);
-  const ext = sanitized.includes(".") ? sanitized.split(".").pop() : "";
+  const ext = sanitized.includes(".") ? sanitized.split(".").pop() ?? "" : "";
   const base = ext ? sanitized.slice(0, -ext.length - 1) : sanitized;
-  return `${base}_${timestamp}_${random}.${ext}`;
+  const suffix = ext ? `.${ext}` : "";
+  return `${base}_${timestamp}_${random}${suffix}`;
 }
