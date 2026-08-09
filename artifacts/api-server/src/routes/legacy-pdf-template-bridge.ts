@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
 import { db, signatureTemplatesTable } from "@workspace/db";
+import { requireAuth } from "../lib/require-auth";
 
 const router: IRouter = Router();
 
@@ -52,6 +53,36 @@ router.post("/signature-requests", async (req, _res, next): Promise<void> => {
   req.body.sourceDocumentFileName = fileName;
   req.body.sourceDocumentMimeType = "application/pdf";
   next();
+});
+
+/**
+ * Exact-source documents are optional template metadata. Removing one does not
+ * delete the template's HTML/form schema; it simply returns the template to the
+ * HTML-authored path until another exact PDF is attached.
+ */
+router.delete("/signature-templates/:id/source-document", async (req, res): Promise<void> => {
+  const userId = await requireAuth(req, res);
+  if (!userId) return;
+
+  const templateId = Number(req.params.id);
+  if (!Number.isFinite(templateId)) {
+    res.status(400).json({ error: "Invalid template id" });
+    return;
+  }
+
+  const [updated] = await db.update(signatureTemplatesTable).set({
+    sourceDocumentBase64: null,
+    sourceDocumentMimeType: null,
+    sourceDocumentFileName: null,
+    updatedAt: new Date(),
+  }).where(eq(signatureTemplatesTable.id, templateId)).returning({ id: signatureTemplatesTable.id });
+
+  if (!updated) {
+    res.status(404).json({ error: "Template not found" });
+    return;
+  }
+
+  res.json({ removed: true, id: updated.id });
 });
 
 export default router;
