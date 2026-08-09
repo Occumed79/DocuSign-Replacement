@@ -31,14 +31,25 @@ export const builtInMedicalFormDefinitions = [
 export async function ensureBuiltInMedicalForms(): Promise<void> {
   for (const definition of builtInMedicalFormDefinitions) {
     const result = await ensureBuiltInMedicalForm(definition);
+    const protectedFromRefresh = (result.protectedCaseCount ?? 0) > 0 || (result.protectedAnswerCount ?? 0) > 0;
+
     logger.info(
       {
         slug: result.slug,
         examTypeId: result.examTypeId,
         created: result.created,
+        refreshed: result.refreshed,
         questionCount: result.questionCount,
+        protectedCaseCount: result.protectedCaseCount ?? 0,
+        protectedAnswerCount: result.protectedAnswerCount ?? 0,
       },
-      result.created ? "Installed built-in medical form" : "Built-in medical form already installed",
+      result.created
+        ? "Installed built-in medical form"
+        : result.refreshed
+          ? "Refreshed built-in medical form from current source definition"
+          : protectedFromRefresh
+            ? "Built-in medical form differs from source but was protected because cases or answers already exist"
+            : "Built-in medical form already matches current source definition",
     );
   }
 }
