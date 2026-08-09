@@ -1,0 +1,8 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "src/pages/ReactiveCaseWizard.tsx",
+    "src/lib/medical-history-engine.ts"
+  ],
+  "exclude": ["node_modules", "build", "dist"]
+}

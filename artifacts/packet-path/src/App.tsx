@@ -9,7 +9,7 @@ import LoginPage from "@/pages/Login";
 import DashboardPage from "@/pages/Dashboard";
 import CasesPage from "@/pages/Cases";
 import NewCasePage from "@/pages/NewCase";
-import CaseWizardPage from "@/pages/CaseWizard";
+import CaseWizardPage from "@/pages/ReactiveCaseWizard";
 import CaseReviewPage from "@/pages/CaseReview";
 import AdminPage from "@/pages/Admin";
 import SecurityPage from "@/pages/Security";
