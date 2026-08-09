@@ -5,6 +5,11 @@ import { ds1843Definition } from "./ds1843";
 import { ds6570Definition } from "./ds6570";
 import { ds6561Definition } from "./ds6561";
 import { occuMedSedentaryDefinition } from "./occuMedSedentary";
+import { polarDefinition } from "./polar";
+import { postPeaceOfficerDefinition } from "./postPeaceOfficer";
+import { occuMedCore2014Definition } from "./occuMedCore2014";
+import { occuMedGoldDefinition } from "./occuMedGold";
+import { absNorthAmericaDefinition } from "./absNorthAmerica";
 import { ensureBuiltInMedicalForm } from "./install";
 
 export const builtInMedicalFormDefinitions = [
@@ -14,6 +19,11 @@ export const builtInMedicalFormDefinitions = [
   ds6570Definition,
   ds6561Definition,
   occuMedSedentaryDefinition,
+  polarDefinition,
+  postPeaceOfficerDefinition,
+  occuMedCore2014Definition,
+  occuMedGoldDefinition,
+  absNorthAmericaDefinition,
 ];
 
 export async function ensureBuiltInMedicalForms(): Promise<void> {
@@ -37,4 +47,9 @@ export { ds1843Definition } from "./ds1843";
 export { ds6570Definition } from "./ds6570";
 export { ds6561Definition } from "./ds6561";
 export { occuMedSedentaryDefinition } from "./occuMedSedentary";
+export { polarDefinition } from "./polar";
+export { postPeaceOfficerDefinition } from "./postPeaceOfficer";
+export { occuMedCore2014Definition } from "./occuMedCore2014";
+export { occuMedGoldDefinition } from "./occuMedGold";
+export { absNorthAmericaDefinition } from "./absNorthAmerica";
 export { validateBuiltInMedicalFormDefinition } from "./validation";
