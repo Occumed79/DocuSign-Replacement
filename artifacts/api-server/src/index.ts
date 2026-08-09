@@ -6,6 +6,7 @@ import { processWebhookRetries } from "./lib/webhooks";
 import { validateEnvironment } from "./lib/env";
 import { startScheduler } from "./lib/scheduler";
 import { validateFrontendBuild } from "./lib/frontend-build";
+import { ensureBuiltInMedicalForms } from "./lib/builtin-medical-forms";
 
 const port = Number(process.env["PORT"] || "8080");
 
@@ -14,6 +15,11 @@ async function main() {
 
   // Initialize Sentry BEFORE importing app (so it can instrument Express)
   await initSentry();
+
+  // Built-in questionnaires are versioned in source control and installed
+  // idempotently. This makes a newly deployed medical-history form available
+  // without destructive seed scripts or manual production DB edits.
+  await ensureBuiltInMedicalForms();
 
   // Dynamic import of app after Sentry is initialized
   const { default: app } = await import("./app.js");
