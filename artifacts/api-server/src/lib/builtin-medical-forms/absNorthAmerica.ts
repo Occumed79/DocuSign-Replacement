@@ -1,8 +1,8 @@
-import { branch, form, history, q, text } from "./definition-helpers";
-import { occuMedPrompts } from "./occuMedPromptLibrary";
+import { branch, civilianHistory, form, q, text } from "./definition-helpers";
+import { civilianOccuMedPrompts } from "./civilianOccuMedPromptLibrary";
 
 const hist = (key: string, label: string, section: string, required = true) =>
-  history(key, `${key} — ${label}`, section, occuMedPrompts(label), { required });
+  civilianHistory(key, `${key} — ${label}`, section, civilianOccuMedPrompts(label), { required });
 
 const conditions: Array<[string, string]> = [
   ["14", "Tuberculosis"], ["15", "Emphysema"], ["16", "Asthma"], ["17", "Shortness of Breath"], ["18", "High Blood Pressure"],
@@ -30,7 +30,7 @@ const conditions: Array<[string, string]> = [
 export const absNorthAmericaDefinition = form(
   "abs-north-america-medical-history",
   "ABS North America Medical History Questionnaire",
-  "Adaptive version of the American Bureau of Shipping North America questionnaire. Source wording/numbering is preserved and matching conditions use the recovered Occu-Med analyst clarification logic.",
+  "Adaptive version of the American Bureau of Shipping North America questionnaire. Source wording/numbering is preserved while positive responses use condition-specific, applicant-facing clarification.",
   "American Bureau of Shipping — North America Medical History Questionnaire (uploaded source)",
   [
     text("employee.name", "Employee's name (Last, First, Middle)", "Employee Information", false),
@@ -47,36 +47,24 @@ export const absNorthAmericaDefinition = form(
     text("employee.supervisor", "Supervisor's name and work phone", "Employee Information", false),
 
     branch("1", "1 — Please list all prescription medications you regularly use", "Medications / Allergies", [
-      "For each medication, what medical condition is being treated?",
-      "What side effects have you experienced?",
-      "When did you start taking it?",
-      "If ended, when did you stop?",
-      "How frequently do you take it?",
+      "What is each medication being used for, and how is it currently taken?",
+      "What effects or changes, if any, have you noticed while taking it?",
     ], { answerType: "text", triggerValue: "*" }),
     branch("2", "2 — Please list any other prescription medications, not taken regularly, which you have taken in the last 2 months", "Medications / Allergies", [
-      "For each medication, what condition or symptom was it used for?",
-      "When and how frequently did you take it?",
-      "Are you still taking it?",
-      "Did you have any side effects?",
+      "What was each medication used for, and how was it taken?",
+      "What is the current status of the reason it was used?",
     ], { answerType: "text", triggerValue: "*", required: false }),
     branch("3", "3 — Please list any known allergies (e.g., Latex, Bee or Wasp Stings)", "Medications / Allergies", [
-      "What kind of reaction do you have?",
-      "When was your most recent reaction?",
-      "Have you ever required emergency treatment?",
-      "Do you carry or use medication for the allergy?",
+      "What reaction have you had to each allergy?",
+      "How was the most recent reaction managed?",
     ], { answerType: "text", triggerValue: "*", required: false }),
     branch("4", "4 — Please list your last three hospitalizations, beginning with the most recent (excluding routine childbirth)", "Hospitalizations / Operations", [
-      "For each hospitalization, what was the reason?",
-      "Where and when were you hospitalized?",
-      "What treatment did you receive?",
-      "Do you have any current symptoms, restrictions, or follow-up related to it?",
+      "What was the reason for each hospitalization, and when did it occur?",
+      "What is the current status of the condition that led to the hospitalization?",
     ], { answerType: "text", triggerValue: "*", required: false }),
     branch("5", "5 — Please list any operations you may have had or were advised to have which were not listed above", "Hospitalizations / Operations", [
-      "What operation was performed or advised?",
-      "What condition was it for and when was it recommended/performed?",
-      "If performed, have you fully recovered?",
-      "If not performed, is it still recommended or pending?",
-      "Do you have any current symptoms, restrictions, or limitations?",
+      "What operation was performed or advised, and what medical condition was it related to?",
+      "What is the current status of the condition or recommendation?",
     ], { answerType: "text", triggerValue: "*", required: false }),
     q("6.days", "6 — How many days on average do you engage in moderate to strenuous exercise?", "Exercise", { answerType: "number", required: false }),
     q("6.minutes", "6 — On average, how many minutes do you engage in exercise at this level?", "Exercise", { answerType: "number", required: false }),
