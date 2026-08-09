@@ -46,6 +46,12 @@ jobs:
 
     - name: Type check api-server
       run: pnpm --filter=@workspace/api-server run typecheck
+
+    - name: Type check packet-path frontend
+      run: pnpm --filter=@workspace/packet-path run typecheck
+
+    - name: Build packet-path frontend
+      run: pnpm --filter=@workspace/packet-path run build
       
     - name: Run tests
       run: pnpm --filter=@workspace/api-server run test
