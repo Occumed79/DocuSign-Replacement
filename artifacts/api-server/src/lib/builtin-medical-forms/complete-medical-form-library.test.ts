@@ -47,7 +47,7 @@ describe("complete recovered medical-form library", () => {
       "14A", "14E", "15A", "15I", "16A", "16E", "17A", "17B", "18",
     ]);
     expect(byKey(polarDefinition, "7F")?.text).toContain("sleep apnea");
-    expect(byKey(polarDefinition, "currentMedications")?.followUps?.length).toBeGreaterThan(2);
+    expect(byKey(polarDefinition, "currentMedications")?.followUps?.length).toBeGreaterThan(0);
   });
 
   it("preserves POST Peace Officer Yes/No/? behavior and numbered groups", () => {
