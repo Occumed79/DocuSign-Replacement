@@ -58,5 +58,22 @@ jobs:
     - name: Install Chromium and WebKit
       run: pnpm exec playwright install --with-deps chromium webkit
 
-    - name: Run desktop browser smoke tests
-      run: pnpm run test:browser
+    # Keep critical-route smoke checks separate so a red CI step identifies the
+    # exact browser + route instead of hiding six assertions in one opaque job.
+    - name: Chromium — login bootstrap
+      run: pnpm exec playwright test e2e/critical-routes.spec.ts --project=chromium-desktop --grep "login page mounts" --reporter=line
+
+    - name: Chromium — exact-source signing
+      run: pnpm exec playwright test e2e/critical-routes.spec.ts --project=chromium-desktop --grep "public signer recognizes" --reporter=line
+
+    - name: Chromium — adaptive medical questionnaire
+      run: pnpm exec playwright test e2e/critical-routes.spec.ts --project=chromium-desktop --grep "public medical questionnaire preserves" --reporter=line
+
+    - name: WebKit — login bootstrap
+      run: pnpm exec playwright test e2e/critical-routes.spec.ts --project=webkit-desktop --grep "login page mounts" --reporter=line
+
+    - name: WebKit — exact-source signing
+      run: pnpm exec playwright test e2e/critical-routes.spec.ts --project=webkit-desktop --grep "public signer recognizes" --reporter=line
+
+    - name: WebKit — adaptive medical questionnaire
+      run: pnpm exec playwright test e2e/critical-routes.spec.ts --project=webkit-desktop --grep "public medical questionnaire preserves" --reporter=line
