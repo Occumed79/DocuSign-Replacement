@@ -6,6 +6,15 @@ export interface FrontendBuildValidation {
   assetPaths: string[];
 }
 
+/**
+ * serve-static/send expects the directory index option to be an array of
+ * filenames (or false). Keep this in one place so production serving and the
+ * regression tests exercise the exact same option shape.
+ */
+export function getFrontendStaticIndex(): string[] {
+  return ["index.html"];
+}
+
 function normalizeAssetPath(assetUrl: string): string | null {
   const withoutQuery = assetUrl.split(/[?#]/, 1)[0];
   if (!withoutQuery || /^(?:https?:)?\/\//i.test(withoutQuery) || withoutQuery.startsWith("data:")) {
