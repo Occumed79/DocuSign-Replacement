@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, integer, boolean, jsonb, pgEnum, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, boolean, jsonb, pgEnum, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -23,10 +23,7 @@ export const questionsTable = pgTable("questions", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, table => ({
-  // sourceKey is only unique inside one built-in form, and examTypeIds is JSONB,
-  // so enforce duplicate protection in installer validation/backfill rather than
-  // a global SQL uniqueness rule that would incorrectly span form families.
-  sourceKeyLookup: uniqueIndex("questions_source_key_id_unique").on(table.id, table.sourceKey),
+  sourceKeyLookup: index("questions_source_key_idx").on(table.sourceKey),
 }));
 
 export const insertQuestionSchema = createInsertSchema(questionsTable).omit({ id: true, createdAt: true, updatedAt: true });
