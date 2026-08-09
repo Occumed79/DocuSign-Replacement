@@ -9,6 +9,7 @@ import publicMedicalQuestionnaireRouter from "./public-medical-questionnaire";
 import caseReviewWorkspaceRouter from "./case-review-workspace";
 import dashboardRouter from "./dashboard";
 import securityRouter from "./security";
+import systemReadinessRouter from "./system-readiness";
 import legacyPdfTemplateBridgeRouter from "./legacy-pdf-template-bridge";
 import sourceDocumentsRouter from "./source-documents";
 import signaturesRouter from "./signatures";
@@ -40,6 +41,7 @@ router.use(publicMedicalQuestionnaireRouter);
 router.use(caseReviewWorkspaceRouter);
 router.use(dashboardRouter);
 router.use(securityRouter);
+router.use(systemReadinessRouter);
 // Promote the old HTML-embedded PDF-template representation into the exact
 // source-document request fields before sourceDocumentsRouter evaluates it.
 router.use(legacyPdfTemplateBridgeRouter);
