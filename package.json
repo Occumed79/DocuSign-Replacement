@@ -11,10 +11,12 @@
     "db:seed": "pnpm --filter @workspace/scripts run seed",
     "generate-secrets": "pnpm --filter @workspace/scripts run generate-secrets",
     "dev:api": "pnpm --filter @workspace/api-server run dev",
-    "dev:web": "pnpm --filter @workspace/packet-path run dev"
+    "dev:web": "pnpm --filter @workspace/packet-path run dev",
+    "test:browser": "playwright test"
   },
   "private": true,
   "devDependencies": {
+    "@playwright/test": "1.62.0",
     "typescript": "~5.9.2",
     "prettier": "^3.8.3"
   },
