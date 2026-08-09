@@ -47,6 +47,11 @@ export function detailQuestions(
   return prompts.map((prompt, index) => q(`${key}.detail.${index + 1}`, prompt, section));
 }
 
+/**
+ * Structured history flow used by DD / military-style forms where a positive
+ * history answer needs explicit characterization and may feed qualification or
+ * waiver review. Keep this separate from civilian applicant clarification.
+ */
 export function history(
   key: string,
   text: string,
@@ -87,6 +92,42 @@ export function history(
       triggerValue,
     },
     followUps,
+  );
+}
+
+/**
+ * Civilian / employment medical-history flow.
+ *
+ * A triggering answer opens condition-specific, open-ended clarification
+ * directly. It deliberately does NOT insert the generic status-classification
+ * gate used by military/DD history. Applicant-facing prompts should be factual,
+ * neutral, medically bounded, and written so more than a yes/no answer is
+ * possible. They should not prescribe the answer, probe personal life, or
+ * default to job-impact questions unless the source item itself requires that.
+ */
+export function civilianHistory(
+  key: string,
+  text: string,
+  section: string,
+  prompts: string[],
+  options: QuestionOptions & { allowUnsure?: boolean } = {},
+): BuiltInQuestionDefinition {
+  const allowUnsure = options.allowUnsure ?? false;
+  const answerType = options.answerType ?? (allowUnsure ? "dropdown" : "yes_no");
+  const rootOptions = options.options ?? (allowUnsure ? ["Yes", "No", "Unsure"] : []);
+  const triggerValue = options.triggerValue ?? (allowUnsure ? "yes|unsure" : "yes");
+
+  return q(
+    key,
+    text,
+    section,
+    {
+      ...options,
+      answerType,
+      options: rootOptions,
+      triggerValue,
+    },
+    detailQuestions(key, section, prompts),
   );
 }
 
