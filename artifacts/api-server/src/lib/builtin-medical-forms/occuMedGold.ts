@@ -1,8 +1,8 @@
-import { branch, form, history, select, text } from "./definition-helpers";
-import { occuMedPrompts } from "./occuMedPromptLibrary";
+import { branch, civilianHistory, form, history, select, text } from "./definition-helpers";
+import { civilianOccuMedPrompts } from "./civilianOccuMedPromptLibrary";
 
 const hist = (key: string, label: string, section: string, required = true) =>
-  history(key, `${key} — ${label}`, section, occuMedPrompts(label), { required });
+  civilianHistory(key, `${key} — ${label}`, section, civilianOccuMedPrompts(label), { required });
 
 const medical: Array<[string, string]> = [
   ["18", "Have you ever been injured?"], ["19", "Have you ever had a limiting injury?"], ["20", "Have you any claim pending for the above?"], ["21", "Are you now receiving any VA, Federal, State or Medical Disability payments?"],
@@ -38,7 +38,7 @@ const medical: Array<[string, string]> = [
 export const occuMedGoldDefinition = form(
   "occu-med-medical-history-gold",
   "Occu-Med Medical History Questionnaire — Gold",
-  "Adaptive version of the current Gold Occu-Med medical history questionnaire, preserving its source numbering while reusing the recovered core analyst follow-up logic.",
+  "Adaptive version of the current Gold Occu-Med medical history questionnaire, preserving source numbering while using condition-specific, applicant-facing clarification.",
   "Occu-Med Medical History Gold questionnaire (uploaded source)",
   [
     text("applicant.name", "Applicant's name (Last, First, Middle)", "Applicant Information", false),
@@ -52,23 +52,16 @@ export const occuMedGoldDefinition = form(
     text("applicant.job", "Job class or job title", "Applicant Information", false),
 
     branch("1", "1 — Please list all medications you regularly use, including vitamins, birth control pills, laxatives, aspirins, antihistamines, tranquilizers, and weight reducing aids (Prescription and Non-Prescription)", "Medications / Allergies", [
-      "For each medication, what medical condition is treated?",
-      "What side effects have you experienced?",
-      "When did you start taking it?",
-      "If ended, when did you stop?",
-      "How frequently do you take it?",
+      "What is each medication being used for, and how is it currently taken?",
+      "What effects or changes, if any, have you noticed while taking it?",
     ], { answerType: "text", triggerValue: "*" }),
     branch("2", "2 — Please list any medications, not taken regularly, which you have taken in the last 2 months (Prescription and Non-Prescription)", "Medications / Allergies", [
-      "For each medication, what condition or symptom was it used for?",
-      "When and how frequently did you take it?",
-      "Did you have any side effects?",
-      "Are you still taking it?",
+      "What was each medication used for, and how was it taken?",
+      "What is the current status of the reason it was used?",
     ], { answerType: "text", triggerValue: "*", required: false }),
     branch("3", "3 — Allergies: list any drugs or other substances, including food or insect stings, to which you have had an allergic reaction", "Medications / Allergies", [
-      "What type of reaction do you have to each allergen?",
-      "When was your most recent reaction?",
-      "Have you ever required emergency treatment?",
-      "Do you carry or use medication for the allergy?",
+      "What reaction have you had to each substance?",
+      "How was the most recent reaction managed?",
     ], { answerType: "text", triggerValue: "*", required: false }),
     select("4a.hepatitisA", "4a — Hepatitis A immunization", "Immunizations", ["Yes", "No", "Unsure"], false),
     select("4a.hepatitisB", "4a — Hepatitis B immunization", "Immunizations", ["Yes", "No", "Unsure"], false),
@@ -81,17 +74,12 @@ export const occuMedGoldDefinition = form(
     select("4a.bcg", "4a — Bacillus Calmette-Guérin immunization", "Immunizations", ["Yes", "No", "Unsure"], false),
     hist("4b", "Have you ever had a positive reaction to a PPD (Tuberculosis) Skin Test?", "Medical History — Background"),
     branch("5", "5 — List your last three hospitalizations, beginning with the most recent (excluding routine childbirth)", "Hospitalizations / Operations", [
-      "For each hospitalization, what was the reason?",
-      "Where and when were you hospitalized?",
-      "What treatment did you receive?",
-      "Do you have any current symptoms, restrictions, or follow-up related to it?",
+      "What was the reason for each hospitalization, and when did it occur?",
+      "What is the current status of the condition that led to the hospitalization?",
     ], { answerType: "text", triggerValue: "*", required: false }),
     branch("6", "6 — List any operations you may have had or were advised to have which are not listed above", "Hospitalizations / Operations", [
-      "What operation was performed or advised?",
-      "What condition was it for and when was it recommended/performed?",
-      "If performed, have you fully recovered?",
-      "If not performed, is it still recommended or pending?",
-      "Do you have any current symptoms, restrictions, or limitations?",
+      "What operation was performed or advised, and what medical condition was it related to?",
+      "What is the current status of the condition or recommendation?",
     ], { answerType: "text", triggerValue: "*", required: false }),
 
     hist("7", "Prolonged loud noises?", "Exposure History"),
