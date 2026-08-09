@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   LayoutDashboard, FolderOpen, LogOut, ChevronLeft, ChevronRight,
   Shield, Users, ClipboardList, AlertTriangle, PenTool, Mail,
-  BarChart2, Webhook, Palette, FileSignature, Send, FileText
+  BarChart2, Webhook, Palette, FileSignature, FileText
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -69,8 +69,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [showWarn, setShowWarn] = useState(false);
   const lastActivity = useRef(Date.now());
-  const warnTimer = useRef<ReturnType<typeof setTimeout>>();
-  const logoutTimer = useRef<ReturnType<typeof setTimeout>>();
+  const warnTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const logoutTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const resetTimers = useCallback(() => {
     lastActivity.current = Date.now();
@@ -92,24 +92,21 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     };
   }, [resetTimers]);
 
-  const initials = user?.fullName
-    ? user.fullName.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()
+  const initials = user?.name
+    ? user.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()
     : user?.email?.[0]?.toUpperCase() ?? "?";
 
   return (
     <div className="flex h-screen overflow-hidden atmo-bg">
-      {/* ── Sidebar ── */}
       <motion.aside
         animate={{ width: collapsed ? 64 : 224 }}
         transition={{ duration: 0.2, ease: "easeInOut" }}
         className="glass-sidebar flex flex-col shrink-0 overflow-hidden relative z-30"
       >
-        {/* Logo / Brand */}
         <div className={cn(
           "flex items-center gap-3 px-4 py-5 border-b border-white/[0.06]",
           collapsed && "justify-center px-2"
         )}>
-          {/* Occu-Med logo mark */}
           <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
             style={{
               background: "linear-gradient(135deg, rgba(56,160,255,0.9) 0%, rgba(99,50,220,0.85) 100%)",
@@ -125,7 +122,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           )}
         </div>
 
-        {/* Nav */}
         <nav className="flex-1 overflow-y-auto px-2 py-4 space-y-0.5">
           {!collapsed && (
             <p className="text-[9px] font-bold text-white/25 uppercase tracking-widest px-3 mb-2">Workspace</p>
@@ -157,9 +153,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           )}
         </nav>
 
-        {/* Bottom — user + collapse toggle */}
         <div className="border-t border-white/[0.06] p-2 space-y-1">
-          {/* User row */}
           <div className={cn(
             "flex items-center gap-2.5 px-3 py-2.5 rounded-xl",
             collapsed && "justify-center px-2"
@@ -173,7 +167,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             </div>
             {!collapsed && (
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold text-white/80 truncate">{user?.fullName ?? user?.email}</p>
+                <p className="text-xs font-semibold text-white/80 truncate">{user?.name ?? user?.email}</p>
                 <p className="text-[10px] text-white/35 capitalize truncate">{user?.role}</p>
               </div>
             )}
@@ -184,7 +178,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             )}
           </div>
 
-          {/* Collapse toggle */}
           <button
             onClick={() => setCollapsed(!collapsed)}
             className="w-full flex items-center justify-center py-2 rounded-xl text-white/25 hover:text-white/60 hover:bg-white/[0.05] transition-all text-xs gap-1.5"
@@ -197,7 +190,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </div>
       </motion.aside>
 
-      {/* ── Main content ── */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <main className="flex-1 overflow-y-auto">
           <AnimatePresence mode="wait">
@@ -215,7 +207,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </main>
       </div>
 
-      {/* Session warning */}
       <AnimatePresence>
         {showWarn && (
           <motion.div

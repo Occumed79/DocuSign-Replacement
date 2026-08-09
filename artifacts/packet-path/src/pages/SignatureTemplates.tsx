@@ -1,12 +1,28 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
-import { motion, AnimatePresence } from "framer-motion";
-import { FileText, Plus, Edit2, Trash2, Copy, X, Save, Tag, ClipboardList, GitBranch, Search, LayoutGrid, List, Send } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  CheckCircle2,
+  Copy,
+  Edit2,
+  FileCheck2,
+  FileText,
+  GitBranch,
+  LayoutGrid,
+  List,
+  Loader2,
+  Plus,
+  Save,
+  Search,
+  Send,
+  Trash2,
+  Upload,
+  X,
+} from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import FormBuilder, { type FormField } from "@/components/signatures/FormBuilder";
-import { AnimatePresence } from "framer-motion";
 
 interface Template {
   id: number;
@@ -20,57 +36,21 @@ interface Template {
   updatedAt: string;
 }
 
-const CATEGORIES = [
-  "General", "Consent Form", "Medical Clearance", "Pre-Employment", "Return to Work",
-  "Release of Information", "HIPAA Notice", "Fitness for Duty", "Drug Testing",
-];
-
-const STARTER_TEMPLATES: { name: string; category: string; content: string }[] = [
-  {
-    name: "Pre-Employment Physical Consent",
-    category: "Consent Form",
-    content: `<h2>Pre-Employment Physical Examination Consent</h2>
-<p>I, the undersigned, hereby authorize <strong>Occu-Med Occupational Health</strong> to perform a pre-employment physical examination as required by my prospective employer.</p>
-<p>I understand that:</p>
-<ul>
-  <li>The examination is required as a condition of employment</li>
-  <li>Results will be reported to the requesting employer in a limited format</li>
-  <li>My personal health information is protected under HIPAA</li>
-  <li>I may request a copy of any medical records generated during this examination</li>
-</ul>
-<p>I confirm that all information I provide is accurate and complete to the best of my knowledge.</p>`,
-  },
-  {
-    name: "Release of Medical Information",
-    category: "Release of Information",
-    content: `<h2>Authorization for Release of Medical Information</h2>
-<p>I hereby authorize <strong>Occu-Med Occupational Health</strong> to release the following health information:</p>
-<p><strong>Information to be disclosed:</strong> Occupational health examination results, work status, and fitness-for-duty determinations.</p>
-<p><strong>Purpose:</strong> Occupational health and return-to-work coordination.</p>
-<p>This authorization is valid for one (1) year from the date of signing unless revoked in writing. I understand I have the right to revoke this authorization at any time by submitting a written request.</p>`,
-  },
-  {
-    name: "Return to Work Authorization",
-    category: "Return to Work",
-    content: `<h2>Return to Work Authorization</h2>
-<p>This document certifies that the patient named above has been evaluated by Occu-Med Occupational Health and is authorized to return to work under the following conditions:</p>
-<ul>
-  <li>Full duty with no restrictions</li>
-  <li>Modified duty as specified by the treating physician</li>
-</ul>
-<p>The employee acknowledges understanding of any work restrictions and agrees to comply with all recommendations provided by the occupational health team.</p>`,
-  },
-  {
-    name: "HIPAA Notice of Privacy Practices",
-    category: "HIPAA Notice",
-    content: `<h2>Acknowledgment of Receipt — HIPAA Notice of Privacy Practices</h2>
-<p>I acknowledge that I have received a copy of <strong>Occu-Med's Notice of Privacy Practices</strong>, which describes how my protected health information may be used and disclosed.</p>
-<p>I understand that Occu-Med has the right to change its notice of privacy practices and that I can obtain any revised notice by contacting the Privacy Officer or visiting our website.</p>
-<p>This acknowledgment does not constitute consent to any specific use or disclosure of my protected health information.</p>`,
-  },
-];
-
 type EditorTab = "document" | "form";
+type ViewMode = "grid" | "list";
+
+const MAX_PDF_BYTES = 8 * 1024 * 1024;
+const CATEGORIES = [
+  "General",
+  "Consent Form",
+  "Medical Clearance",
+  "Pre-Employment",
+  "Return to Work",
+  "Release of Information",
+  "HIPAA Notice",
+  "Fitness for Duty",
+  "Drug Testing",
+];
 
 function htmlPreviewText(html: string): string {
   return html
@@ -82,17 +62,28 @@ function htmlPreviewText(html: string): string {
     .trim();
 }
 
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result ?? "");
+      resolve(result.includes(",") ? result.split(",", 2)[1] : result);
+    };
+    reader.onerror = () => reject(reader.error ?? new Error("Unable to read file"));
+    reader.readAsDataURL(file);
+  });
+}
 
 function TemplateEditor({
   template,
-  onSave,
-  onClose,
   token,
+  onClose,
+  onSaved,
 }: {
   template?: Template;
-  onSave: () => void;
-  onClose: () => void;
   token: string | null;
+  onClose: () => void;
+  onSaved: () => void;
 }) {
   const { toast } = useToast();
   const [name, setName] = useState(template?.name ?? "");
@@ -100,281 +91,227 @@ function TemplateEditor({
   const [category, setCategory] = useState(template?.category ?? "General");
   const [content, setContent] = useState(template?.content ?? "");
   const [formSchema, setFormSchema] = useState<FormField[]>(template?.formSchema ?? []);
-  const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<EditorTab>("document");
-  const [previewDoc, setPreviewDoc] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [sourcePdfBase64, setSourcePdfBase64] = useState("");
+  const [sourcePdfFileName, setSourcePdfFileName] = useState("");
+  const [sourcePdfBytes, setSourcePdfBytes] = useState(0);
+  const [existingSourcePdf, setExistingSourcePdf] = useState(false);
+  const [checkingSource, setCheckingSource] = useState(Boolean(template));
 
-  const save = async () => {
-    if (!name.trim() || !content.trim()) return;
-    setSaving(true);
-    const url = template ? `/api/signature-templates/${template.id}` : "/api/signature-templates";
-    const method = template ? "PUT" : "POST";
-    const res = await fetch(url, {
-      method,
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ name: name.trim(), description: description.trim() || null, category, content, formSchema }),
+  useEffect(() => {
+    if (!template) return;
+    let cancelled = false;
+    void fetch(`/api/signature-templates/${template.id}/source-document`, {
+      method: "HEAD",
+      headers: { Authorization: `Bearer ${token}` },
+    }).then(res => {
+      if (!cancelled) setExistingSourcePdf(res.ok);
+    }).catch(() => {
+      if (!cancelled) setExistingSourcePdf(false);
+    }).finally(() => {
+      if (!cancelled) setCheckingSource(false);
     });
-    if (res.ok) {
-      toast({ title: template ? "Template updated" : "Template created" });
-      onSave();
-    } else {
-      toast({ title: "Failed to save template", variant: "destructive" });
-    }
-    setSaving(false);
-  };
+    return () => { cancelled = true; };
+  }, [template, token]);
 
-
-  const importDocumentFile = async (file: File) => {
+  const importFile = async (file?: File) => {
+    if (!file) return;
     const lower = file.name.toLowerCase();
-    if (lower.endsWith('.html') || lower.endsWith('.htm')) {
+
+    if (lower.endsWith(".pdf")) {
+      if (file.size > MAX_PDF_BYTES) {
+        toast({ title: "PDF is too large", description: "Exact-source template PDFs are limited to 8 MB.", variant: "destructive" });
+        return;
+      }
+      try {
+        const base64 = await readFileAsBase64(file);
+        setSourcePdfBase64(base64);
+        setSourcePdfFileName(file.name);
+        setSourcePdfBytes(file.size);
+        setContent(`<p><strong>Original PDF document:</strong> ${file.name.replace(/[<>&]/g, "")}</p>`);
+        if (!name.trim()) setName(file.name.replace(/\.pdf$/i, "").replace(/[-_]+/g, " "));
+        toast({ title: "Exact PDF source ready", description: "The original PDF bytes will be attached to this template when you save." });
+      } catch {
+        toast({ title: "Unable to read PDF", variant: "destructive" });
+      }
+      return;
+    }
+
+    if (lower.endsWith(".html") || lower.endsWith(".htm")) {
       const text = await file.text();
       setContent(text);
-      if (!name.trim()) setName(file.name.replace(/\.html?$/i, '').replace(/[-_]/g, ' '));
-      toast({ title: 'HTML imported' });
+      setSourcePdfBase64("");
+      setSourcePdfFileName("");
+      setSourcePdfBytes(0);
+      if (!name.trim()) setName(file.name.replace(/\.html?$/i, "").replace(/[-_]+/g, " "));
+      toast({ title: "HTML imported" });
       return;
     }
 
-    if (lower.endsWith('.pdf')) {
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result));
-        reader.onerror = () => reject(reader.error);
-        reader.readAsDataURL(file);
-      });
-
-      setContent(`<div style="display:flex;flex-direction:column;gap:12px;">
-  <p><strong>Imported PDF:</strong> ${file.name}</p>
-  <object data="${dataUrl}" type="application/pdf" width="100%" height="900">
-    <p>Your browser cannot preview this PDF. Download file: <a href="${dataUrl}" download="${file.name}">${file.name}</a></p>
-  </object>
-</div>`);
-      if (!name.trim()) setName(file.name.replace(/\.pdf$/i, '').replace(/[-_]/g, ' '));
-      toast({ title: 'PDF imported (embedded)' });
-      return;
-    }
-
-
-    if (file.type.startsWith('image/')) {
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result));
-        reader.onerror = () => reject(reader.error);
-        reader.readAsDataURL(file);
-      });
-      setContent(`<div style="display:flex;flex-direction:column;gap:12px;">
-  <p><strong>Imported image form:</strong> ${file.name}</p>
-  <img src="${dataUrl}" alt="${file.name}" style="max-width:100%;border:1px solid #d1d5db;border-radius:8px;" />
-</div>`);
-      if (!name.trim()) setName(file.name.replace(/\.[^.]+$/i, '').replace(/[-_]/g, ' '));
-      toast({ title: 'Image imported' });
-      return;
-    }
-
-    const genericDataUrl = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result));
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(file);
-    });
-    setContent(`<div style="display:flex;flex-direction:column;gap:12px;">
-  <p><strong>Imported file:</strong> ${file.name}</p>
-  <p>This file type cannot be rendered inline, but it has been attached to the template content.</p>
-  <a href="${genericDataUrl}" download="${file.name}">Download ${file.name}</a>
-</div>`);
-    if (!name.trim()) setName(file.name.replace(/\.[^.]+$/i, '').replace(/[-_]/g, ' '));
-    toast({ title: 'File imported as attachment' });
-    return;
+    toast({ title: "Unsupported template source", description: "Use PDF for exact-source documents or HTML for authored documents.", variant: "destructive" });
   };
-  const conditionalCount = formSchema.filter(f => f.showWhen?.fieldId).length;
+
+  const removeExistingSource = async () => {
+    if (!template || !existingSourcePdf) return;
+    const res = await fetch(`/api/signature-templates/${template.id}/source-document`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) {
+      toast({ title: "Unable to remove source PDF", variant: "destructive" });
+      return;
+    }
+    setExistingSourcePdf(false);
+    toast({ title: "Exact PDF source removed" });
+  };
+
+  const save = async () => {
+    if (!name.trim()) {
+      toast({ title: "Template name is required" });
+      return;
+    }
+    if (!content.trim() && !sourcePdfBase64 && !existingSourcePdf) {
+      toast({ title: "Add document content or a PDF source" });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const url = template ? `/api/signature-templates/${template.id}` : "/api/signature-templates";
+      const method = template ? "PUT" : "POST";
+      const documentContent = content.trim() || `<p><strong>Original PDF document:</strong> ${sourcePdfFileName || "source.pdf"}</p>`;
+      const res = await fetch(url, {
+        method,
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          description: description.trim() || null,
+          category,
+          content: documentContent,
+          formSchema,
+        }),
+      });
+      const saved = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(saved.error || "Unable to save template");
+      const templateId = Number(saved.id ?? template?.id);
+      if (!templateId) throw new Error("Template was saved without an id");
+
+      if (sourcePdfBase64) {
+        const sourceRes = await fetch(`/api/signature-templates/${templateId}/source-document`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ sourceDocumentBase64: sourcePdfBase64, fileName: sourcePdfFileName }),
+        });
+        const sourcePayload = await sourceRes.json().catch(() => ({}));
+        if (!sourceRes.ok) throw new Error(sourcePayload.error || "Template saved, but the exact PDF source could not be attached");
+      }
+
+      toast({
+        title: template ? "Template updated" : "Template created",
+        description: sourcePdfBase64 ? "Exact PDF source attached." : existingSourcePdf ? "Existing exact PDF source preserved." : undefined,
+      });
+      onSaved();
+    } catch (err: any) {
+      toast({ title: err?.message || "Unable to save template", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const conditionalCount = formSchema.filter(field => field.showWhen?.fieldId).length;
 
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-6"
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-6 backdrop-blur-sm"
       onClick={onClose}
     >
       <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        onClick={e => e.stopPropagation()}
-        className="glass-card rounded-2xl w-full max-w-4xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden"
+        initial={{ opacity: 0, scale: 0.97, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+        onClick={event => event.stopPropagation()}
+        className="glass-card flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl shadow-2xl"
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <h2 className="font-semibold text-foreground flex items-center gap-2">
-            <FileText size={16} className="text-indigo-500" />
-            {template ? "Edit Template" : "New Template"}
-          </h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted/60 text-muted-foreground">
-            <X size={16} />
-          </button>
+        <div className="flex items-center justify-between border-b border-border px-6 py-4">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-primary">Reusable signing template</p>
+            <h2 className="mt-1 text-lg font-semibold text-foreground">{template ? "Edit template" : "New template"}</h2>
+          </div>
+          <button onClick={onClose} className="rounded-xl p-2 text-muted-foreground hover:bg-muted/50 hover:text-foreground"><X size={17} /></button>
         </div>
 
-        {/* Meta fields (always visible) */}
-        <div className="px-6 pt-4 pb-3 border-b border-border/50 grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="sm:col-span-1">
-            <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Template Name *</label>
-            <input
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="e.g. Pre-Employment Consent"
-              className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-indigo-400"
-            />
+        <div className="grid grid-cols-1 gap-3 border-b border-border/60 px-6 py-4 md:grid-cols-3">
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Name *</label>
+            <input value={name} onChange={event => setName(event.target.value)} className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/60" />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Category</label>
-            <select
-              value={category}
-              onChange={e => setCategory(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-indigo-400"
-            >
-              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Category</label>
+            <select value={category} onChange={event => setCategory(event.target.value)} className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/60">
+              {CATEGORIES.map(item => <option key={item}>{item}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Description</label>
-            <input
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              placeholder="Brief description"
-              className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-indigo-400"
-            />
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Description</label>
+            <input value={description} onChange={event => setDescription(event.target.value)} className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/60" />
           </div>
         </div>
 
-        {/* Tab bar */}
-        <div className="flex gap-1 px-6 pt-3 border-b border-border">
-          <button
-            onClick={() => setActiveTab("document")}
-            className={cn(
-              "flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors",
-              activeTab === "document"
-                ? "border-indigo-500 text-indigo-600"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <FileText size={13} /> Document
-          </button>
-          <button
-            onClick={() => setActiveTab("form")}
-            className={cn(
-              "flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors",
-              activeTab === "form"
-                ? "border-indigo-500 text-indigo-600"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <ClipboardList size={13} /> Form Fields
-            {formSchema.length > 0 && (
-              <span className="ml-1 px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-600 text-xs font-medium">
-                {formSchema.length}
-              </span>
-            )}
-            {conditionalCount > 0 && (
-              <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-600 text-xs font-medium">
-                <GitBranch size={9} />{conditionalCount}
-              </span>
-            )}
-          </button>
+        <div className="flex items-center gap-1 border-b border-border/60 px-6 py-2">
+          <button onClick={() => setActiveTab("document")} className={cn("rounded-xl px-4 py-2 text-sm font-medium", activeTab === "document" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")}>Document</button>
+          <button onClick={() => setActiveTab("form")} className={cn("rounded-xl px-4 py-2 text-sm font-medium", activeTab === "form" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")}>Form fields {formSchema.length > 0 && `(${formSchema.length})`}</button>
+          {conditionalCount > 0 && <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-1 text-[10px] font-semibold text-violet-700"><GitBranch size={10} /> {conditionalCount} conditional</span>}
         </div>
 
-        {/* Tab content */}
         <div className="flex-1 overflow-y-auto p-6">
-          {activeTab === "document" && (
-            <div className="space-y-4">
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider">Document Content (HTML) *</label>
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs cursor-pointer px-2.5 py-1 rounded-lg border border-border hover:bg-muted/40">
-                      Import Any File
-                      <input
-                        type="file"
-                        accept="*/*"
-                        className="hidden"
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (file) await importDocumentFile(file);
-                          e.currentTarget.value = "";
-                        }}
-                      />
-                    </label>
-                    <span className="text-[11px] text-muted-foreground">HTML stays editable; PDF and images render inline; other files attach as downloads.</span>
-                    {content && (
-                      <button
-                        onClick={() => setPreviewDoc(p => !p)}
-                        className="text-xs text-indigo-500 hover:text-indigo-700"
-                      >
-                        {previewDoc ? "Edit HTML" : "Preview"}
-                      </button>
-                    )}
-                  </div>
+          {activeTab === "document" ? (
+            <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+                  <div className="flex items-center gap-2"><FileCheck2 size={16} className="text-primary" /><h3 className="text-sm font-semibold text-foreground">Exact source PDF</h3></div>
+                  <p className="mt-2 text-xs leading-5 text-muted-foreground">Use a PDF when the completed document must preserve the original pages exactly. PacketPath attaches execution evidence separately instead of recreating the PDF.</p>
+                  <label className="mt-4 flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-xs font-semibold text-primary-foreground hover:opacity-90">
+                    <Upload size={14} /> Choose PDF
+                    <input type="file" accept="application/pdf,.pdf" className="hidden" onChange={event => void importFile(event.target.files?.[0])} />
+                  </label>
+                  {sourcePdfFileName && (
+                    <div className="mt-3 rounded-xl border border-emerald-300/30 bg-emerald-300/10 p-3">
+                      <div className="flex items-start gap-2"><CheckCircle2 size={14} className="mt-0.5 text-emerald-600" /><div className="min-w-0"><p className="truncate text-xs font-semibold text-foreground">{sourcePdfFileName}</p><p className="mt-0.5 text-[10px] text-muted-foreground">{(sourcePdfBytes / 1024 / 1024).toFixed(2)} MB · attaches on save</p></div></div>
+                    </div>
+                  )}
+                  {!sourcePdfFileName && existingSourcePdf && (
+                    <div className="mt-3 rounded-xl border border-emerald-300/30 bg-emerald-300/10 p-3">
+                      <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-200">Exact PDF source already attached</p>
+                      <button onClick={() => void removeExistingSource()} className="mt-2 text-[10px] font-semibold text-red-600 hover:underline">Remove PDF source</button>
+                    </div>
+                  )}
+                  {checkingSource && <p className="mt-3 text-[10px] text-muted-foreground">Checking source document...</p>}
                 </div>
-                {!previewDoc ? (
-                  <>
-                    <p className="text-xs text-muted-foreground mb-2">Use basic HTML: &lt;h2&gt;, &lt;p&gt;, &lt;ul&gt;, &lt;li&gt;, &lt;strong&gt;</p>
-                    <textarea
-                      value={content}
-                      onChange={e => setContent(e.target.value)}
-                      rows={18}
-                      placeholder="<h2>Document Title</h2><p>Document body...</p>"
-                      className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground text-sm font-mono outline-none focus:border-indigo-400 resize-none transition-colors"
-                    />
-                  </>
-                ) : (
-                  <div
-                    className="p-5 rounded-xl border border-border bg-white/50 prose prose-sm max-w-none text-foreground"
-                    style={{ fontFamily: "Georgia, serif", lineHeight: 1.8, fontSize: 14 }}
-                    dangerouslySetInnerHTML={{ __html: content }}
-                  />
-                )}
-              </div>
-            </div>
-          )}
 
-          {activeTab === "form" && (
-            <div className="space-y-4">
-              <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100">
-                <p className="text-sm font-medium text-indigo-800 mb-1">How form fields work</p>
-                <p className="text-xs text-indigo-700">
-                  Form fields are presented to the signer <strong>before</strong> they sign. Use <strong>Yes/No</strong> fields
-                  with conditional logic to show follow-up questions automatically — for example, if "History of gout" = Yes,
-                  show "Date of last flare-up". All required fields must be completed before the signer can apply their signature.
-                </p>
+                <div className="rounded-2xl border border-border p-4">
+                  <h3 className="text-sm font-semibold text-foreground">HTML document</h3>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">Use HTML for documents authored inside PacketPath where exact external PDF layout is not required.</p>
+                  <label className="mt-3 flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-border px-3 py-2.5 text-xs font-semibold text-foreground hover:bg-muted/40">
+                    <Upload size={14} /> Import HTML
+                    <input type="file" accept="text/html,.html,.htm" className="hidden" onChange={event => void importFile(event.target.files?.[0])} />
+                  </label>
+                </div>
               </div>
-              <FormBuilder fields={formSchema} onChange={setFormSchema} />
+
+              <div>
+                <div className="mb-2 flex items-center justify-between gap-2"><label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">HTML / fallback content</label><span className="text-[10px] text-muted-foreground">PDF templates keep only a lightweight fallback here</span></div>
+                <textarea value={content} onChange={event => setContent(event.target.value)} rows={18} className="w-full resize-y rounded-2xl border border-border bg-background p-4 font-mono text-xs leading-5 text-foreground outline-none focus:border-primary/60" placeholder="<h2>Document title</h2>..." />
+                {content && <div className="mt-3 rounded-xl border border-border bg-muted/20 p-3"><p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Text preview</p><p className="mt-1 line-clamp-3 text-xs leading-5 text-foreground/75">{htmlPreviewText(content) || "No text preview"}</p></div>}
+              </div>
             </div>
+          ) : (
+            <FormBuilder fields={formSchema} onChange={setFormSchema} />
           )}
         </div>
 
-        {/* Footer */}
-        <div className="flex justify-between items-center gap-3 px-6 py-4 border-t border-border">
-          <div className="text-xs text-muted-foreground">
-            {formSchema.length > 0 ? (
-              <span>{formSchema.length} form field{formSchema.length !== 1 ? "s" : ""}{conditionalCount > 0 ? `, ${conditionalCount} conditional` : ""}</span>
-            ) : (
-              <span>No form fields — signers will only see the document above</span>
-            )}
-          </div>
-          <div className="flex gap-3">
-            <button
-              onClick={onClose}
-              className="px-4 py-2.5 rounded-xl text-sm text-muted-foreground border border-border hover:bg-muted/50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={save}
-              disabled={saving || !name.trim() || !content.trim()}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
-            >
-              {saving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Save size={14} />}
-              {template ? "Save Changes" : "Create Template"}
-            </button>
-          </div>
+        <div className="flex items-center justify-between border-t border-border px-6 py-4">
+          <p className="text-xs text-muted-foreground">{sourcePdfFileName || existingSourcePdf ? "Exact-source PDF mode" : "HTML-authored mode"}</p>
+          <div className="flex gap-2"><button onClick={onClose} className="rounded-xl border border-border px-4 py-2.5 text-sm text-muted-foreground">Cancel</button><button onClick={() => void save()} disabled={saving} className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50">{saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}{saving ? "Saving" : "Save template"}</button></div>
         </div>
       </motion.div>
     </motion.div>
@@ -384,347 +321,111 @@ function TemplateEditor({
 export default function SignatureTemplatesPage() {
   const { token } = useAuth();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState<Template | undefined>(undefined);
-  const [creating, setCreating] = useState(false);
-  const [categoryFilter, setCategoryFilter] = useState("");
   const [search, setSearch] = useState("");
-  const [viewMode, setViewMode] = useState<"grid" | "table">("table");
-  const [, navigate] = useLocation();
+  const [view, setView] = useState<ViewMode>("grid");
+  const [editorTemplate, setEditorTemplate] = useState<Template | null | undefined>(undefined);
 
-  const fetchTemplates = useCallback(async () => {
+  const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch("/api/signature-templates", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (res.ok) setTemplates(await res.json());
-    setLoading(false);
-  }, [token]);
-
-  useEffect(() => { fetchTemplates(); }, [fetchTemplates]);
-
-  const deleteTemplate = async (id: number) => {
-    if (!confirm("Delete this template? This cannot be undone.")) return;
-    const res = await fetch(`/api/signature-templates/${id}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (res.ok) { toast({ title: "Template deleted" }); fetchTemplates(); }
-  };
-
-  const seedStarterTemplates = async () => {
-    for (const t of STARTER_TEMPLATES) {
-      await fetch("/api/signature-templates", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify(t),
-      });
+    try {
+      const res = await fetch("/api/signature-templates", { headers: { Authorization: `Bearer ${token}` } });
+      const payload = await res.json().catch(() => []);
+      if (!res.ok) throw new Error(payload.error || "Unable to load templates");
+      setTemplates(Array.isArray(payload) ? payload : []);
+    } catch (err: any) {
+      toast({ title: err?.message || "Unable to load templates", variant: "destructive" });
+    } finally {
+      setLoading(false);
     }
-    toast({ title: `${STARTER_TEMPLATES.length} starter templates added` });
-    fetchTemplates();
+  }, [token, toast]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return templates;
+    return templates.filter(template => `${template.name} ${template.category} ${template.description ?? ""}`.toLowerCase().includes(term));
+  }, [search, templates]);
+
+  const removeTemplate = async (template: Template) => {
+    if (!confirm(`Delete template "${template.name}"?`)) return;
+    const res = await fetch(`/api/signature-templates/${template.id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) {
+      toast({ title: "Unable to delete template", variant: "destructive" });
+      return;
+    }
+    toast({ title: "Template deleted" });
+    await load();
   };
 
-  const useTemplate = (id: number) => {
-    navigate(`/esignatures?templateId=${id}`);
+  const duplicateTemplate = async (template: Template) => {
+    const res = await fetch("/api/signature-templates", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ name: `${template.name} Copy`, description: template.description, category: template.category, content: template.content, formSchema: template.formSchema }),
+    });
+    if (!res.ok) {
+      toast({ title: "Unable to duplicate template", variant: "destructive" });
+      return;
+    }
+    toast({ title: "Template duplicated", description: "Document/form content copied. Exact PDF source can be attached from Edit." });
+    await load();
   };
-
-  const categories = Array.from(new Set(templates.map(t => t.category)));
-
-  const filtered = templates.filter(t => {
-    const matchesCat = !categoryFilter || t.category === categoryFilter;
-    const matchesSearch = !search ||
-      t.name.toLowerCase().includes(search.toLowerCase()) ||
-      (t.description ?? "").toLowerCase().includes(search.toLowerCase()) ||
-      t.category.toLowerCase().includes(search.toLowerCase());
-    return matchesCat && matchesSearch;
-  });
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg"
-              style={{ background: "linear-gradient(135deg, rgba(141,190,181,0.7), rgba(82,123,120,0.85))" }}>
-              <FileText size={18} className="text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-semibold text-foreground tracking-tight">Document Templates</h1>
-              <p className="text-muted-foreground text-sm mt-0.5">
-                {templates.length} template{templates.length !== 1 ? "s" : ""} · Reusable with smart form fields
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {templates.length === 0 && (
-              <button
-                onClick={seedStarterTemplates}
-                className="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/20 text-sm text-white/70 hover:bg-white/5 transition-colors"
-              >
-                <Copy size={13} /> Load Starters
-              </button>
-            )}
-            <button
-              onClick={() => setCreating(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-white text-sm font-medium transition-all"
-              style={{
-                background: "linear-gradient(135deg, #8dbeb5, #527b78)",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.12)",
-              }}
-            >
-              <Plus size={14} /> New Template
-            </button>
-          </div>
-        </div>
-
-        {/* Search + filter toolbar */}
-        <div className="flex items-center gap-2 mb-4">
-          <div className="relative flex-1 max-w-sm">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Search templates…"
-              className="w-full pl-9 pr-3 py-2 rounded-xl border text-sm bg-[#052a32]/65 text-[#f4f7f6] border-white/20 placeholder:text-white/30 focus:outline-none focus:border-white/40"
-            />
-          </div>
-
-          {/* Category pills */}
-          {categories.length > 0 && (
-            <div className="flex items-center gap-1.5 overflow-x-auto">
-              <button
-                onClick={() => setCategoryFilter("")}
-                className={cn(
-                  "px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap",
-                  !categoryFilter ? "bg-white/15 text-white" : "text-white/40 hover:text-white/70"
-                )}
-              >
-                All ({templates.length})
-              </button>
-              {categories.map(cat => (
-                <button
-                  key={cat}
-                  onClick={() => setCategoryFilter(cat === categoryFilter ? "" : cat)}
-                  className={cn(
-                    "px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap",
-                    categoryFilter === cat ? "bg-white/15 text-white" : "text-white/40 hover:text-white/70"
-                  )}
-                >
-                  {cat} ({templates.filter(t => t.category === cat).length})
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* View toggle */}
-          <div className="ml-auto flex items-center gap-1 p-1 rounded-xl border border-white/15 shrink-0">
-            <button
-              onClick={() => setViewMode("table")}
-              className={cn("p-1.5 rounded-lg transition-all", viewMode === "table" ? "bg-white/15 text-white" : "text-white/40 hover:text-white/70")}
-              title="Table view"
-            >
-              <List size={13} />
-            </button>
-            <button
-              onClick={() => setViewMode("grid")}
-              className={cn("p-1.5 rounded-lg transition-all", viewMode === "grid" ? "bg-white/15 text-white" : "text-white/40 hover:text-white/70")}
-              title="Grid view"
-            >
-              <LayoutGrid size={13} />
-            </button>
-          </div>
-        </div>
-
-        {/* Content */}
-        {loading ? (
-          <div className="space-y-2">
-            {[1,2,3,4].map(i => (
-              <div key={i} className="liquid-glass rounded-2xl p-4 animate-pulse h-14" />
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="liquid-glass rounded-2xl p-16 text-center">
-            <FileText size={32} className="text-white/20 mx-auto mb-3" />
-            <p className="text-white/60 font-medium mb-1">No templates found</p>
-            <p className="text-white/30 text-sm mb-5">
-              {search || categoryFilter ? "Try clearing your filters." : "Create reusable document templates with smart form fields."}
-            </p>
-            {!search && !categoryFilter && (
-              <div className="flex items-center justify-center gap-3">
-                <button
-                  onClick={seedStarterTemplates}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/20 text-sm text-white/70 hover:bg-white/5 transition-colors"
-                >
-                  <Copy size={13} /> Load Starters
-                </button>
-                <button
-                  onClick={() => setCreating(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-white text-sm font-medium"
-                  style={{ background: "linear-gradient(135deg, #8dbeb5, #527b78)" }}
-                >
-                  <Plus size={13} /> New Template
-                </button>
-              </div>
-            )}
-          </div>
-        ) : viewMode === "table" ? (
-          /* ── TABLE VIEW ── */
-          <div className="liquid-glass rounded-2xl overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr style={{ background: "rgba(5, 42, 50, 0.55)" }}>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-white/50 uppercase tracking-wider">Name</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-white/50 uppercase tracking-wider">Category</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-white/50 uppercase tracking-wider">Fields</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-white/50 uppercase tracking-wider">Updated</th>
-                  <th className="text-right px-4 py-3 text-xs font-medium text-white/50 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                <AnimatePresence>
-                  {filtered.map((template, i) => {
-                    const fieldCount = (template.formSchema ?? []).length;
-                    const conditionalCount = (template.formSchema ?? []).filter((f: any) => f.showWhen?.fieldId).length;
-                    return (
-                      <motion.tr
-                        key={template.id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: i * 0.02 }}
-                        className="border-t border-white/[0.06] hover:bg-white/[0.02] transition-colors"
-                      >
-                        <td className="px-4 py-3">
-                          <p className="font-medium text-white/90 text-sm">{template.name}</p>
-                          {template.description && (
-                            <p className="text-white/40 text-xs mt-0.5 truncate max-w-xs">{template.description}</p>
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
-                            style={{ background: "rgba(141,190,181,0.12)", color: "#8dbeb5" }}>
-                            <Tag size={9} /> {template.category}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-white/50 text-xs">
-                          {fieldCount > 0 ? (
-                            <span>{fieldCount} field{fieldCount !== 1 ? "s" : ""}{conditionalCount > 0 ? `, ${conditionalCount} conditional` : ""}</span>
-                          ) : (
-                            <span className="text-white/25">—</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-white/40 text-xs">
-                          {new Date(template.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex justify-end items-center gap-1">
-                            <button
-                              onClick={() => useTemplate(template.id)}
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all"
-                              style={{ background: "linear-gradient(135deg, #8dbeb5, #527b78)" }}
-                              title="Use this template"
-                            >
-                              <Send size={11} /> Use
-                            </button>
-                            <button
-                              onClick={() => setEditing(template)}
-                              className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white/80 transition-all"
-                              title="Edit"
-                            >
-                              <Edit2 size={13} />
-                            </button>
-                            <button
-                              onClick={() => deleteTemplate(template.id)}
-                              className="p-1.5 rounded-lg hover:bg-red-500/20 text-white/40 hover:text-red-400 transition-all"
-                              title="Delete"
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          </div>
-                        </td>
-                      </motion.tr>
-                    );
-                  })}
-                </AnimatePresence>
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          /* ── GRID VIEW ── */
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filtered.map((template, i) => {
-              const fieldCount = (template.formSchema ?? []).length;
-              const conditionalCount = (template.formSchema ?? []).filter((f: any) => f.showWhen?.fieldId).length;
-              return (
-                <motion.div
-                  key={template.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  className="liquid-glass rounded-2xl p-5 hover:shadow-md transition-all group glass-highlight"
-                >
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-white/90 text-sm truncate">{template.name}</h3>
-                      {template.description && (
-                        <p className="text-white/40 text-xs mt-0.5 line-clamp-2">{template.description}</p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        onClick={() => useTemplate(template.id)}
-                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-white"
-                        style={{ background: "linear-gradient(135deg, #8dbeb5, #527b78)" }}
-                      >
-                        <Send size={10} /> Use
-                      </button>
-                      <button onClick={() => setEditing(template)} className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white/80 transition-all opacity-0 group-hover:opacity-100">
-                        <Edit2 size={13} />
-                      </button>
-                      <button onClick={() => deleteTemplate(template.id)} className="p-1.5 rounded-lg hover:bg-red-500/20 text-white/40 hover:text-red-400 transition-all opacity-0 group-hover:opacity-100">
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs" style={{ background: "rgba(141,190,181,0.12)", color: "#8dbeb5" }}>
-                      <Tag size={9} /> {template.category}
-                    </span>
-                    {fieldCount > 0 && (
-                      <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-xs">
-                        <ClipboardList size={9} /> {fieldCount} field{fieldCount !== 1 ? "s" : ""}
-                      </span>
-                    )}
-                    {conditionalCount > 0 && (
-                      <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 text-xs">
-                        <GitBranch size={9} /> {conditionalCount} conditional
-                      </span>
-                    )}
-                    <span className="text-xs text-white/30 ml-auto">
-                      {new Date(template.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                    </span>
-                  </div>
-                  <div className="mt-3 p-3 rounded-lg bg-white/[0.03] border border-white/[0.06] text-xs text-white/30 line-clamp-2" style={{ fontFamily: "Georgia, serif" }}>
-                    {htmlPreviewText(template.content).slice(0, 180) || "No preview text"}
-                  </div>
-                </motion.div>
-              );
-            })}
-          </div>
-        )}
-      </motion.div>
-
+    <div className="mx-auto w-full max-w-screen-xl p-8">
       <AnimatePresence>
-        {(creating || editing) && (
+        {editorTemplate !== undefined && (
           <TemplateEditor
-            template={editing}
+            template={editorTemplate ?? undefined}
             token={token}
-            onClose={() => { setCreating(false); setEditing(undefined); }}
-            onSave={() => { setCreating(false); setEditing(undefined); fetchTemplates(); }}
+            onClose={() => setEditorTemplate(undefined)}
+            onSaved={async () => { setEditorTemplate(undefined); await load(); }}
           />
         )}
       </AnimatePresence>
+
+      <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-primary">E-Signature library</p>
+          <h1 className="mt-1 text-2xl font-semibold text-foreground">Signature Templates</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Create reusable documents, attach exact PDF sources, and define signer fields.</p>
+        </div>
+        <button onClick={() => setEditorTemplate(null)} className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground"><Plus size={15} /> New Template</button>
+      </div>
+
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-muted/15 p-3">
+        <div className="relative w-full max-w-sm"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search templates..." className="w-full rounded-xl border border-border bg-background py-2.5 pl-9 pr-3 text-sm outline-none focus:border-primary/60" /></div>
+        <div className="flex items-center gap-1 rounded-xl border border-border p-1"><button onClick={() => setView("grid")} className={cn("rounded-lg p-2", view === "grid" ? "bg-primary/10 text-primary" : "text-muted-foreground")}><LayoutGrid size={15} /></button><button onClick={() => setView("list")} className={cn("rounded-lg p-2", view === "list" ? "bg-primary/10 text-primary" : "text-muted-foreground")}><List size={15} /></button></div>
+      </div>
+
+      {loading ? (
+        <div className="flex min-h-64 items-center justify-center text-sm text-muted-foreground"><Loader2 className="mr-2 animate-spin" size={17} /> Loading templates...</div>
+      ) : filtered.length === 0 ? (
+        <div className="glass-card flex min-h-64 flex-col items-center justify-center rounded-3xl p-8 text-center"><FileText size={36} className="text-muted-foreground/40" /><h2 className="mt-4 text-lg font-semibold text-foreground">No templates found</h2><p className="mt-1 max-w-sm text-sm text-muted-foreground">Create a template and attach an exact source PDF when document layout must be preserved.</p><button onClick={() => setEditorTemplate(null)} className="mt-5 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground"><Plus size={14} className="mr-1 inline" /> Create template</button></div>
+      ) : view === "grid" ? (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {filtered.map(template => (
+            <motion.div key={template.id} layout className="glass-card rounded-2xl border border-border/70 p-5">
+              <div className="flex items-start justify-between gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><FileText size={18} /></div><span className="rounded-full border border-border px-2 py-1 text-[10px] font-semibold text-muted-foreground">{template.category}</span></div>
+              <h3 className="mt-4 text-sm font-semibold text-foreground">{template.name}</h3>
+              <p className="mt-1 line-clamp-2 min-h-10 text-xs leading-5 text-muted-foreground">{template.description || htmlPreviewText(template.content) || "Reusable signing template"}</p>
+              <div className="mt-4 flex items-center justify-between border-t border-border pt-3 text-[10px] text-muted-foreground"><span>{template.formSchema?.length ?? 0} fields</span><span>{new Date(template.updatedAt).toLocaleDateString()}</span></div>
+              <div className="mt-4 grid grid-cols-[1fr_auto_auto_auto] gap-2"><button onClick={() => setLocation(`/esignatures?templateId=${template.id}&from=template`)} className="flex items-center justify-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground"><Send size={13} /> Use</button><button onClick={() => setEditorTemplate(template)} className="rounded-xl border border-border p-2 text-muted-foreground hover:text-foreground" title="Edit"><Edit2 size={14} /></button><button onClick={() => void duplicateTemplate(template)} className="rounded-xl border border-border p-2 text-muted-foreground hover:text-foreground" title="Duplicate"><Copy size={14} /></button><button onClick={() => void removeTemplate(template)} className="rounded-xl border border-border p-2 text-muted-foreground hover:text-red-600" title="Delete"><Trash2 size={14} /></button></div>
+            </motion.div>
+          ))}
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-2xl border border-border">
+          <div className="grid grid-cols-[1fr_160px_110px_150px] gap-4 bg-muted/30 px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"><span>Template</span><span>Category</span><span>Fields</span><span>Actions</span></div>
+          {filtered.map(template => (
+            <div key={template.id} className="grid grid-cols-[1fr_160px_110px_150px] items-center gap-4 border-t border-border bg-background/40 px-4 py-3"><div><p className="text-sm font-medium text-foreground">{template.name}</p><p className="mt-0.5 truncate text-xs text-muted-foreground">{template.description || htmlPreviewText(template.content)}</p></div><span className="text-xs text-muted-foreground">{template.category}</span><span className="text-xs text-muted-foreground">{template.formSchema?.length ?? 0}</span><div className="flex gap-1"><button onClick={() => setLocation(`/esignatures?templateId=${template.id}&from=template`)} className="rounded-lg bg-primary p-2 text-primary-foreground" title="Use"><Send size={13} /></button><button onClick={() => setEditorTemplate(template)} className="rounded-lg border border-border p-2 text-muted-foreground" title="Edit"><Edit2 size={13} /></button><button onClick={() => void duplicateTemplate(template)} className="rounded-lg border border-border p-2 text-muted-foreground" title="Duplicate"><Copy size={13} /></button><button onClick={() => void removeTemplate(template)} className="rounded-lg border border-border p-2 text-muted-foreground hover:text-red-600" title="Delete"><Trash2 size={13} /></button></div></div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
