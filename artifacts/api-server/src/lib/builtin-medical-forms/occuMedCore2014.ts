@@ -1,8 +1,8 @@
-import { branch, form, history, q, select, text } from "./definition-helpers";
-import { occuMedPrompts } from "./occuMedPromptLibrary";
+import { branch, civilianHistory, form, history, q, select, text } from "./definition-helpers";
+import { civilianOccuMedPrompts } from "./civilianOccuMedPromptLibrary";
 
 const hist = (key: string, label: string, section: string, required = true) =>
-  history(key, `${key} — ${label}`, section, occuMedPrompts(label), { required });
+  civilianHistory(key, `${key} — ${label}`, section, civilianOccuMedPrompts(label), { required });
 
 const medicalLabels: Array<[string, string]> = [
   ["19", "Injury of any kind"],
@@ -38,17 +38,32 @@ const medicalLabels: Array<[string, string]> = [
 ];
 
 const postItems = [
-  hist("110", "Have you ever failed a pre-placement medical or psychological examination?", "Peace Officer / POST Items"),
-  hist("111", "Have you ever been terminated or resigned from employment, or had to change positions, due to a physical, psychological or medically related reason?", "Peace Officer / POST Items"),
-  hist("112", "Has your driver's license ever been suspended or revoked due to medical reasons?", "Peace Officer / POST Items"),
-  hist("113", "Have you ever taken medication to prevent wheezing or shortness of breath during exercise?", "Peace Officer / POST Items"),
-  hist("114", "Are you currently under a health care provider's care for any medical condition?", "Peace Officer / POST Items"),
+  civilianHistory("110", "110 — Have you ever failed a pre-placement medical or psychological examination?", "Peace Officer / POST Items", [
+    "What type of examination was involved, and what medical issue was identified?",
+    "What is the current status of that medical issue?",
+  ]),
+  civilianHistory("111", "111 — Have you ever been terminated or resigned from employment, or had to change positions, due to a physical, psychological or medically related reason?", "Peace Officer / POST Items", [
+    "What medical issue was associated with the employment change you reported?",
+    "What is the current status of that medical issue?",
+  ]),
+  civilianHistory("112", "112 — Has your driver's license ever been suspended or revoked due to medical reasons?", "Peace Officer / POST Items", [
+    "What medical issue was associated with the license action you reported?",
+    "What is the current status of that medical issue and the license action?",
+  ]),
+  civilianHistory("113", "113 — Have you ever taken medication to prevent wheezing or shortness of breath during exercise?", "Peace Officer / POST Items", [
+    "What breathing condition or symptoms were being treated?",
+    "What is the current status and management of those symptoms?",
+  ]),
+  civilianHistory("114", "114 — Are you currently under a health care provider's care for any medical condition?", "Peace Officer / POST Items", [
+    "What condition is currently being followed by a health care provider?",
+    "What care or monitoring is currently in place?",
+  ]),
 ];
 
 export const occuMedCore2014Definition = form(
   "occu-med-medical-history-2014",
   "Occu-Med Medical History Questionnaire — 2014 Core",
-  "Adaptive version of the 2014 Occu-Med core medical-history questionnaire using the recovered analyst follow-up bank and consistent cross-form clinical logic.",
+  "Adaptive version of the 2014 Occu-Med core medical-history questionnaire using condition-specific, applicant-facing clarification while preserving source numbering and intent.",
   "Occu-Med Medical History Questionnaire, Copyright 2014",
   [
     text("applicant.name", "Applicant's name (Last, First, Middle)", "Applicant Information", false),
@@ -59,28 +74,20 @@ export const occuMedCore2014Definition = form(
     text("applicant.email", "Email", "Applicant Information", false),
 
     branch("1", "1 — Have you ever been medically examined for employment before?", "Medical History — Background", [
-      "What employer was the examination for?",
-      "What job class was involved?",
-      "When was the examination?",
-      "Was any medical follow-up, restriction, or limitation identified?",
+      "What type of employment examination was involved, and when did it occur?",
+      "What medical follow-up, if any, resulted from the examination?",
     ]),
     branch("2", "2 — List all prescription and non-prescription medication you regularly use", "Medications / Allergies", [
-      "For each medication, what medical condition is being treated?",
-      "What dose and frequency do you take?",
-      "When did you start taking it?",
-      "Do you have any side effects?",
+      "What is each medication being used for, and how is it currently taken?",
+      "What effects or changes, if any, have you noticed while taking it?",
     ], { answerType: "text", triggerValue: "*" }),
     branch("3", "3 — List prescription or non-prescription medications, not taken regularly, used in the last 2 months", "Medications / Allergies", [
-      "What condition or symptom was each medication used for?",
-      "When did you take it and how often?",
-      "Are you still taking it?",
-      "Did you experience any side effects?",
+      "What was each medication used for, and how was it taken?",
+      "What is the current status of the reason it was used?",
     ], { answerType: "text", triggerValue: "*", required: false }),
     branch("4", "4 — List any drugs or other substances, including food or insect stings, that you are allergic to", "Medications / Allergies", [
-      "What type of reaction do you have to each allergen?",
-      "When was your most recent reaction?",
-      "Have you ever required emergency treatment?",
-      "Do you carry or use medication for the allergy?",
+      "What reaction have you had to each substance?",
+      "How was the most recent reaction managed?",
     ], { answerType: "text", triggerValue: "*", required: false }),
     select("5.hepatitisA", "5 — Hepatitis A immunization", "Immunizations", ["Yes", "No", "Unsure"], false),
     select("5.hepatitisB", "5 — Hepatitis B immunization", "Immunizations", ["Yes", "No", "Unsure"], false),
@@ -90,13 +97,11 @@ export const occuMedCore2014Definition = form(
     select("5.mumps", "5 — Mumps immunization", "Immunizations", ["Yes", "No", "Unsure"], false),
     select("5.rubella", "5 — Rubella immunization", "Immunizations", ["Yes", "No", "Unsure"], false),
     select("5.bcg", "5 — Bacillus Calmette-Guérin immunization", "Immunizations", ["Yes", "No", "Unsure"], false),
+    select("5.measles", "5 — Measles immunization", "Immunizations", ["Yes", "No", "Unsure"], false),
     hist("6", "Have you ever had a positive reaction to a PPD (Tuberculosis) Skin Test?", "Medical History — Background"),
     branch("7", "7 — List your last three hospitalizations, beginning with the most recent (excluding routine childbirth)", "Hospitalizations / Operations", [
-      "For each hospitalization, what was the reason?",
-      "Where and when were you hospitalized?",
-      "What treatment did you receive?",
-      "What was the recovery or prognosis?",
-      "Do you have any current symptoms, restrictions, or follow-up related to it?",
+      "What was the reason for each hospitalization, and when did it occur?",
+      "What is the current status of the condition that led to the hospitalization?",
     ], { answerType: "text", triggerValue: "*", required: false }),
 
     hist("8", "Prolonged loud noises", "Exposure History"),
