@@ -5,7 +5,7 @@ import { initSentry } from "./lib/sentry";
 import { processWebhookRetries } from "./lib/webhooks";
 import { validateEnvironment } from "./lib/env";
 import { startScheduler } from "./lib/scheduler";
-import { validateFrontendBuild } from "./lib/frontend-build";
+import { getFrontendStaticIndex, validateFrontendBuild } from "./lib/frontend-build";
 import { ensureBuiltInMedicalForms } from "./lib/builtin-medical-forms";
 
 const port = Number(process.env["PORT"] || "8080");
@@ -34,7 +34,7 @@ async function main() {
 
     app.use(
       express.static(clientDir, {
-        index: true,
+        index: getFrontendStaticIndex(),
         setHeaders(res, filePath) {
           // Never let index.html become stale across deploys; a stale index can
           // reference hashed assets that no longer exist in the new release.
