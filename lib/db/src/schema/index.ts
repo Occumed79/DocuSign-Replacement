@@ -2,6 +2,7 @@ export * from "./users";
 export * from "./exam-types";
 export * from "./cases";
 export * from "./case-access";
+export * from "./case-review";
 export * from "./questions";
 export * from "./answers";
 export * from "./security";
