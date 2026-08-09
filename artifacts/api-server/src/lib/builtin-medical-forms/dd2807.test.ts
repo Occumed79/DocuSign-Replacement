@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { dd2807Definition } from "./dd2807";
-import { validateBuiltInMedicalFormDefinition } from "./install";
+import { validateBuiltInMedicalFormDefinition } from "./validation";
 import type { BuiltInQuestionDefinition } from "./types";
 
 function flatten(questions: BuiltInQuestionDefinition[]): BuiltInQuestionDefinition[] {
