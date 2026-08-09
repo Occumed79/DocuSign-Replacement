@@ -1,11 +1,23 @@
 import { logger } from "../logger";
 import { dd2807Definition } from "./dd2807";
+import { dd2795Definition } from "./dd2795";
+import { ds1843Definition } from "./ds1843";
+import { ds6570Definition } from "./ds6570";
+import { ds6561Definition } from "./ds6561";
+import { occuMedSedentaryDefinition } from "./occuMedSedentary";
 import { ensureBuiltInMedicalForm } from "./install";
 
-export async function ensureBuiltInMedicalForms(): Promise<void> {
-  const definitions = [dd2807Definition];
+export const builtInMedicalFormDefinitions = [
+  dd2807Definition,
+  dd2795Definition,
+  ds1843Definition,
+  ds6570Definition,
+  ds6561Definition,
+  occuMedSedentaryDefinition,
+];
 
-  for (const definition of definitions) {
+export async function ensureBuiltInMedicalForms(): Promise<void> {
+  for (const definition of builtInMedicalFormDefinitions) {
     const result = await ensureBuiltInMedicalForm(definition);
     logger.info(
       {
@@ -20,4 +32,9 @@ export async function ensureBuiltInMedicalForms(): Promise<void> {
 }
 
 export { dd2807Definition } from "./dd2807";
+export { dd2795Definition } from "./dd2795";
+export { ds1843Definition } from "./ds1843";
+export { ds6570Definition } from "./ds6570";
+export { ds6561Definition } from "./ds6561";
+export { occuMedSedentaryDefinition } from "./occuMedSedentary";
 export { validateBuiltInMedicalFormDefinition } from "./validation";
