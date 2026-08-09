@@ -9,6 +9,7 @@ import publicMedicalQuestionnaireRouter from "./public-medical-questionnaire";
 import caseReviewWorkspaceRouter from "./case-review-workspace";
 import dashboardRouter from "./dashboard";
 import securityRouter from "./security";
+import legacyPdfTemplateBridgeRouter from "./legacy-pdf-template-bridge";
 import sourceDocumentsRouter from "./source-documents";
 import signaturesRouter from "./signatures";
 import signatureVerificationRouter from "./signature-verification";
@@ -39,6 +40,9 @@ router.use(publicMedicalQuestionnaireRouter);
 router.use(caseReviewWorkspaceRouter);
 router.use(dashboardRouter);
 router.use(securityRouter);
+// Promote the old HTML-embedded PDF-template representation into the exact
+// source-document request fields before sourceDocumentsRouter evaluates it.
+router.use(legacyPdfTemplateBridgeRouter);
 // Exact-source PDF routes intentionally run before the legacy signature router.
 // They intercept only requests carrying/persisting a real source PDF; all HTML
 // document behavior continues through signaturesRouter unchanged.
