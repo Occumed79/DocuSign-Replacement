@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { X, Plus, Trash2, PenTool, FileText, Users, Send, AlertCircle } from "lucide-react";
+import { X, Plus, Trash2, PenTool, FileText, Users, Send, AlertCircle, Upload, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -33,19 +33,34 @@ interface Props {
 }
 
 const ROLES = ["signer", "witness", "approver"];
+const MAX_PDF_BYTES = 8 * 1024 * 1024;
+
+async function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result ?? "");
+      resolve(result.includes(",") ? result.split(",", 2)[1] : result);
+    };
+    reader.onerror = () => reject(reader.error ?? new Error("Unable to read file"));
+    reader.readAsDataURL(file);
+  });
+}
 
 export default function CreateRequestModal({ token, onClose, onCreated, initialTemplateId }: Props) {
   const { toast } = useToast();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [cases, setCases] = useState<Case[]>([]);
-  const [loading, setLoading] = useState(false);
 
   // Form state
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [selectedTemplateId, setSelectedTemplateId] = useState<number | "">("");
   const [documentContent, setDocumentContent] = useState("");
+  const [sourceDocumentBase64, setSourceDocumentBase64] = useState("");
+  const [sourceDocumentFileName, setSourceDocumentFileName] = useState("");
+  const [sourceDocumentBytes, setSourceDocumentBytes] = useState(0);
   const [selectedCaseId, setSelectedCaseId] = useState<number | "">("");
   const [expiryDays, setExpiryDays] = useState(7);
   const [recipients, setRecipients] = useState<Recipient[]>([
@@ -62,14 +77,12 @@ export default function CreateRequestModal({ token, onClose, onCreated, initialT
       setTemplates(loadedTemplates);
       setCases(Array.isArray(cas) ? cas : []);
 
-      // Pre-select template if provided via query param (from Start menu "Use Template" or Templates "Use" CTA)
       if (initialTemplateId) {
-        const t = loadedTemplates.find((t: Template) => t.id === initialTemplateId);
+        const t = loadedTemplates.find((candidate: Template) => candidate.id === initialTemplateId);
         if (t) {
           setSelectedTemplateId(t.id);
           setDocumentContent(t.content);
           if (!title) setTitle(t.name);
-          // Jump straight to step 2 (recipients) since template is already chosen
           setStep(2);
         }
       }
@@ -79,11 +92,37 @@ export default function CreateRequestModal({ token, onClose, onCreated, initialT
   const selectTemplate = (id: number | "") => {
     setSelectedTemplateId(id);
     if (id) {
-      const t = templates.find(t => t.id === Number(id));
+      const t = templates.find(template => template.id === Number(id));
       if (t) {
         setDocumentContent(t.content);
+        setSourceDocumentBase64("");
+        setSourceDocumentFileName("");
+        setSourceDocumentBytes(0);
         if (!title) setTitle(t.name);
       }
+    }
+  };
+
+  const selectPdf = async (file: File | undefined) => {
+    if (!file) return;
+    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+      toast({ title: "Please choose a PDF file", variant: "destructive" });
+      return;
+    }
+    if (file.size > MAX_PDF_BYTES) {
+      toast({ title: "PDF is too large", description: "Exact-source PDFs are limited to 8 MB.", variant: "destructive" });
+      return;
+    }
+    try {
+      const base64 = await fileToBase64(file);
+      setSourceDocumentBase64(base64);
+      setSourceDocumentFileName(file.name);
+      setSourceDocumentBytes(file.size);
+      setSelectedTemplateId("");
+      if (!title.trim()) setTitle(file.name.replace(/\.pdf$/i, "").replace(/[-_]+/g, " "));
+      toast({ title: "PDF ready", description: "The original PDF pages will be preserved exactly." });
+    } catch {
+      toast({ title: "Unable to read PDF", variant: "destructive" });
     }
   };
 
@@ -99,7 +138,7 @@ export default function CreateRequestModal({ token, onClose, onCreated, initialT
     setRecipients(prev => prev.map((r, idx) => idx === i ? { ...r, [field]: value } : r));
   };
 
-  const isStep1Valid = title.trim() && (documentContent.trim() || selectedTemplateId);
+  const isStep1Valid = Boolean(title.trim() && (sourceDocumentBase64 || documentContent.trim() || selectedTemplateId));
   const isStep2Valid = recipients.every(r => r.name.trim() && /\S+@\S+\.\S+/.test(r.email));
 
   const submit = async () => {
@@ -114,6 +153,9 @@ export default function CreateRequestModal({ token, onClose, onCreated, initialT
         templateId: selectedTemplateId || null,
         caseId: selectedCaseId || null,
         documentContent: documentContent.trim() || null,
+        sourceDocumentBase64: sourceDocumentBase64 || undefined,
+        sourceDocumentFileName: sourceDocumentFileName || undefined,
+        sourceDocumentMimeType: sourceDocumentBase64 ? "application/pdf" : undefined,
         expiryDays,
         recipients,
       }),
@@ -125,7 +167,9 @@ export default function CreateRequestModal({ token, onClose, onCreated, initialT
         : 0;
       toast({
         title: failed > 0 ? "Request created with some delivery failures" : "Signature request created & sent",
-        description: payload?.emailsTotal ? `${payload.emailsSent}/${payload.emailsTotal} email(s) sent` : undefined,
+        description: payload?.exactSourceDocument
+          ? `Original PDF preserved · ${payload.emailsSent ?? 0}/${payload.emailsTotal ?? 0} email(s) sent`
+          : payload?.emailsTotal ? `${payload.emailsSent}/${payload.emailsTotal} email(s) sent` : undefined,
       });
       onCreated();
     } else {
@@ -150,7 +194,6 @@ export default function CreateRequestModal({ token, onClose, onCreated, initialT
         onClick={e => e.stopPropagation()}
         className="glass-card rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden"
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#8dbeb5] to-[#527b78] flex items-center justify-center">
@@ -166,7 +209,6 @@ export default function CreateRequestModal({ token, onClose, onCreated, initialT
           </button>
         </div>
 
-        {/* Step progress */}
         <div className="px-6 py-3 border-b border-border">
           <div className="flex items-center gap-2">
             {[
@@ -190,7 +232,6 @@ export default function CreateRequestModal({ token, onClose, onCreated, initialT
           </div>
         </div>
 
-        {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
           {step === 1 && (
             <div className="space-y-4">
@@ -199,9 +240,32 @@ export default function CreateRequestModal({ token, onClose, onCreated, initialT
                 <input
                   value={title}
                   onChange={e => setTitle(e.target.value)}
-                  placeholder="e.g. Pre-Employment Physical Consent"
+                  placeholder="e.g. Provider Service Agreement"
                   className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-foreground text-sm outline-none focus:border-[#8dbeb5] transition-colors"
                 />
+              </div>
+
+              <div className="rounded-xl border border-[#8dbeb5]/35 bg-[#8dbeb5]/[0.06] p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Upload the actual PDF</p>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">Recommended. The signer reviews these exact PDF pages, and the completed download keeps those source pages unchanged.</p>
+                  </div>
+                  <label className="shrink-0 cursor-pointer rounded-xl bg-[#8dbeb5] px-3 py-2 text-xs font-semibold text-[#031219] hover:opacity-90">
+                    <Upload size={13} className="mr-1 inline" /> Choose PDF
+                    <input type="file" accept="application/pdf,.pdf" className="hidden" onChange={e => void selectPdf(e.target.files?.[0])} />
+                  </label>
+                </div>
+                {sourceDocumentFileName && (
+                  <div className="mt-3 flex items-center gap-2 rounded-lg border border-emerald-400/20 bg-emerald-400/10 px-3 py-2">
+                    <CheckCircle2 size={14} className="text-emerald-400" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-medium text-foreground">{sourceDocumentFileName}</p>
+                      <p className="text-[10px] text-muted-foreground">{(sourceDocumentBytes / 1024 / 1024).toFixed(2)} MB · exact-source mode</p>
+                    </div>
+                    <button type="button" onClick={() => { setSourceDocumentBase64(""); setSourceDocumentFileName(""); setSourceDocumentBytes(0); }} className="text-[10px] text-muted-foreground hover:text-foreground">Remove</button>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -217,7 +281,7 @@ export default function CreateRequestModal({ token, onClose, onCreated, initialT
                   </select>
                   {templates.length === 0 && (
                     <div className="mt-2 rounded-lg border border-white/20 bg-[#052a32]/60 px-2.5 py-2 flex items-center justify-between gap-2">
-                      <p className="text-[11px] text-[#c8d2d1]">No templates yet. Create a custom form template first.</p>
+                      <p className="text-[11px] text-[#c8d2d1]">No templates yet. Create a reusable template first.</p>
                       <Link href="/signature-templates">
                         <button type="button" className="text-[11px] px-2 py-1 rounded bg-[#8dbeb5] text-[#031219]">Open Templates</button>
                       </Link>
@@ -248,21 +312,19 @@ export default function CreateRequestModal({ token, onClose, onCreated, initialT
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Document Content (HTML) *</label>
-                <textarea
-                  value={documentContent}
-                  onChange={e => setDocumentContent(e.target.value)}
-                  rows={10}
-                  placeholder={`<h2>Document Title</h2>\n<p>Document body content...</p>`}
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground text-sm font-mono outline-none focus:border-[#8dbeb5] resize-none transition-colors"
-                />
-                {!selectedTemplateId && templates.length > 0 && (
-                  <p className="text-xs text-muted-foreground mt-1.5">
-                    <span className="text-[#8dbeb5]">Tip:</span> Select a template above to auto-fill this field.
-                  </p>
-                )}
-              </div>
+              {!sourceDocumentBase64 && !selectedTemplateId && (
+                <div>
+                  <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">HTML document fallback</label>
+                  <textarea
+                    value={documentContent}
+                    onChange={e => setDocumentContent(e.target.value)}
+                    rows={8}
+                    placeholder={`<h2>Document Title</h2>\n<p>Document body content...</p>`}
+                    className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground text-sm font-mono outline-none focus:border-[#8dbeb5] resize-none transition-colors"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1.5">Use this only for documents authored as HTML. Upload a PDF above when the original layout must be preserved.</p>
+                </div>
+              )}
             </div>
           )}
 
@@ -339,13 +401,16 @@ export default function CreateRequestModal({ token, onClose, onCreated, initialT
 
           {step === 3 && (
             <div className="space-y-5">
-              {/* Summary */}
               <div className="p-4 rounded-xl bg-muted/20 border border-border">
                 <h3 className="font-semibold text-foreground text-sm mb-3">Request Summary</h3>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Title</span>
                     <span className="font-medium text-foreground">{title}</span>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <span className="text-muted-foreground">Document</span>
+                    <span className="font-medium text-foreground text-right">{sourceDocumentFileName || (selectedTemplateId ? "Template document" : "HTML document")}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Recipients</span>
@@ -358,7 +423,6 @@ export default function CreateRequestModal({ token, onClose, onCreated, initialT
                 </div>
               </div>
 
-              {/* Recipients preview */}
               <div>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Signing Links Will Be Generated For:</p>
                 <div className="space-y-2">
@@ -376,19 +440,17 @@ export default function CreateRequestModal({ token, onClose, onCreated, initialT
                 </div>
               </div>
 
-              {/* Legal notice */}
               <div className="p-4 rounded-xl bg-[#052a32]/45 border border-white/20 flex items-start gap-3">
                 <AlertCircle size={14} className="text-[#8dbeb5] mt-0.5 shrink-0" />
                 <p className="text-xs text-muted-foreground">
-                  By sending this request, signing links will be created for each recipient. Each signature will be recorded with a timestamp,
-                  IP address, and document hash to create a legally binding, HIPAA-compliant audit trail under the ESIGN Act.
+                  By sending this request, signing links will be created for each recipient. Each signature is recorded with timestamp,
+                  IP address, source-document hash, and an execution audit trail. Uploaded PDF source pages remain unchanged in the completed PDF.
                 </p>
               </div>
             </div>
           )}
         </div>
 
-        {/* Footer */}
         <div className="flex justify-between px-6 py-4 border-t border-border">
           <button
             onClick={() => step > 1 ? setStep((step - 1) as 1 | 2 | 3) : onClose()}
