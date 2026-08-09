@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { BuiltInQuestionDefinition } from "./types";
 import { validateBuiltInMedicalFormDefinition } from "./validation";
 import { dd2795Definition } from "./dd2795";
+import { dd2807Definition } from "./dd2807";
 import { ds1843Definition } from "./ds1843";
 import { ds6570Definition } from "./ds6570";
 import { ds6561Definition } from "./ds6561";
@@ -86,9 +87,11 @@ describe("recovered built-in medical form library", () => {
     expect(drivingGate?.followUps?.length).toBe(18);
   });
 
-  it("uses marked-in-error short circuiting on historical branches", () => {
-    const asthmaStatus = find(ds1843Definition, "8.status");
-    expect(asthmaStatus?.options).toContain("Marked in error");
-    expect(asthmaStatus?.triggerValue).not.toContain("marked in error");
+  it("keeps marked-in-error short circuiting on DD history while removing it from DS-1843", () => {
+    const ddAsthmaStatus = find(dd2807Definition, "10d.status");
+    expect(ddAsthmaStatus?.options).toContain("Marked in error");
+    expect(ddAsthmaStatus?.triggerValue).not.toContain("marked in error");
+
+    expect(find(ds1843Definition, "8.status")).toBeUndefined();
   });
 });
