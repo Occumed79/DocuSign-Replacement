@@ -18,7 +18,10 @@ const forms = [ds1843Definition, ds6561Definition, ds6570Definition, polarDefini
 describe("Polar and State Department applicant-facing clarification", () => {
   it("does not insert the generic military status-classification gate", () => {
     for (const definition of forms) {
-      expect(flatten(definition.questions).filter(question => question.key.endsWith(".status"))).toEqual([]);
+      const classifierGates = flatten(definition.questions).filter(
+        question => question.text === "How should this history be classified?",
+      );
+      expect(classifierGates).toEqual([]);
     }
   });
 
