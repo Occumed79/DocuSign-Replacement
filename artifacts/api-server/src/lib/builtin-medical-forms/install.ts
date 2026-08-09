@@ -1,6 +1,11 @@
 import { answersTable, casesTable, db, examTypesTable, questionsTable } from "@workspace/db";
 import { eq, inArray, sql } from "drizzle-orm";
-import { buildExpectedQuestionSnapshot, installedQuestionSnapshotMatches, type InstalledQuestionSnapshot } from "./install-snapshot";
+import {
+  buildExpectedQuestionSnapshot,
+  installedQuestionSnapshotMatches,
+  sourceKeyBackfillPlan,
+  type InstalledQuestionSnapshot,
+} from "./install-snapshot";
 import type { BuiltInMedicalFormDefinition, BuiltInQuestionDefinition } from "./types";
 import { validateBuiltInMedicalFormDefinition } from "./validation";
 
@@ -10,6 +15,7 @@ export interface InstalledMedicalForm {
   created: boolean;
   refreshed: boolean;
   questionCount: number;
+  sourceKeysBackfilled?: number;
   protectedCaseCount?: number;
   protectedAnswerCount?: number;
 }
@@ -27,6 +33,7 @@ async function insertDefinitionQuestions(
     const [inserted] = await tx
       .insert(questionsTable)
       .values({
+        sourceKey: question.key,
         text: question.text,
         answerType: question.answerType ?? "text",
         required: question.required ?? true,
@@ -111,6 +118,7 @@ export async function ensureBuiltInMedicalForm(
     const allQuestions = await tx
       .select({
         id: questionsTable.id,
+        sourceKey: questionsTable.sourceKey,
         orderIndex: questionsTable.orderIndex,
         text: questionsTable.text,
         answerType: questionsTable.answerType,
@@ -129,6 +137,18 @@ export async function ensureBuiltInMedicalForm(
     ) as InstalledQuestionSnapshot[];
 
     if (installedQuestionSnapshotMatches(expected, installed)) {
+      // Existing production forms can already have cases/answers. source_key is
+      // metadata only, so backfill it IN PLACE after exact structural equality
+      // has proved that each order slot still represents the current source item.
+      // This preserves question IDs, answers, visibility, and historical data.
+      const keyPlan = sourceKeyBackfillPlan(expected, installed);
+      for (const update of keyPlan) {
+        await tx
+          .update(questionsTable)
+          .set({ sourceKey: update.sourceKey })
+          .where(eq(questionsTable.id, update.id));
+      }
+
       await tx
         .update(examTypesTable)
         .set({ name: definition.name, description: definition.description })
@@ -140,6 +160,7 @@ export async function ensureBuiltInMedicalForm(
         created: false,
         refreshed: false,
         questionCount: installed.length,
+        sourceKeysBackfilled: keyPlan.length,
       };
     }
 
@@ -166,7 +187,9 @@ export async function ensureBuiltInMedicalForm(
           .where(inArray(answersTable.questionId, questionIds));
 
     // Never destroy historical or in-progress answers just to update built-in
-    // wording. A form with cases/answers must be explicitly versioned/migrated.
+    // wording/branching. A form with cases/answers must be explicitly versioned
+    // or migrated. We also do not attempt source-key backfill on a mismatched
+    // protected tree, because positional identity would no longer be provable.
     if (linkedCases.length > 0 || linkedAnswers.length > 0) {
       return {
         slug: definition.slug,

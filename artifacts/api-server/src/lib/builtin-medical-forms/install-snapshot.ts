@@ -1,6 +1,7 @@
 import type { BuiltInMedicalFormDefinition, BuiltInQuestionDefinition } from "./types";
 
 export type ExpectedQuestionSnapshot = {
+  sourceKey: string;
   orderIndex: number;
   text: string;
   answerType: string;
@@ -14,6 +15,7 @@ export type ExpectedQuestionSnapshot = {
 
 export type InstalledQuestionSnapshot = {
   id: number;
+  sourceKey?: string | null;
   orderIndex: number;
   text: string;
   answerType: string;
@@ -41,6 +43,7 @@ export function buildExpectedQuestionSnapshot(
     const followUps = question.followUps ?? [];
     const ownOrderIndex = orderIndex++;
     const row: ExpectedQuestionSnapshot = {
+      sourceKey: question.key,
       orderIndex: ownOrderIndex,
       text: question.text,
       answerType: question.answerType ?? "text",
@@ -72,8 +75,10 @@ function arraysEqual<T>(left: T[], right: T[]): boolean {
 
 /**
  * Compare an installed tree with a definition while normalizing follow-up IDs
- * back to stable order indexes. This avoids destructive rewrites when nothing
- * actually changed.
+ * back to stable order indexes. sourceKey is deliberately NOT part of this
+ * structural equality check: older production trees predate source_key and can
+ * therefore be safely backfilled in place when every other source-controlled
+ * attribute still matches.
  */
 export function installedQuestionSnapshotMatches(
   expected: ExpectedQuestionSnapshot[],
@@ -99,5 +104,24 @@ export function installedQuestionSnapshotMatches(
       && have.triggerValue === want.triggerValue
       && have.helpText === want.helpText
       && arraysEqual(childOrderIndexes as number[], want.childOrderIndexes);
+  });
+}
+
+/**
+ * Return stable key updates only when the installed tree has already passed the
+ * exact structural comparison above. This makes source identity backfill safe
+ * for forms with historical/in-progress cases because no question IDs, wording,
+ * branching, or answers are replaced.
+ */
+export function sourceKeyBackfillPlan(
+  expected: ExpectedQuestionSnapshot[],
+  installed: InstalledQuestionSnapshot[],
+): Array<{ id: number; sourceKey: string }> {
+  if (!installedQuestionSnapshotMatches(expected, installed)) return [];
+  const rows = [...installed].sort((a, b) => a.orderIndex - b.orderIndex);
+  return expected.flatMap((want, index) => {
+    const have = rows[index];
+    if (!have || have.sourceKey === want.sourceKey) return [];
+    return [{ id: have.id, sourceKey: want.sourceKey }];
   });
 }
