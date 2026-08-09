@@ -174,7 +174,9 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.json({ limit: "5mb", type: ["application/json", "application/csp-report"] }));
+// Exact-source PDFs are capped at 8 MB; base64 expansion plus request metadata
+// fits under this 15 MB JSON ceiling. The route performs the stricter byte cap.
+app.use(express.json({ limit: "15mb", type: ["application/json", "application/csp-report"] }));
 app.use(express.urlencoded({ extended: true, limit: "5mb", parameterLimit: 100 }));
 
 app.post("/api/security/csp-report", cspReportHandler);

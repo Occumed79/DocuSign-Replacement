@@ -22,7 +22,10 @@ export const signatureTemplatesTable = pgTable("signature_templates", {
   name: text("name").notNull(),
   description: text("description"),
   category: text("category").notNull().default("general"),
-  content: text("content").notNull(), // HTML/rich text of the document body
+  content: text("content").notNull(), // HTML/rich text fallback / legacy document body
+  sourceDocumentBase64: text("source_document_base64"), // exact source file bytes, base64-encoded (PDF only for exact-fidelity flow)
+  sourceDocumentMimeType: text("source_document_mime_type"),
+  sourceDocumentFileName: text("source_document_file_name"),
   fields: jsonb("fields").notNull().default([]), // legacy field definitions
   formSchema: jsonb("form_schema").notNull().default([]), // interactive form fields with conditional logic
   createdById: integer("created_by_id").references(() => usersTable.id),
@@ -38,11 +41,14 @@ export const signatureRequestsTable = pgTable("signature_requests", {
   message: text("message"),
   templateId: integer("template_id").references(() => signatureTemplatesTable.id),
   caseId: integer("case_id").references(() => casesTable.id),
-  documentContent: text("document_content").notNull(), // legacy/plaintext snapshot retained for backward-compatible migration
+  documentContent: text("document_content").notNull(), // HTML/rich text fallback / legacy snapshot
+  sourceDocumentBase64: text("source_document_base64"), // immutable exact source PDF snapshot
+  sourceDocumentMimeType: text("source_document_mime_type"),
+  sourceDocumentFileName: text("source_document_file_name"),
   encryptedDocumentContent: jsonb("encrypted_document_content"), // AES-256-GCM encrypted document snapshot
   wrappedDocumentKey: jsonb("wrapped_document_key"), // encrypted per-request data key
   encryptionKeyId: text("encryption_key_id"),
-  documentHash: text("document_hash").notNull(), // SHA-256 of plaintext document content for tamper detection
+  documentHash: text("document_hash").notNull(), // SHA-256 of exact source bytes when present, otherwise plaintext HTML content
   formSchema: jsonb("form_schema").notNull().default([]), // snapshot of form fields at time of send
   encryptedFormSchema: jsonb("encrypted_form_schema"),
   wrappedFormSchemaKey: jsonb("wrapped_form_schema_key"),

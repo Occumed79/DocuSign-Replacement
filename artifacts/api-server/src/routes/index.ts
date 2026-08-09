@@ -7,6 +7,7 @@ import questionsRouter from "./questions";
 import casesRouter from "./cases";
 import dashboardRouter from "./dashboard";
 import securityRouter from "./security";
+import sourceDocumentsRouter from "./source-documents";
 import signaturesRouter from "./signatures";
 import signatureVerificationRouter from "./signature-verification";
 import certificatesRouter from "./certificates";
@@ -34,6 +35,10 @@ router.use(questionsRouter);
 router.use(casesRouter);
 router.use(dashboardRouter);
 router.use(securityRouter);
+// Exact-source PDF routes intentionally run before the legacy signature router.
+// They intercept only requests carrying/persisting a real source PDF; all HTML
+// document behavior continues through signaturesRouter unchanged.
+router.use(sourceDocumentsRouter);
 router.use(signaturesRouter);
 router.use(signatureVerificationRouter);
 router.use(certificatesRouter);

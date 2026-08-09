@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AlertCircle, CheckCircle, ChevronRight, Lock, PenTool, RotateCcw, Shield } from "lucide-react";
+import { AlertCircle, CheckCircle, ChevronRight, FileCheck2, Lock, PenTool, RotateCcw, Shield } from "lucide-react";
 
 type PageState = "loading" | "ready" | "success" | "already_signed" | "declined" | "expired" | "voided" | "error";
 type Step = "review" | "sign";
@@ -132,6 +132,7 @@ export default function ApplicantSignPage({ token }: { token: string }) {
   const [submitting, setSubmitting] = useState(false);
   const [declineReason, setDeclineReason] = useState("");
   const [declining, setDeclining] = useState(false);
+  const [exactSourcePdf, setExactSourcePdf] = useState(false);
   const reviewFrameRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
@@ -146,18 +147,21 @@ export default function ApplicantSignPage({ token }: { token: string }) {
         const data = await res.json();
         setSession(data);
         setTypedName(data.recipientName || "");
+
+        const sourceProbe = await fetch(`/api/sign/${token}/source-document`, { method: "HEAD" }).catch(() => null);
+        setExactSourcePdf(Boolean(sourceProbe?.ok));
+
         await fetch(`/api/sign/${token}/view`, { method: "POST" }).catch(() => undefined);
         setState("ready");
       } catch {
         setState("error");
       }
     }
-    load();
+    void load();
   }, [token]);
 
-
-
   function collectFormResponses(): Array<{ name: string; value: string | boolean; type: string }> {
+    if (exactSourcePdf) return [];
     const doc = reviewFrameRef.current?.contentDocument;
     if (!doc) return [];
     const fields = Array.from(doc.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>("input, textarea, select"));
@@ -189,14 +193,16 @@ export default function ApplicantSignPage({ token }: { token: string }) {
         signatureData,
         fullName: typedName.trim() || session?.recipientName || "Signer",
         formResponses,
+        electronicRecordConsent: true,
       }),
     });
     setSubmitting(false);
     if (res.ok) setState("success");
-    else alert("Signing failed. Please try again or contact Occu-Med.");
+    else {
+      const payload = await res.json().catch(() => ({}));
+      alert(payload.error || "Signing failed. Please try again or contact Occu-Med.");
+    }
   }
-
-
 
   async function decline() {
     if (!declineReason.trim()) return;
@@ -243,6 +249,11 @@ export default function ApplicantSignPage({ token }: { token: string }) {
             <div className="mt-2 text-lg font-semibold text-white">{session?.recipientName}</div>
             <div className="text-sm text-white/55">{session?.recipientEmail}</div>
             <div className="mt-4 rounded-2xl bg-white/10 p-3 text-xs text-white/60">Request: <strong className="text-white">{session?.requestTitle}</strong></div>
+            {exactSourcePdf && (
+              <div className="mt-3 flex items-center gap-2 rounded-2xl border border-emerald-300/20 bg-emerald-300/10 p-3 text-xs text-emerald-100">
+                <FileCheck2 size={14} /> Original PDF source
+              </div>
+            )}
           </div>
         </section>
 
@@ -254,13 +265,21 @@ export default function ApplicantSignPage({ token }: { token: string }) {
         {step === "review" ? (
           <section className="grid gap-6 lg:grid-cols-[1fr_260px]">
             <div className="template-iframe-shell h-[70vh]">
-              <iframe ref={reviewFrameRef} title="Document to sign" srcDoc={session?.documentContent ?? ""} sandbox="allow-forms allow-same-origin" />
+              {exactSourcePdf ? (
+                <iframe ref={reviewFrameRef} title="Original PDF document to sign" src={`/api/sign/${token}/source-document`} />
+              ) : (
+                <iframe ref={reviewFrameRef} title="Document to sign" srcDoc={session?.documentContent ?? ""} sandbox="allow-forms allow-same-origin" />
+              )}
             </div>
             <aside className="tahoe-panel flex flex-col justify-between rounded-[30px] p-5">
               <div>
                 <div className="text-[11px] uppercase tracking-[0.25em] text-[#8dbeb5]/75">Step 1</div>
                 <h2 className="mt-2 text-2xl font-semibold text-white">Review packet</h2>
-                <p className="mt-3 text-sm leading-6 text-white/60">Review the document before continuing. Your signature will be recorded with a timestamp and audit trail.</p>
+                <p className="mt-3 text-sm leading-6 text-white/60">
+                  {exactSourcePdf
+                    ? "Review the original PDF. These source pages are preserved unchanged in the completed download; PacketPath appends the execution record separately."
+                    : "Review the document before continuing. Your signature will be recorded with a timestamp and audit trail."}
+                </p>
               </div>
               <button onClick={() => setStep("sign")} className="tahoe-button mt-6 rounded-2xl px-5 py-3 font-semibold">
                 Continue <ChevronRight className="ml-1 inline" size={16} />
@@ -282,7 +301,7 @@ export default function ApplicantSignPage({ token }: { token: string }) {
               </div>
               <label className="mt-5 flex items-start gap-3 rounded-[24px] border border-white/20 bg-white/10 p-4 text-sm leading-6 text-white/72">
                 <input type="checkbox" checked={agreed} onChange={e => setAgreed(e.target.checked)} className="mt-1" />
-                <span>I agree to sign this document electronically and confirm the information provided is accurate.</span>
+                <span>I agree to use electronic records and electronic signatures for this document and understand that my electronic signature has the same legal effect as a handwritten signature.</span>
               </label>
               <div className="mt-6 rounded-2xl border border-white/15 bg-[#031219]/40 p-4">
                 <p className="text-xs uppercase tracking-[0.18em] text-[#8dbeb5]/80">Optional: Decline to sign</p>
@@ -302,7 +321,7 @@ export default function ApplicantSignPage({ token }: { token: string }) {
         <footer className="mt-8 grid gap-4 md:grid-cols-3">
           <div className="tahoe-panel rounded-[24px] p-4 text-sm text-white/65"><Shield className="mb-2 text-[#8dbeb5]" /> HIPAA audit trail recorded.</div>
           <div className="tahoe-panel rounded-[24px] p-4 text-sm text-white/65"><Lock className="mb-2 text-[#8dbeb5]" /> Secure token link. No portal account required.</div>
-          <div className="tahoe-panel rounded-[24px] p-4 text-sm text-white/65"><CheckCircle className="mb-2 text-[#8dbeb5]" /> Signed PDF generated after completion.</div>
+          <div className="tahoe-panel rounded-[24px] p-4 text-sm text-white/65"><CheckCircle className="mb-2 text-[#8dbeb5]" /> {exactSourcePdf ? "Original PDF + execution record after completion." : "Signed PDF generated after completion."}</div>
         </footer>
       </main>
     </div>
