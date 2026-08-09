@@ -7,6 +7,7 @@ import { ds6561Definition } from "./ds6561";
 import { occuMedSedentaryDefinition } from "./occuMedSedentary";
 import { polarDefinition } from "./polar";
 import { postPeaceOfficerDefinition } from "./postPeaceOfficer";
+import { postPublicSafetyDispatcherDefinition } from "./postPublicSafetyDispatcher";
 import { occuMedCore2014Definition } from "./occuMedCore2014";
 import { occuMedGoldDefinition } from "./occuMedGold";
 import { absNorthAmericaDefinition } from "./absNorthAmerica";
@@ -21,6 +22,7 @@ export const builtInMedicalFormDefinitions = [
   occuMedSedentaryDefinition,
   polarDefinition,
   postPeaceOfficerDefinition,
+  postPublicSafetyDispatcherDefinition,
   occuMedCore2014Definition,
   occuMedGoldDefinition,
   absNorthAmericaDefinition,
@@ -49,6 +51,7 @@ export { ds6561Definition } from "./ds6561";
 export { occuMedSedentaryDefinition } from "./occuMedSedentary";
 export { polarDefinition } from "./polar";
 export { postPeaceOfficerDefinition } from "./postPeaceOfficer";
+export { postPublicSafetyDispatcherDefinition } from "./postPublicSafetyDispatcher";
 export { occuMedCore2014Definition } from "./occuMedCore2014";
 export { occuMedGoldDefinition } from "./occuMedGold";
 export { absNorthAmericaDefinition } from "./absNorthAmerica";

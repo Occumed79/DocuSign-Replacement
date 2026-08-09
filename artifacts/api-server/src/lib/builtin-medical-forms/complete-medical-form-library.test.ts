@@ -3,6 +3,7 @@ import type { BuiltInMedicalFormDefinition, BuiltInQuestionDefinition } from "./
 import { validateBuiltInMedicalFormDefinition } from "./validation";
 import { polarDefinition } from "./polar";
 import { postPeaceOfficerDefinition } from "./postPeaceOfficer";
+import { postPublicSafetyDispatcherDefinition } from "./postPublicSafetyDispatcher";
 import { occuMedCore2014Definition } from "./occuMedCore2014";
 import { occuMedGoldDefinition } from "./occuMedGold";
 import { absNorthAmericaDefinition } from "./absNorthAmerica";
@@ -11,6 +12,7 @@ import { occuMedPrompts } from "./occuMedPromptLibrary";
 const definitions: BuiltInMedicalFormDefinition[] = [
   polarDefinition,
   postPeaceOfficerDefinition,
+  postPublicSafetyDispatcherDefinition,
   occuMedCore2014Definition,
   occuMedGoldDefinition,
   absNorthAmericaDefinition,
@@ -60,6 +62,22 @@ describe("complete recovered medical-form library", () => {
     expect(asthma?.answerType).toBe("dropdown");
     expect(asthma?.options).toEqual(["Yes", "No", "Unsure"]);
     expect(asthma?.triggerValue).toBe("yes|unsure");
+  });
+
+  it("preserves POST Public Safety Dispatcher 2-264 source numbering and Yes/No/? behavior", () => {
+    for (let item = 10; item <= 35; item++) {
+      expect(byKey(postPublicSafetyDispatcherDefinition, String(item)), `Dispatcher missing ${item}`).toBeDefined();
+    }
+    expectKeys(postPublicSafetyDispatcherDefinition, [
+      "36A", "36K", "37A", "37J", "38A", "38F", "39A", "39F", "40A", "40C",
+      "41A", "41G", "42A", "42N", "43A", "43Q", "44",
+    ]);
+    const hearing = byKey(postPublicSafetyDispatcherDefinition, "36H");
+    expect(hearing?.answerType).toBe("dropdown");
+    expect(hearing?.options).toEqual(["Yes", "No", "Unsure"]);
+    expect(hearing?.triggerValue).toBe("yes|unsure");
+    expect(byKey(postPublicSafetyDispatcherDefinition, "41C")?.followUps?.[0]?.followUps?.map(q => q.text).join(" ")).toContain("typing");
+    expect(byKey(postPublicSafetyDispatcherDefinition, "43O")?.followUps?.[0]?.followUps?.map(q => q.text).join(" ")).toContain("concentration");
   });
 
   it("preserves the 2014 Occu-Med core medical-history range and POST-only tail", () => {
