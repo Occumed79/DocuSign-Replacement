@@ -11,6 +11,7 @@ import CasesPage from "@/pages/Cases";
 import NewCasePage from "@/pages/NewCase";
 import CaseWizardPage from "@/pages/ReactiveCaseWizard";
 import CaseReviewPage from "@/pages/CaseReview";
+import PublicMedicalQuestionnaire from "@/pages/PublicMedicalQuestionnaire";
 import AdminPage from "@/pages/Admin";
 import SecurityPage from "@/pages/Security";
 import AuditLogPage from "@/pages/AuditLog";
@@ -59,9 +60,12 @@ function Router() {
       <Route path="/login" component={LoginPage} />
       <Route path="/setup" component={SetupPage} />
 
-      {/* Public signing page — no auth required */}
+      {/* Public recipient pages — no PacketPath account required */}
       <Route path="/sign/:token">
         {(params) => <SignPage token={params.token} />}
+      </Route>
+      <Route path="/questionnaire/:token">
+        {(params) => <PublicMedicalQuestionnaire token={params.token} />}
       </Route>
 
       <Route path="/">
