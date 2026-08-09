@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it } from "vitest";
+import express from "express";
+import request from "supertest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { validateFrontendBuild } from "./frontend-build";
+import { getFrontendStaticIndex, validateFrontendBuild } from "./frontend-build";
 
 const tempDirs: string[] = [];
 
@@ -51,5 +53,22 @@ describe("validateFrontendBuild", () => {
 
     const result = validateFrontendBuild(dir);
     expect(result.assetPaths).toHaveLength(2);
+  });
+});
+
+describe("production static index option", () => {
+  it("serves index.html for both GET / and HEAD / without throwing", async () => {
+    const dir = makeDir();
+    fs.writeFileSync(path.join(dir, "index.html"), "<!doctype html><title>PacketPath</title>");
+
+    const app = express();
+    app.use(express.static(dir, { index: getFrontendStaticIndex() }));
+
+    const getResponse = await request(app).get("/");
+    expect(getResponse.status).toBe(200);
+    expect(getResponse.text).toContain("PacketPath");
+
+    const headResponse = await request(app).head("/");
+    expect(headResponse.status).toBe(200);
   });
 });
