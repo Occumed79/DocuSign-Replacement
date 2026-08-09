@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   LayoutDashboard, FolderOpen, LogOut, ChevronLeft, ChevronRight,
   Shield, Users, ClipboardList, AlertTriangle, PenTool, Mail,
-  BarChart2, Webhook, Palette, FileSignature, FileText
+  BarChart2, Webhook, Palette, FileSignature, FileText, ServerCog
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -26,6 +26,7 @@ const adminItems = [
   { label: "Admin",         icon: Shield,        href: "/admin" },
   { label: "Users",         icon: Users,         href: "/users" },
   { label: "Email Settings",icon: Mail,          href: "/email-settings" },
+  { label: "Readiness",     icon: ServerCog,     href: "/readiness" },
   { label: "Branding",      icon: Palette,       href: "/branding" },
   { label: "Webhooks",      icon: Webhook,       href: "/webhooks" },
   { label: "Security",      icon: AlertTriangle, href: "/security" },

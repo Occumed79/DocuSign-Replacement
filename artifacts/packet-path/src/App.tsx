@@ -25,6 +25,7 @@ import AnalyticsPage from "@/pages/Analytics";
 import AgreementsPage from "@/pages/Agreements";
 import WebhooksPage from "@/pages/Webhooks";
 import BrandingPage from "@/pages/Branding";
+import SystemReadinessPage from "@/pages/SystemReadiness";
 import AppLayout from "@/components/layout/AppLayout";
 import NotFound from "@/pages/not-found";
 import SetupPage from "@/pages/Setup";
@@ -129,6 +130,9 @@ function Router() {
       </Route>
       <Route path="/branding">
         <ProtectedRoute adminOnly><BrandingPage /></ProtectedRoute>
+      </Route>
+      <Route path="/readiness">
+        <ProtectedRoute adminOnly><SystemReadinessPage /></ProtectedRoute>
       </Route>
 
       <Route component={NotFound} />
