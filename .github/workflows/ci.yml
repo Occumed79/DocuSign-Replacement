@@ -50,5 +50,13 @@ jobs:
     - name: Type check complete frontend
       run: pnpm --filter=@workspace/packet-path run typecheck
       
-    - name: Run tests
+    - name: Run API tests
       run: pnpm --filter=@workspace/api-server run test
+
+    # Staff use Chrome/Safari-class desktop browsers. Chromium and WebKit catch
+    # the two relevant browser engines without spending CI time on Firefox.
+    - name: Install Chromium and WebKit
+      run: pnpm exec playwright install --with-deps chromium webkit
+
+    - name: Run desktop browser smoke tests
+      run: pnpm run test:browser
