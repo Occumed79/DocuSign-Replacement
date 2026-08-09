@@ -102,7 +102,7 @@ async function main() {
     const domains = process.env.REPLIT_DOMAINS?.split(",")[0]?.trim();
     if (domains) return `https://${domains}`;
     const dev = process.env.REPLIT_DEV_DOMAIN?.trim();
-    if (dev) return `http://${dev}`;
+    if (dev) return `https://${dev}`;
     return `http://localhost:${port}`;
   });
 
