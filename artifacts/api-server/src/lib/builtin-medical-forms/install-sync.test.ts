@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildExpectedQuestionSnapshot, installedQuestionSnapshotMatches } from "./install";
+import { buildExpectedQuestionSnapshot, installedQuestionSnapshotMatches } from "./install-snapshot";
 import { form, q } from "./definition-helpers";
 
 const definition = form(
