@@ -19,13 +19,17 @@ import {
   Check,
   ChevronLeft,
   ClipboardCheck,
+  Copy,
   GitBranch,
   Loader2,
+  Mail,
+  Send,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import {
-  getActivatedFollowUpCount,
   getInterviewSequence,
   getMissingRequiredQuestions,
   getQuestionDepth,
@@ -150,11 +154,122 @@ function QuestionInput({ question, value, onChange }: {
           value={value}
           onChange={event => onChange(event.target.value)}
           rows={5}
-          placeholder="Enter the details requested above..."
+          placeholder="Enter response..."
           className="w-full resize-y rounded-2xl border border-border bg-background/70 px-4 py-3.5 text-sm leading-6 text-foreground outline-none transition focus:border-primary/60"
         />
       );
   }
+}
+
+function QuestionnaireInviteModal({
+  caseId,
+  patientName,
+  token,
+  onClose,
+}: {
+  caseId: number;
+  patientName: string;
+  token: string | null;
+  onClose: () => void;
+}) {
+  const { toast } = useToast();
+  const [email, setEmail] = useState("");
+  const [sending, setSending] = useState(false);
+  const [inviteUrl, setInviteUrl] = useState("");
+  const [emailSent, setEmailSent] = useState<boolean | null>(null);
+
+  const sendInvitation = async () => {
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
+      toast({ title: "Enter a valid email address" });
+      return;
+    }
+    setSending(true);
+    try {
+      const res = await fetch(`/api/cases/${caseId}/questionnaire-invitations`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), expiryDays: 7 }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload.error || "Unable to create invitation");
+      setInviteUrl(payload.inviteUrl || "");
+      setEmailSent(Boolean(payload.emailSent));
+      toast({
+        title: payload.emailSent ? "Questionnaire invitation sent" : "Secure questionnaire link created",
+        description: payload.emailSent ? `Sent to ${email.trim()}` : "Email delivery is not configured or failed. Copy the secure link instead.",
+      });
+    } catch (err: any) {
+      toast({ title: err?.message || "Unable to create invitation", variant: "destructive" });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const copyLink = async () => {
+    if (!inviteUrl) return;
+    await navigator.clipboard.writeText(inviteUrl);
+    toast({ title: "Secure questionnaire link copied" });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm" onClick={onClose}>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        onClick={event => event.stopPropagation()}
+        className="glass-card w-full max-w-lg rounded-3xl border border-border p-6 shadow-2xl"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="mb-2 flex items-center gap-2 text-primary"><Mail size={17} /><span className="text-xs font-semibold uppercase tracking-[0.14em]">Secure invitation</span></div>
+            <h2 className="text-xl font-semibold text-foreground">Send medical history questionnaire</h2>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">Create a private link for {patientName}. The recipient does not need a PacketPath account.</p>
+          </div>
+          <button onClick={onClose} className="rounded-xl p-2 text-muted-foreground hover:bg-muted/50 hover:text-foreground"><X size={16} /></button>
+        </div>
+
+        {!inviteUrl ? (
+          <>
+            <label className="mt-6 block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Recipient email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={event => setEmail(event.target.value)}
+              onKeyDown={event => { if (event.key === "Enter") void sendInvitation(); }}
+              placeholder="name@example.com"
+              autoFocus
+              className="mt-2 w-full rounded-2xl border border-border bg-background/70 px-4 py-3 text-sm text-foreground outline-none focus:border-primary/60"
+            />
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">The secure link expires in 7 days. If a date of birth is stored on the case, the recipient must verify it before the questionnaire opens.</p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button onClick={onClose} className="rounded-2xl border border-border px-4 py-2.5 text-sm text-muted-foreground">Cancel</button>
+              <button onClick={() => void sendInvitation()} disabled={sending} className="flex items-center gap-2 rounded-2xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50">
+                {sending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+                {sending ? "Creating" : "Send questionnaire"}
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="mt-6">
+            <div className={cn(
+              "rounded-2xl border p-4",
+              emailSent ? "border-emerald-300/25 bg-emerald-300/10" : "border-amber-300/25 bg-amber-300/10",
+            )}>
+              <p className="text-sm font-semibold text-foreground">{emailSent ? "Invitation sent" : "Secure link created"}</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">{emailSent ? `Email sent to ${email}.` : "Email was not delivered. The secure link below can be sent manually."}</p>
+            </div>
+            <div className="mt-4 rounded-2xl border border-border bg-background/50 p-3">
+              <p className="break-all text-xs leading-5 text-muted-foreground">{inviteUrl}</p>
+            </div>
+            <div className="mt-5 flex justify-end gap-3">
+              <button onClick={() => void copyLink()} className="flex items-center gap-2 rounded-2xl border border-border px-4 py-2.5 text-sm font-medium text-foreground"><Copy size={14} /> Copy secure link</button>
+              <button onClick={onClose} className="rounded-2xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground">Done</button>
+            </div>
+          </div>
+        )}
+      </motion.div>
+    </div>
+  );
 }
 
 export default function ReactiveCaseWizardPage({ caseId }: { caseId: number }) {
@@ -162,8 +277,10 @@ export default function ReactiveCaseWizardPage({ caseId }: { caseId: number }) {
   const [answers, setAnswers] = useState<InterviewAnswers>({});
   const [currentQuestionId, setCurrentQuestionId] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { token } = useAuth();
 
   const { data: caseData, isLoading: caseLoading } = useGetCase(caseId, {
     query: { enabled: Boolean(caseId), queryKey: getGetCaseQueryKey(caseId) },
@@ -292,7 +409,7 @@ export default function ReactiveCaseWizardPage({ caseId }: { caseId: number }) {
     return (
       <div className="mx-auto flex min-h-[60vh] max-w-3xl items-center justify-center p-8">
         <div className="flex items-center gap-3 text-sm text-muted-foreground">
-          <Loader2 className="animate-spin" size={18} /> Preparing adaptive interview...
+          <Loader2 className="animate-spin" size={18} /> Preparing medical history questionnaire...
         </div>
       </div>
     );
@@ -302,7 +419,7 @@ export default function ReactiveCaseWizardPage({ caseId }: { caseId: number }) {
     return (
       <div className="mx-auto max-w-3xl p-8">
         <div className="glass-card rounded-3xl p-8 text-center">
-          <h1 className="text-xl font-semibold text-foreground">No interview questions are configured</h1>
+          <h1 className="text-xl font-semibold text-foreground">No questionnaire questions are configured</h1>
           <p className="mt-2 text-sm text-muted-foreground">Add questions for this exam type in the Admin panel.</p>
         </div>
       </div>
@@ -310,24 +427,39 @@ export default function ReactiveCaseWizardPage({ caseId }: { caseId: number }) {
   }
 
   const depth = getQuestionDepth(currentQuestion.id, allQuestions);
-  const activatedFollowUps = getActivatedFollowUpCount(currentQuestion, answers);
-  const currentAnswered = isAnswered(answers[currentQuestion.id]);
 
   return (
     <div className="mx-auto max-w-4xl p-8">
-      <div className="mb-7 flex items-center justify-between">
+      {inviteOpen && caseData && (
+        <QuestionnaireInviteModal
+          caseId={caseId}
+          patientName={caseData.patientName}
+          token={token}
+          onClose={() => setInviteOpen(false)}
+        />
+      )}
+
+      <div className="mb-7 flex flex-wrap items-center justify-between gap-3">
         <button
           onClick={() => setLocation("/cases")}
           className="flex items-center gap-2 text-sm text-muted-foreground transition hover:text-foreground"
         >
           <ArrowLeft size={15} /> Cases
         </button>
-        <button
-          onClick={async () => { await saveAnswers(); setLocation(`/cases/${caseId}/review`); }}
-          className="flex items-center gap-2 text-sm font-medium text-primary hover:underline"
-        >
-          <ClipboardCheck size={15} /> Review answers
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setInviteOpen(true)}
+            className="flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm font-medium text-foreground transition hover:border-primary/40 hover:bg-primary/5"
+          >
+            <Mail size={15} /> Send questionnaire
+          </button>
+          <button
+            onClick={async () => { await saveAnswers(); setLocation(`/cases/${caseId}/review`); }}
+            className="flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+          >
+            <ClipboardCheck size={15} /> Review answers
+          </button>
+        </div>
       </div>
 
       <div className="mb-6">
@@ -339,7 +471,7 @@ export default function ReactiveCaseWizardPage({ caseId }: { caseId: number }) {
           </div>
           <div className="text-right">
             <div className="text-2xl font-semibold text-foreground">{progress}%</div>
-            <div className="text-xs text-muted-foreground">required interview complete</div>
+            <div className="text-xs text-muted-foreground">required questionnaire complete</div>
           </div>
         </div>
         <div className="mt-4 h-2 overflow-hidden rounded-full bg-muted">
@@ -367,7 +499,7 @@ export default function ReactiveCaseWizardPage({ caseId }: { caseId: number }) {
         >
           {depth > 0 && (
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">
-              <GitBranch size={13} /> Follow-up detail {depth > 1 ? `· level ${depth}` : ""}
+              <GitBranch size={13} /> Additional detail {depth > 1 ? `· level ${depth}` : ""}
             </div>
           )}
 
@@ -387,19 +519,6 @@ export default function ReactiveCaseWizardPage({ caseId }: { caseId: number }) {
                 onChange={value => handleAnswer(currentQuestion.id, value)}
               />
             </div>
-
-            {activatedFollowUps > 0 && currentAnswered && (
-              <motion.div
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mt-5 flex items-start gap-2 rounded-2xl border border-primary/20 bg-primary/8 px-4 py-3 text-sm text-foreground"
-              >
-                <GitBranch className="mt-0.5 shrink-0 text-primary" size={16} />
-                <span>
-                  This answer opens {activatedFollowUps} follow-up question{activatedFollowUps === 1 ? "" : "s"} so the medical history is complete enough for review without unnecessary back-and-forth.
-                </span>
-              </motion.div>
-            )}
           </div>
         </motion.div>
       </AnimatePresence>
@@ -425,7 +544,7 @@ export default function ReactiveCaseWizardPage({ caseId }: { caseId: number }) {
           className="flex items-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition hover:opacity-90 disabled:opacity-60"
         >
           {isSaving ? <><Loader2 className="animate-spin" size={16} /> Saving</> : (
-            <>{currentIndex === sequence.length - 1 ? "Finish interview" : "Continue"}<ArrowRight size={16} /></>
+            <>{currentIndex === sequence.length - 1 ? "Finish questionnaire" : "Continue"}<ArrowRight size={16} /></>
           )}
         </button>
       </div>
