@@ -97,7 +97,6 @@ export const occuMedCore2014Definition = form(
     select("5.mumps", "5 — Mumps immunization", "Immunizations", ["Yes", "No", "Unsure"], false),
     select("5.rubella", "5 — Rubella immunization", "Immunizations", ["Yes", "No", "Unsure"], false),
     select("5.bcg", "5 — Bacillus Calmette-Guérin immunization", "Immunizations", ["Yes", "No", "Unsure"], false),
-    select("5.measles", "5 — Measles immunization", "Immunizations", ["Yes", "No", "Unsure"], false),
     hist("6", "Have you ever had a positive reaction to a PPD (Tuberculosis) Skin Test?", "Medical History — Background"),
     branch("7", "7 — List your last three hospitalizations, beginning with the most recent (excluding routine childbirth)", "Hospitalizations / Operations", [
       "What was the reason for each hospitalization, and when did it occur?",
