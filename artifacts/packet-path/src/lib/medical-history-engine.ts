@@ -116,7 +116,9 @@ export function pruneHiddenAnswers(questions: Question[], answers: InterviewAnsw
   const next: InterviewAnswers = {};
   Object.entries(answers).forEach(([rawId, value]) => {
     const id = Number(rawId);
-    if (visibleIds.has(id) && isAnswered(value)) next[id] = value;
+    // Keep visible empty values so clearing an optional field can be persisted.
+    // Hidden branch answers are intentionally dropped.
+    if (visibleIds.has(id)) next[id] = value;
   });
   return next;
 }
