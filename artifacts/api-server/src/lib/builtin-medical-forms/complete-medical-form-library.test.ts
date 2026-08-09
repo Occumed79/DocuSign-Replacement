@@ -76,8 +76,19 @@ describe("complete recovered medical-form library", () => {
     expect(hearing?.answerType).toBe("dropdown");
     expect(hearing?.options).toEqual(["Yes", "No", "Unsure"]);
     expect(hearing?.triggerValue).toBe("yes|unsure");
-    expect(byKey(postPublicSafetyDispatcherDefinition, "41C")?.followUps?.[0]?.followUps?.map(q => q.text).join(" ")).toContain("typing");
-    expect(byKey(postPublicSafetyDispatcherDefinition, "43O")?.followUps?.[0]?.followUps?.map(q => q.text).join(" ")).toContain("concentration");
+
+    const wristPrompts = byKey(postPublicSafetyDispatcherDefinition, "41C")?.followUps?.map(q => q.text).join(" ") ?? "";
+    expect(wristPrompts).toContain("wrist");
+    expect(wristPrompts).not.toMatch(/typing|writing|work/i);
+
+    const sleepPrompts = byKey(postPublicSafetyDispatcherDefinition, "43O")?.followUps?.map(q => q.text).join(" ") ?? "";
+    expect(sleepPrompts).toContain("sleep");
+    expect(sleepPrompts).not.toMatch(/concentration|attendance|work/i);
+
+    const apneaPrompts = byKey(postPublicSafetyDispatcherDefinition, "43M")?.followUps?.map(q => q.text).join(" ") ?? "";
+    expect(apneaPrompts).not.toMatch(/CPAP|daytime sleepiness|concentration/i);
+
+    expect(flatten(postPublicSafetyDispatcherDefinition.questions).filter(q => q.key.endsWith(".status"))).toEqual([]);
   });
 
   it("preserves the 2014 Occu-Med core medical-history range and POST-only tail", () => {
