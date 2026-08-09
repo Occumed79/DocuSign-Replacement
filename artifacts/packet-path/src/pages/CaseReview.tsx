@@ -36,12 +36,12 @@ export default function CaseReviewPage({ caseId }: { caseId: number }) {
           onClick={() => setLocation(`/cases/${caseId}`)}
           className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
         >
-          <ArrowLeft size={15} /> Back to Interview
+          <ArrowLeft size={15} /> Back to Questionnaire
         </button>
 
         <div className="flex items-start justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-semibold text-foreground tracking-tight">Packet Review</h1>
+            <h1 className="text-2xl font-semibold text-foreground tracking-tight">Medical History Review</h1>
             <p className="text-muted-foreground text-sm mt-1">{caseData?.patientName} &mdash; {caseData?.examTypeName}</p>
           </div>
           {caseData?.status !== "submitted" && (
@@ -64,7 +64,6 @@ export default function CaseReviewPage({ caseId }: { caseId: number }) {
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Completion ring */}
             <div className="glass-card rounded-2xl p-6 flex flex-col items-center justify-center text-center">
               <div className="relative w-24 h-24 mb-4">
                 <svg className="w-24 h-24 -rotate-90" viewBox="0 0 80 80">
@@ -95,9 +94,7 @@ export default function CaseReviewPage({ caseId }: { caseId: number }) {
               )}
             </div>
 
-            {/* Right column */}
             <div className="lg:col-span-2 flex flex-col gap-4">
-              {/* Sections */}
               <div className="glass-card rounded-2xl p-5">
                 <h2 className="font-semibold text-foreground text-sm mb-4">Section Status</h2>
                 <div className="flex flex-col gap-3">
@@ -127,7 +124,6 @@ export default function CaseReviewPage({ caseId }: { caseId: number }) {
                 </div>
               </div>
 
-              {/* Missing required */}
               {(review?.requiredMissing?.length ?? 0) > 0 && (
                 <div className="glass-card rounded-2xl p-5 border border-amber-200 bg-amber-50/50">
                   <div className="flex items-center gap-2 mb-3">
@@ -151,7 +147,6 @@ export default function CaseReviewPage({ caseId }: { caseId: number }) {
                 </div>
               )}
 
-              {/* Recommendations */}
               {(review?.recommendations?.length ?? 0) > 0 && (
                 <div className="glass-card rounded-2xl p-5">
                   <div className="flex items-center gap-2 mb-3">
