@@ -1,5 +1,5 @@
 import { answersTable, casesTable, db, examTypesTable, questionsTable } from "@workspace/db";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { buildExpectedQuestionSnapshot, installedQuestionSnapshotMatches, type InstalledQuestionSnapshot } from "./install-snapshot";
 import type { BuiltInMedicalFormDefinition, BuiltInQuestionDefinition } from "./types";
 import { validateBuiltInMedicalFormDefinition } from "./validation";
@@ -69,6 +69,17 @@ export async function ensureBuiltInMedicalForm(
   const expected = buildExpectedQuestionSnapshot(definition);
 
   return db.transaction(async tx => {
+    // Render can briefly have more than one application instance alive during a
+    // deploy. Serialize synchronization for the same built-in slug across all
+    // database connections so two startup processes cannot both replace and
+    // reinsert the same question tree.
+    await tx.execute(
+      sql`SELECT pg_advisory_xact_lock(hashtextextended(${definition.slug}, 0))`,
+    );
+
+    // This read intentionally happens AFTER the advisory lock. Under PostgreSQL
+    // READ COMMITTED, a waiter then observes any refresh committed by the prior
+    // holder and can return without inserting a duplicate tree.
     const [existing] = await tx
       .select({ id: examTypesTable.id })
       .from(examTypesTable)
