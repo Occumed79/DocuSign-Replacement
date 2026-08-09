@@ -17,10 +17,16 @@ vi.mock("@workspace/db", () => ({
     set: vi.fn().mockReturnThis(),
     returning: vi.fn().mockResolvedValue([]),
     orderBy: vi.fn().mockResolvedValue([]),
+    transaction: vi.fn(async (callback: any) => callback({
+      update: vi.fn().mockReturnThis(),
+      set: vi.fn().mockReturnThis(),
+      where: vi.fn().mockResolvedValue([]),
+    })),
   },
   usersTable: {},
   auditLogsTable: {},
   casesTable: {},
+  caseAccessTokensTable: {},
   examTypesTable: {},
   questionsTable: {},
   answersTable: {},
@@ -78,7 +84,6 @@ describe("Auth endpoints", () => {
     const res = await request(app)
       .post("/api/auth/login")
       .send({ email: "nonexistent@example.com", password: "wrongpassword" });
-    // Should not return 200 (success) — exact code depends on mock behavior
     expect(res.status).not.toBe(200);
   });
 
@@ -106,7 +111,6 @@ describe("Security headers (Helmet)", () => {
 
   it("should include X-XSS-Protection header or Content-Security-Policy", async () => {
     const res = await request(app).get("/api/healthz");
-    // Helmet sets CSP which supersedes X-XSS-Protection
     const hasCSP = res.headers["content-security-policy"] !== undefined;
     const hasXXSS = res.headers["x-xss-protection"] !== undefined;
     expect(hasCSP || hasXXSS).toBe(true);
@@ -131,7 +135,6 @@ describe("Protected routes", () => {
     expect(res.status).toBe(401);
   });
 });
-
 
 describe("Cases routes require auth", () => {
   it("GET /api/cases without auth should return 401", async () => {
@@ -174,6 +177,13 @@ describe("Cases routes require auth", () => {
     expect(res.status).toBe(401);
   });
 
+  it("POST questionnaire invitation without auth should return 401", async () => {
+    const res = await request(app)
+      .post("/api/cases/1/questionnaire-invitations")
+      .send({ email: "applicant@example.com" });
+    expect(res.status).toBe(401);
+  });
+
   it("PHI route with valid session logs audit with user attribution", async () => {
     const dbMod = await import("@workspace/db");
     const session = await import("./lib/session-store");
@@ -192,9 +202,17 @@ describe("Cases routes require auth", () => {
     expect(phiAudit.userId).toBe(42);
     expect(phiAudit.userEmail).toBe("phi@example.com");
   });
-
 });
 
+describe("Public medical questionnaire boundary", () => {
+  it("invalid public questionnaire tokens do not reveal a case", async () => {
+    const dbMod = await import("@workspace/db");
+    (dbMod as any).db.limit.mockResolvedValueOnce([]);
+    const res = await request(app).get("/api/medical-questionnaire/not-a-real-token");
+    expect(res.status).toBe(404);
+    expect(res.body.error).toMatch(/invalid questionnaire link/i);
+  });
+});
 
 describe("Auth login MFA behavior", () => {
   it("MFA-disabled login returns normal token", async () => {
