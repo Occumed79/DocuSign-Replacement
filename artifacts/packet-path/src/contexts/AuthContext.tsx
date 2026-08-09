@@ -2,8 +2,12 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 import { useGetMe, useLogout, setAuthTokenGetter } from "@workspace/api-client-react";
 import type { User } from "@workspace/api-client-react";
 
+// A few older UI surfaces still read `fullName`. Keep that field optional at
+// the AuthContext boundary while the canonical generated API field remains `name`.
+type AuthenticatedUser = User & { fullName?: string };
+
 interface AuthContextType {
-  user: User | null;
+  user: AuthenticatedUser | null;
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
@@ -15,7 +19,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem("packetpath_token"));
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthenticatedUser | null>(null);
   const logoutMutation = useLogout();
 
   const { data: meData, isLoading } = useGetMe({
