@@ -6,6 +6,7 @@ import examTypesRouter from "./exam-types";
 import questionsRouter from "./questions";
 import casesRouter from "./cases";
 import publicMedicalQuestionnaireRouter from "./public-medical-questionnaire";
+import caseReviewWorkspaceRouter from "./case-review-workspace";
 import dashboardRouter from "./dashboard";
 import securityRouter from "./security";
 import sourceDocumentsRouter from "./source-documents";
@@ -35,6 +36,7 @@ router.use(examTypesRouter);
 router.use(questionsRouter);
 router.use(casesRouter);
 router.use(publicMedicalQuestionnaireRouter);
+router.use(caseReviewWorkspaceRouter);
 router.use(dashboardRouter);
 router.use(securityRouter);
 // Exact-source PDF routes intentionally run before the legacy signature router.

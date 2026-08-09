@@ -27,6 +27,7 @@ vi.mock("@workspace/db", () => ({
   auditLogsTable: {},
   casesTable: {},
   caseAccessTokensTable: {},
+  caseReviewActionsTable: {},
   examTypesTable: {},
   questionsTable: {},
   answersTable: {},
@@ -181,6 +182,16 @@ describe("Cases routes require auth", () => {
     const res = await request(app)
       .post("/api/cases/1/questionnaire-invitations")
       .send({ email: "applicant@example.com" });
+    expect(res.status).toBe(401);
+  });
+
+  it("GET ExamQA review workspace without auth should return 401", async () => {
+    const res = await request(app).get("/api/cases/1/review-workspace");
+    expect(res.status).toBe(401);
+  });
+
+  it("POST ExamQA review action without auth should return 401", async () => {
+    const res = await request(app).post("/api/cases/1/review-actions").send({ action: "note", note: "test" });
     expect(res.status).toBe(401);
   });
 
