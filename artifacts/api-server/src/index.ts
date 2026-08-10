@@ -1,5 +1,6 @@
 import path from "path";
 import { existsSync } from "fs";
+import { runRuntimeMigrations } from "@workspace/db";
 import { logger } from "./lib/logger";
 import { initSentry } from "./lib/sentry";
 import { processWebhookRetries } from "./lib/webhooks";
@@ -16,9 +17,18 @@ async function main() {
   // Initialize Sentry BEFORE importing app (so it can instrument Express)
   await initSentry();
 
+  // Run reviewed, additive schema migrations before any startup query can rely
+  // on newly introduced columns. This is intentionally separate from the broad
+  // drizzle-kit push toggle used for first-time/demo environments.
+  const appliedMigrations = await runRuntimeMigrations();
+  if (appliedMigrations.length > 0) {
+    logger.info({ appliedMigrations }, "Applied controlled runtime database migrations");
+  }
+
   // Built-in questionnaires are versioned in source control and installed
-  // idempotently. This makes a newly deployed medical-history form available
-  // without destructive seed scripts or manual production DB edits.
+  // idempotently. Schema compatibility is guaranteed immediately above so an
+  // older production database cannot fail here merely because code introduced
+  // an additive metadata column.
   await ensureBuiltInMedicalForms();
 
   // Dynamic import of app after Sentry is initialized
