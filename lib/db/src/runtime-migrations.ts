@@ -1,4 +1,4 @@
-import type pg from "pg";
+import type { Pool } from "pg";
 
 export type RuntimeMigration = {
   id: string;
@@ -6,6 +6,14 @@ export type RuntimeMigration = {
   statements: readonly string[];
 };
 
+/**
+ * Reviewed, additive migrations required by application startup.
+ *
+ * These are deliberately narrower than `drizzle-kit push`: they may add
+ * backwards-compatible schema needed by the deployed code, but must never drop,
+ * rename, or rewrite production data. Destructive changes require a separately
+ * reviewed maintenance migration.
+ */
 export const RUNTIME_MIGRATIONS: readonly RuntimeMigration[] = [
   {
     id: "20260809_001_questions_source_key",
@@ -17,12 +25,15 @@ export const RUNTIME_MIGRATIONS: readonly RuntimeMigration[] = [
   },
 ] as const;
 
-export async function runRuntimeMigrations(pool: pg.Pool): Promise<string[]> {
+export async function runRuntimeMigrations(pool: Pool): Promise<string[]> {
   const client = await pool.connect();
   const applied: string[] = [];
 
   try {
     await client.query("BEGIN");
+
+    // Render can overlap old/new instances during a deploy. Serialize migrations
+    // across those processes so a migration is applied and recorded exactly once.
     await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [
       "packetpath_runtime_migrations_v1",
     ]);
