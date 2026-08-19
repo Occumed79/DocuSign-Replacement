@@ -26,6 +26,7 @@ import AgreementsPage from "@/pages/Agreements";
 import WebhooksPage from "@/pages/Webhooks";
 import BrandingPage from "@/pages/Branding";
 import SystemReadinessPage from "@/pages/SystemReadiness";
+import OfficialSourceFormsPage from "@/pages/OfficialSourceForms";
 import AppLayout from "@/components/layout/AppLayout";
 import NotFound from "@/pages/not-found";
 import SetupPage from "@/pages/Setup";
@@ -118,6 +119,9 @@ function Router() {
       </Route>
       <Route path="/users">
         <ProtectedRoute adminOnly><UserManagementPage /></ProtectedRoute>
+      </Route>
+      <Route path="/source-forms">
+        <ProtectedRoute adminOnly><OfficialSourceFormsPage /></ProtectedRoute>
       </Route>
       <Route path="/security">
         <ProtectedRoute adminOnly><SecurityPage /></ProtectedRoute>
