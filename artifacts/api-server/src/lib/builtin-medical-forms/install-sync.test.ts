@@ -23,6 +23,7 @@ describe("built-in medical-form definition synchronization", () => {
   it("builds the same pre-order shape written by the installer", () => {
     expect(buildExpectedQuestionSnapshot(definition)).toEqual([
       {
+        sourceKey: "root",
         orderIndex: 1,
         text: "Root question",
         answerType: "yes_no",
@@ -34,6 +35,7 @@ describe("built-in medical-form definition synchronization", () => {
         childOrderIndexes: [2],
       },
       {
+        sourceKey: "child",
         orderIndex: 2,
         text: "Open follow-up",
         answerType: "text",
@@ -45,6 +47,7 @@ describe("built-in medical-form definition synchronization", () => {
         childOrderIndexes: [],
       },
       {
+        sourceKey: "second",
         orderIndex: 3,
         text: "Second question",
         answerType: "text",

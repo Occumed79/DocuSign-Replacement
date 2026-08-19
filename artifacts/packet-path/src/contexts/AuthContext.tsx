@@ -16,13 +16,14 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AUTH_RESTORE_TIMEOUT_MS = 12_000;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem("packetpath_token"));
   const [user, setUser] = useState<AuthenticatedUser | null>(null);
   const logoutMutation = useLogout();
 
-  const { data: meData, isLoading } = useGetMe({
+  const { data: meData, isLoading, isError } = useGetMe({
     query: {
       enabled: !!token,
       retry: false,
@@ -30,11 +31,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  const clearLocalSession = () => {
+    localStorage.removeItem("packetpath_token");
+    setToken(null);
+    setUser(null);
+    setAuthTokenGetter(null);
+  };
+
   useEffect(() => {
-    if (meData) {
+    if (meData && token) {
       setUser(meData);
     }
-  }, [meData]);
+  }, [meData, token]);
+
+  // A stale/invalid session should never leave the application believing the
+  // user is authenticated. Clear it immediately when the restore request fails.
+  useEffect(() => {
+    if (token && isError) {
+      clearLocalSession();
+    }
+  }, [token, isError]);
+
+  // Render or a remote database can occasionally leave a browser request
+  // pending much longer than is useful. Do not trap the whole application on
+  // "Loading PacketPath..." forever: abandon the saved session and return the
+  // user to the login screen if session restoration does not finish promptly.
+  useEffect(() => {
+    if (!token || user) return;
+
+    const timeoutId = window.setTimeout(() => {
+      clearLocalSession();
+    }, AUTH_RESTORE_TIMEOUT_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [token, user]);
 
   const login = (newToken: string, newUser: User) => {
     localStorage.setItem("packetpath_token", newToken);
@@ -45,10 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const handleLogout = () => {
     logoutMutation.mutate(undefined as unknown as void);
-    localStorage.removeItem("packetpath_token");
-    setToken(null);
-    setUser(null);
-    setAuthTokenGetter(null);
+    clearLocalSession();
   };
 
   return (
@@ -56,8 +83,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         token,
-        isAuthenticated: !!token,
-        isLoading: !!token && isLoading && !user,
+        isAuthenticated: !!token && !!user,
+        isLoading: !!token && isLoading && !user && !isError,
         login,
         logout: handleLogout,
       }}
