@@ -185,6 +185,7 @@ test("public medical questionnaire preserves source question then reveals adapti
   await page.getByRole("button", { name: /Continue/ }).click();
 
   await expect(page.getByRole("heading", { name: followUpQuestion })).toBeVisible();
-  await expect(page.getByText(/^Additional detail/)).toBeVisible();
+  await expect(page.locator("textarea")).toBeVisible();
+  await expect(page.getByText("Question 2 of 2", { exact: true })).toBeVisible();
   assertNoErrors();
 });
