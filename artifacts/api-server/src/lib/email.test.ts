@@ -64,9 +64,19 @@ describe("SMTP transport security", () => {
     fromName: "PacketPath",
   };
 
-  it("requires SMTP certificate validation", () => {
+  it("requires STARTTLS and certificate validation for non-implicit TLS connections", () => {
     const options = buildSmtpTransportOptions(config);
+    expect(options.requireTLS).toBe(true);
     expect(options.tls.rejectUnauthorized).toBe(true);
+    expect(options.tls.minVersion).toBe("TLSv1.2");
+  });
+
+  it("does not request STARTTLS when the SMTP socket already uses implicit TLS", () => {
+    const options = buildSmtpTransportOptions({ ...config, port: 465, secure: true });
+    expect(options.secure).toBe(true);
+    expect(options.requireTLS).toBe(false);
+    expect(options.tls.rejectUnauthorized).toBe(true);
+    expect(options.tls.minVersion).toBe("TLSv1.2");
   });
 
   it("blocks local-file and remote-URL content loading", () => {
