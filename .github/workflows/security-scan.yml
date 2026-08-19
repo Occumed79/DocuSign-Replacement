@@ -142,7 +142,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      security-events: write
     services:
       postgres:
         image: postgres:17-alpine
@@ -158,14 +157,15 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     env:
+      NODE_ENV: production
       DATABASE_URL: postgresql://packetpath:packetpath@localhost:5432/packetpath
-      DB_ENCRYPTION_KEY: 1111111111111111111111111111111111111111111111111111111111111111
-      MFA_ENCRYPTION_KEY: 2222222222222222222222222222222222222222222222222222222222222222
-      BLIND_INDEX_KEY: 3333333333333333333333333333333333333333333333333333333333333333
+      DB_ENCRYPTION_KEY: "1111111111111111111111111111111111111111111111111111111111111111"
+      MFA_ENCRYPTION_KEY: "2222222222222222222222222222222222222222222222222222222222222222"
+      BLIND_INDEX_KEY: "3333333333333333333333333333333333333333333333333333333333333333"
       SESSION_SECRET: packetpath-dast-session-secret-not-for-production
       APP_BASE_URL: http://localhost:8080
       ALLOWED_ORIGINS: http://localhost:8080
-      PORT: 8080
+      PORT: "8080"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -184,19 +184,22 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
-      - name: Build
-        run: pnpm build
+      - name: Build production application
+        run: |
+          pnpm build
+          mkdir -p artifacts/api-server/dist/public
+          cp -R artifacts/packet-path/dist/public/. artifacts/api-server/dist/public/
 
       - name: Initialize disposable DAST database
         run: pnpm db:push
 
-      - name: Start application
+      - name: Start production-mode application
         run: |
-          pnpm dev:api > /tmp/packetpath-dast.log 2>&1 &
+          pnpm --filter=@workspace/api-server run start > /tmp/packetpath-dast.log 2>&1 &
           echo $! > /tmp/packetpath-dast.pid
           for attempt in {1..30}; do
-            if curl --fail --silent http://localhost:8080/api/health > /dev/null; then
-              echo "PacketPath is ready for DAST"
+            if curl --fail --silent http://localhost:8080/api/health > /dev/null && curl --fail --silent -H 'Accept: text/html' http://localhost:8080/ > /dev/null; then
+              echo "PacketPath production build is ready for DAST"
               exit 0
             fi
             sleep 2
@@ -207,9 +210,9 @@ jobs:
       - name: Run OWASP ZAP Baseline Scan
         uses: zaproxy/action-baseline@v0.10.0
         with:
-          target: 'http://localhost:8080'
-          rules_file_name: '.zap/rules.tsv'
+          target: 'http://localhost:8080/'
           cmd_options: '-a'
+          allow_issue_writing: false
 
       - name: Stop application
         if: always()
