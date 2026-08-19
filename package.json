@@ -22,6 +22,7 @@
   },
   "pnpm": {
     "overrides": {
+      "router>path-to-regexp": "8.4.2",
       "esbuild>@esbuild/darwin-arm64": "-",
       "esbuild>@esbuild/darwin-x64": "-",
       "esbuild>@esbuild/freebsd-arm64": "-",
@@ -82,7 +83,6 @@
       "rollup>@rollup/rollup-linux-ppc64-gnu": "-",
       "rollup>@rollup/rollup-linux-ppc64-musl": "-",
       "rollup>@rollup/rollup-linux-riscv64-gnu": "-",
-      "rollup>@rollup/rollup-linux-riscv64-musl": "-",
       "rollup>@rollup/rollup-linux-s390x-gnu": "-",
       "rollup>@rollup/rollup-linux-x64-musl": "-",
       "rollup>@rollup/rollup-openbsd-x64": "-",
