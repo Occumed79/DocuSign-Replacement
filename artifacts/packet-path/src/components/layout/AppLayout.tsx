@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   LayoutDashboard, FolderOpen, LogOut, ChevronLeft, ChevronRight,
   Shield, Users, ClipboardList, AlertTriangle, PenTool, Mail,
-  BarChart2, Webhook, Palette, FileSignature, FileText, ServerCog
+  BarChart2, Webhook, Palette, FileSignature, FileText, ServerCog, FileCheck2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -25,6 +25,7 @@ const navItems = [
 const adminItems = [
   { label: "Admin",         icon: Shield,        href: "/admin" },
   { label: "Users",         icon: Users,         href: "/users" },
+  { label: "Source Forms",  icon: FileCheck2,    href: "/source-forms" },
   { label: "Email Settings",icon: Mail,          href: "/email-settings" },
   { label: "Readiness",     icon: ServerCog,     href: "/readiness" },
   { label: "Branding",      icon: Palette,       href: "/branding" },

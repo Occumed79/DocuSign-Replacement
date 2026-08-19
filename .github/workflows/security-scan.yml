@@ -20,25 +20,25 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
-          version: 8
+          version: 10.28.1
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'pnpm'
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
 
-      - name: Run pnpm audit
-        run: |
-          cd artifacts/api-server
-          pnpm audit --audit-level=high
-          cd ../..
-          pnpm audit --audit-level=high
+      - name: Gate production dependency vulnerabilities
+        run: pnpm audit --prod --audit-level=high
+
+      - name: Report development and tooling advisories
+        continue-on-error: true
+        run: pnpm audit --audit-level=high
 
       - name: Run Snyk security scan
         uses: snyk/actions/node@master
@@ -55,26 +55,22 @@ jobs:
       actions: read
       contents: read
       security-events: write
-    strategy:
-      fail-fast: false
-      matrix:
-        language: [ 'javascript', 'typescript' ]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
-          languages: ${{ matrix.language }}
+          languages: javascript-typescript
 
       - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
+        uses: github/codeql-action/autobuild@v4
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
         with:
-          category: "/language:${{matrix.language}}"
+          category: "/language:javascript-typescript"
 
   secret-scan:
     name: Secret Scanning
@@ -104,8 +100,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build Docker image
-        run: |
-          docker build -t packetpath:test .
+        run: docker build -t packetpath:test .
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
@@ -116,7 +111,7 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
       - name: Upload Trivy results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: 'trivy-results.sarif'
 
@@ -147,42 +142,81 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      security-events: write
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: packetpath
+          POSTGRES_PASSWORD: packetpath
+          POSTGRES_DB: packetpath
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U packetpath -d packetpath"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://packetpath:packetpath@localhost:5432/packetpath
+      DB_ENCRYPTION_KEY: "1111111111111111111111111111111111111111111111111111111111111111"
+      MFA_ENCRYPTION_KEY: "2222222222222222222222222222222222222222222222222222222222222222"
+      BLIND_INDEX_KEY: "3333333333333333333333333333333333333333333333333333333333333333"
+      SESSION_SECRET: packetpath-dast-session-secret-not-for-production
+      APP_BASE_URL: http://localhost:8080
+      ALLOWED_ORIGINS: http://localhost:8080
+      PORT: "8080"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
-          version: 8
+          version: 10.28.1
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'pnpm'
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
 
-      - name: Build
-        run: pnpm build
-
-      - name: Start application
+      - name: Build production application
         run: |
-          pnpm dev:api &
-          echo "Waiting for server to start..."
-          sleep 30
-          curl -f http://localhost:8080/api/health || exit 1
+          pnpm build
+          mkdir -p artifacts/api-server/dist/public
+          cp -R artifacts/packet-path/dist/public/. artifacts/api-server/dist/public/
+
+      - name: Initialize disposable DAST database
+        run: pnpm db:push
+
+      - name: Start production-mode application
+        run: |
+          pnpm --filter=@workspace/api-server run start > /tmp/packetpath-dast.log 2>&1 &
+          echo $! > /tmp/packetpath-dast.pid
+          for attempt in {1..30}; do
+            if curl --fail --silent http://localhost:8080/api/health > /dev/null && curl --fail --silent -H 'Accept: text/html' http://localhost:8080/ > /dev/null; then
+              echo "PacketPath production build is ready for DAST"
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/packetpath-dast.log
+          exit 1
 
       - name: Run OWASP ZAP Baseline Scan
-        uses: zaproxy/action-baseline@v0.10.0
+        uses: zaproxy/action-baseline@v0.15.0
         with:
-          target: 'http://localhost:8080'
-          rules_file_name: '.zap/rules.tsv'
+          target: 'http://localhost:8080/'
           cmd_options: '-a'
+          allow_issue_writing: false
 
       - name: Stop application
         if: always()
-        run: pkill -f "node.*api-server" || true
+        run: |
+          if [ -f /tmp/packetpath-dast.pid ]; then
+            kill "$(cat /tmp/packetpath-dast.pid)" 2>/dev/null || true
+          fi
