@@ -11,6 +11,7 @@ const definition: BuiltInMedicalFormDefinition = {
   slug: "source-key-test",
   name: "Source Key Test",
   description: "test",
+  sourceLabel: "Source Key Test",
   questions: [
     {
       key: "q1",
