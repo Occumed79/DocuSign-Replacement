@@ -1,5 +1,6 @@
 (() => {
   const BOOT_TIMEOUT_MS = 6_000;
+  let firstScriptError = null;
 
   function getShell() {
     return document.querySelector(".packetpath-boot");
@@ -8,98 +9,75 @@
   function setBootMessage(title, subtitle) {
     const shell = getShell();
     if (!shell) return;
-
     const titleNode = shell.querySelector(".packetpath-boot-title");
     const subtitleNode = shell.querySelector(".packetpath-boot-subtitle");
     if (titleNode) titleNode.textContent = title;
     if (subtitleNode) subtitleNode.textContent = subtitle;
   }
 
-  function compactError(error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return message.replace(/\s+/g, " ").slice(0, 180);
+  function compact(value) {
+    return String(value || "unknown error").replace(/\s+/g, " ").slice(0, 220);
   }
 
-  async function probeHealth() {
-    try {
-      const response = await fetch("/api/health", { cache: "no-store" });
-      return response.ok ? "API healthy" : `API HTTP ${response.status}`;
-    } catch (error) {
-      return `API unreachable (${compactError(error)})`;
-    }
-  }
+  window.addEventListener("error", event => {
+    if (firstScriptError) return;
+    firstScriptError = {
+      message: event.message,
+      filename: event.filename,
+      lineno: event.lineno,
+      colno: event.colno,
+    };
+  });
 
-  async function recoverModule() {
+  window.addEventListener("unhandledrejection", event => {
+    if (firstScriptError) return;
+    firstScriptError = { message: compact(event.reason) };
+  });
+
+  async function reportFailure() {
     if (!getShell()) return;
 
-    const moduleScript = document.querySelector('script[type="module"][src]');
-    const health = await probeHealth();
-
-    if (!moduleScript) {
-      setBootMessage("PacketPath could not start", `${health} · production module tag missing`);
-      return;
-    }
-
-    const moduleUrl = moduleScript.src;
-    let response;
-
+    let health = "API unreachable";
     try {
-      response = await fetch(moduleUrl, { cache: "reload" });
-    } catch (error) {
-      setBootMessage(
-        "PacketPath could not start",
-        `${health} · module request failed: ${compactError(error)}`,
-      );
+      const response = await fetch("/api/health", { cache: "no-store" });
+      health = response.ok ? "API healthy" : `API HTTP ${response.status}`;
+    } catch {}
+
+    const appScript = [...document.scripts].find(script => /\/assets\/.*\.js(?:$|\?)/.test(script.src));
+    if (!appScript) {
+      setBootMessage("PacketPath could not start", `${health} · production application script missing`);
       return;
     }
 
-    const mime = (response.headers.get("content-type") || "unknown MIME").split(";")[0];
-    if (!response.ok) {
-      setBootMessage(
-        "PacketPath could not start",
-        `${health} · module ${response.status} · ${mime} · ${new URL(moduleUrl).pathname}`,
-      );
-      return;
-    }
-
-    if (!/(?:java|ecma)script/i.test(mime)) {
-      setBootMessage(
-        "PacketPath could not start",
-        `${health} · module returned ${mime} instead of JavaScript · ${new URL(moduleUrl).pathname}`,
-      );
-      return;
-    }
-
-    setBootMessage("Recovering PacketPath…", `${health} · retrying ${new URL(moduleUrl).pathname}`);
-
+    let asset = "application script unreachable";
     try {
-      const separator = moduleUrl.includes("?") ? "&" : "?";
-      await import(`${moduleUrl}${separator}packetpath_recovery=${Date.now()}`);
-      await new Promise(resolve => window.setTimeout(resolve, 1_500));
-
-      if (getShell()) {
-        setBootMessage(
-          "PacketPath module loaded but app did not mount",
-          `${health} · ${mime} · check the browser console for the application startup exception`,
-        );
-      }
+      const response = await fetch(appScript.src, { cache: "reload" });
+      const mime = (response.headers.get("content-type") || "unknown MIME").split(";")[0];
+      asset = `script ${response.status} · ${mime} · ${new URL(appScript.src).pathname}`;
     } catch (error) {
-      setBootMessage(
-        "PacketPath module execution failed",
-        `${health} · ${mime} · ${compactError(error)}`,
-      );
+      asset = `script request failed · ${compact(error)}`;
     }
+
+    if (firstScriptError) {
+      const where = firstScriptError.filename
+        ? ` · ${firstScriptError.filename.split("/").pop()}:${firstScriptError.lineno || 0}:${firstScriptError.colno || 0}`
+        : "";
+      setBootMessage("PacketPath application crashed", `${health} · ${compact(firstScriptError.message)}${where}`);
+      return;
+    }
+
+    setBootMessage("PacketPath did not mount", `${health} · ${asset}`);
   }
 
   window.__PACKETPATH_BOOT_PROBE__ = {
     loadedAt: new Date().toISOString(),
-    version: "2026-08-19.1",
+    version: "2026-08-19.2-classic",
   };
 
   const start = () => {
     if (!getShell()) return;
-    setBootMessage("Loading PacketPath…", "Browser bootstrap active · starting the Occu-Med workflow application");
-    window.setTimeout(() => void recoverModule(), BOOT_TIMEOUT_MS);
+    setBootMessage("Loading PacketPath…", "Classic browser bootstrap active · starting the Occu-Med workflow application");
+    window.setTimeout(() => void reportFailure(), BOOT_TIMEOUT_MS);
   };
 
   if (document.readyState === "loading") {
