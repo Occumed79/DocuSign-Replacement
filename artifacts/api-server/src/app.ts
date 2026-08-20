@@ -19,13 +19,11 @@ function getAllowedOrigins(): string[] {
     .map(origin => origin.trim())
     .filter(Boolean) ?? [];
 
-  // Always include APP_BASE_URL if set (the Render deployment URL)
   const appBaseUrl = process.env.APP_BASE_URL?.trim().replace(/\/$/, "");
   if (appBaseUrl) configured.push(appBaseUrl);
 
   if (configured.length > 0) return configured;
 
-  // In development, allow localhost
   return [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -37,8 +35,6 @@ function getAllowedOrigins(): string[] {
 const allowedOrigins = getAllowedOrigins();
 const isProduction = process.env.NODE_ENV === "production";
 
-// Production enforces CSP by default. Development remains report-only so local
-// tooling can surface violations without breaking the developer session.
 const cspReportOnly = process.env.CSP_REPORT_ONLY === undefined
   ? !isProduction
   : process.env.CSP_REPORT_ONLY === "true";
@@ -93,16 +89,7 @@ app.use(
         formAction: ["'self'"],
         frameAncestors: ["'none'"],
         objectSrc: ["'none'"],
-
-        // PacketPath is compiled by Vite into same-origin hashed module files.
-        // Do not combine strict-dynamic with a per-request nonce unless the
-        // generated index.html is also rewritten to carry that nonce. Chrome
-        // otherwise ignores 'self' and blocks the Vite entry module entirely,
-        // leaving only the static "Loading PacketPath" shell visible.
         scriptSrc: ["'self'"],
-
-        // The application uses React style props and loads the Inter stylesheet
-        // from Google Fonts. Keep those explicit while scripts remain self-only.
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         imgSrc: ["'self'", "data:", "blob:"],
         fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
@@ -137,13 +124,11 @@ app.use(
 
 app.use(cors({
   origin(origin, callback) {
-    // No origin = same-origin request (Express serving its own frontend) — always allow
     if (!origin) {
       callback(null, true);
       return;
     }
 
-    // In production with no configured origins, allow any HTTPS request to our own domain
     if (allowedOrigins.length === 0 && process.env.NODE_ENV === "production") {
       callback(null, true);
       return;
@@ -161,7 +146,6 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token", "X-Step-Up-Token"],
 }));
 
-// Secure cookie configuration
 app.use((req, res, next) => {
   const cookieOptions = {
     httpOnly: true,
@@ -175,8 +159,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// Exact-source PDFs are capped at 8 MB; base64 expansion plus request metadata
-// fits under this 15 MB JSON ceiling. The route performs the stricter byte cap.
 app.use(express.json({ limit: "15mb", type: ["application/json", "application/csp-report"] }));
 app.use(express.urlencoded({ extended: true, limit: "5mb", parameterLimit: 100 }));
 
@@ -201,12 +183,18 @@ const globalLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many requests, please try again later." },
+  // Login has its own limiter. Do not double-count auth requests against both
+  // the global API budget and the dedicated login budget.
+  skip: req => req.originalUrl.startsWith("/api/auth/login"),
 });
 app.use("/api", globalLimiter);
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  // Temporary recovery headroom. The database lockout still enforces five
+  // failed password attempts per account, while this prevents repeated deploy
+  // testing from being rejected before the auth handler can inspect the request.
+  max: 50,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many authentication attempts, please try again later." },
