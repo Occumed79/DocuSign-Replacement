@@ -1,6 +1,10 @@
 import { db, activeSessionsTable, usersTable, securityEventsTable, loginAttemptsTable } from "@workspace/db";
 import { eq, and, gt, lt, sql } from "drizzle-orm";
 import crypto from "crypto";
+import {
+  isEmergencyAdminSessionToken,
+  resolveEmergencyAdminSessionToken,
+} from "./emergency-admin-session";
 
 const SESSION_DURATION_MS = 8 * 60 * 60 * 1000; // 8 hours max session
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes idle timeout
@@ -38,6 +42,13 @@ export async function createSession(
 }
 
 export async function getSessionUserId(token: string): Promise<number | null> {
+  // A narrowly scoped, short-lived recovery token is accepted only for the
+  // production admin while the account still matches the one-time recovery
+  // state. Changing the account/password changes updated_at and invalidates it.
+  if (isEmergencyAdminSessionToken(token)) {
+    return resolveEmergencyAdminSessionToken(token);
+  }
+
   const tokenHash = hashToken(token);
   const [session] = await db
     .select({ userId: activeSessionsTable.userId, lastActivityAt: activeSessionsTable.lastActivityAt })
@@ -61,7 +72,7 @@ export async function getSessionUserId(token: string): Promise<number | null> {
       .update(activeSessionsTable)
       .set({ revokedAt: new Date() })
       .where(eq(activeSessionsTable.token, tokenHash));
-    
+
     // Log session expiration
     await logSecurityEvent({
       eventType: "session_expired",
@@ -69,7 +80,7 @@ export async function getSessionUserId(token: string): Promise<number | null> {
       details: "Session expired due to idle timeout",
       severity: "info",
     });
-    
+
     return null;
   }
 
@@ -83,6 +94,13 @@ export async function getSessionUserId(token: string): Promise<number | null> {
 }
 
 export async function revokeSession(token: string): Promise<void> {
+  if (isEmergencyAdminSessionToken(token)) {
+    // Recovery sessions expire after 30 minutes and are invalidated immediately
+    // by any user-row update (including a password change). The browser also
+    // clears the bearer token on logout.
+    return;
+  }
+
   await db
     .update(activeSessionsTable)
     .set({ revokedAt: new Date() })
