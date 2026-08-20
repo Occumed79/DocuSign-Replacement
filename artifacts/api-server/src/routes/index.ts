@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
 import authRouter from "./auth";
+import adminRecoveryRouter from "./admin-recovery";
 import usersRouter from "./users";
 import examTypesRouter from "./exam-types";
 import questionsRouter from "./questions";
@@ -32,6 +33,7 @@ const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(authRouter);
+router.use(adminRecoveryRouter);
 router.use(mfaRouter);
 router.use(usersRouter);
 router.use(examTypesRouter);
