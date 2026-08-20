@@ -3,8 +3,8 @@ import { createHash, timingSafeEqual } from "crypto";
 import { z } from "zod/v4";
 import { db, usersTable, loginAttemptsTable, activeSessionsTable, auditLogsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { hashPassword } from "./auth";
 import { logSecurityEvent } from "../lib/session-store";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
@@ -13,6 +13,7 @@ const RECOVERY_USER_ID = 1;
 const RECOVERY_TOKEN_SHA256 = "f7cd435d70e7b93836e39d97c9d358486de4c88b2b12342f4aedaabf83603ec1";
 const RECOVERY_EXPIRES_AT = new Date("2026-08-20T05:00:00.000Z");
 const RECOVERY_BASELINE_UPDATED_BEFORE = new Date("2026-05-11T09:00:00.000Z");
+const LEGACY_PASSWORD_SALT = "packetpath_salt";
 
 const RecoveryBody = z.object({
   email: z.string().email(),
@@ -31,6 +32,13 @@ function tokenMatches(token: string): boolean {
   const supplied = createHash("sha256").update(token).digest();
   const expected = Buffer.from(RECOVERY_TOKEN_SHA256, "hex");
   return supplied.length === expected.length && timingSafeEqual(supplied, expected);
+}
+
+function recoveryPasswordHash(password: string): string {
+  // The normal login verifier already supports this legacy hash format. Using
+  // the built-in crypto implementation here keeps emergency recovery
+  // independent of native bcrypt binaries in the production container.
+  return createHash("sha256").update(password + LEGACY_PASSWORD_SALT).digest("hex");
 }
 
 function escapeHtml(value: string): string {
@@ -107,7 +115,15 @@ router.post("/auth/recover-admin", async (req, res): Promise<void> => {
     return;
   }
 
-  const [user] = await db.select().from(usersTable).where(eq(usersTable.email, RECOVERY_EMAIL)).limit(1);
+  let user;
+  try {
+    [user] = await db.select().from(usersTable).where(eq(usersTable.email, RECOVERY_EMAIL)).limit(1);
+  } catch (error) {
+    logger.error({ err: error }, "Admin recovery account lookup failed");
+    res.status(500).type("html").send(renderPage("Recovery could not read the administrator account. Try again after the current deployment finishes."));
+    return;
+  }
+
   if (!user || user.id !== RECOVERY_USER_ID || user.role !== "admin") {
     res.status(403).type("html").send(renderPage("The recovery account is not available."));
     return;
@@ -118,10 +134,27 @@ router.post("/auth/recover-admin", async (req, res): Promise<void> => {
     return;
   }
 
-  const passwordHash = await hashPassword(newPassword);
-  await db.update(usersTable).set({ passwordHash, updatedAt: new Date() }).where(eq(usersTable.id, user.id));
-  await db.delete(loginAttemptsTable).where(eq(loginAttemptsTable.email, RECOVERY_EMAIL));
-  await db.delete(activeSessionsTable).where(eq(activeSessionsTable.userId, user.id));
+  const passwordHash = recoveryPasswordHash(newPassword);
+  try {
+    await db.update(usersTable).set({ passwordHash, updatedAt: new Date() }).where(eq(usersTable.id, user.id));
+  } catch (error) {
+    logger.error({ err: error }, "Admin recovery password update failed");
+    res.status(500).type("html").send(renderPage("Recovery reached the database but could not update the password. No password change was confirmed."));
+    return;
+  }
+
+  // The password update is the critical operation. Cleanup and audit work are
+  // best-effort so a secondary table problem cannot turn a successful reset
+  // into an HTTP 500 response.
+  const cleanupResults = await Promise.allSettled([
+    db.delete(loginAttemptsTable).where(eq(loginAttemptsTable.email, RECOVERY_EMAIL)),
+    db.delete(activeSessionsTable).where(eq(activeSessionsTable.userId, user.id)),
+  ]);
+  for (const result of cleanupResults) {
+    if (result.status === "rejected") {
+      logger.warn({ err: result.reason }, "Admin recovery cleanup step failed after password update");
+    }
+  }
 
   const ip = getClientIp(req);
   await logSecurityEvent({
@@ -132,7 +165,8 @@ router.post("/auth/recover-admin", async (req, res): Promise<void> => {
     userAgent: req.headers["user-agent"],
     details: "One-time production admin recovery completed",
     severity: "warn",
-  });
+  }).catch(error => logger.warn({ err: error }, "Admin recovery security log failed"));
+
   await db.insert(auditLogsTable).values({
     userId: user.id,
     userEmail: user.email,
@@ -143,7 +177,7 @@ router.post("/auth/recover-admin", async (req, res): Promise<void> => {
     ipAddress: ip,
     userAgent: req.headers["user-agent"] ?? null,
     phiAccessed: false,
-  }).catch(() => {});
+  }).catch(error => logger.warn({ err: error }, "Admin recovery audit log failed"));
 
   res.type("html").send(renderPage("Password reset successfully. The recovery token is now invalid.", true));
 });
