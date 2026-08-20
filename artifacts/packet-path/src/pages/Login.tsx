@@ -15,12 +15,11 @@ export default function LoginPage() {
   const { toast } = useToast();
   const loginMutation = useLogin();
 
-  // Redirect to setup if not yet initialized
   useEffect(() => {
     fetch("/api/setup/status")
       .then(r => r.json())
       .then(data => { if (!data.initialized) setLocation("/setup"); })
-      .catch(() => {}); // fail silently — don't block login on network error
+      .catch(() => {});
   }, [setLocation]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -32,8 +31,16 @@ export default function LoginPage() {
           login(data.token, data.user);
           setLocation("/");
         },
-        onError: () => {
-          toast({ title: "Login failed", description: "Invalid email or password.", variant: "destructive" });
+        onError: (error) => {
+          const status = typeof error === "object" && error !== null && "status" in error
+            ? Number((error as { status?: unknown }).status)
+            : undefined;
+          const description = status === 401
+            ? "Invalid email or password."
+            : error instanceof Error
+              ? error.message
+              : "The login request failed before authentication completed.";
+          toast({ title: "Login failed", description, variant: "destructive" });
         },
       }
     );
