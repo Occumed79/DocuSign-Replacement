@@ -8,8 +8,6 @@ const apiPort = Number(process.env.API_PORT || "8080");
 
 export default defineConfig({
   // PacketPath is deployed as a Render Web Service at the origin root.
-  // Do not let a stale BASE_PATH environment variable rewrite production
-  // module URLs into a subdirectory that Express does not serve.
   base: "/",
   plugins: [
     react(),
@@ -26,6 +24,17 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    target: "safari14",
+    modulePreload: false,
+    rollupOptions: {
+      output: {
+        // PacketPath has no frontend dynamic imports. Emit one self-contained
+        // classic browser bundle so Safari/WebKit does not need to resolve an
+        // ES-module graph during application startup.
+        format: "iife",
+        inlineDynamicImports: true,
+      },
+    },
   },
   server: {
     port,
