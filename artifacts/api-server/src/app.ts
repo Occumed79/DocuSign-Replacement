@@ -37,7 +37,14 @@ function getAllowedOrigins(): string[] {
 
 const allowedOrigins = getAllowedOrigins();
 const isProduction = process.env.NODE_ENV === "production";
-const cspReportOnly = process.env.CSP_REPORT_ONLY !== "false";
+
+// Production must enforce CSP unless an operator explicitly opts back into
+// report-only mode for a controlled troubleshooting window. Development stays
+// report-only by default so local tooling can surface violations without
+// breaking the developer session.
+const cspReportOnly = process.env.CSP_REPORT_ONLY === undefined
+  ? !isProduction
+  : process.env.CSP_REPORT_ONLY === "true";
 const strictCsp = process.env.STRICT_CSP === "true";
 
 app.use(sentryRequestHandler());
