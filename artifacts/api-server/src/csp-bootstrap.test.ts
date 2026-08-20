@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
-import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const appSource = fs.readFileSync(path.resolve(__dirname, "app.ts"), "utf8");
+const appPath = fileURLToPath(new URL("./app.ts", import.meta.url));
+const appSource = fs.readFileSync(appPath, "utf8");
 
 describe("production CSP bootstrap policy", () => {
   it("allows the same-origin Vite module bundle without strict-dynamic nonce gating", () => {
