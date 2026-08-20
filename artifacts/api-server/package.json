@@ -27,7 +27,7 @@
     "nodemailer": "^9.0.3",
     "pdf-lib": "^1.17.1",
     "pdfkit": "^0.18.0",
-    "pino": "^9",
+    "pino": "^10",
     "pino-http": "^10",
     "zod": "catalog:"
   },
