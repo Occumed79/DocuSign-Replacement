@@ -4,11 +4,13 @@ import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 
 const port = Number(process.env.PORT || "5173");
-const basePath = process.env.BASE_PATH || "/";
 const apiPort = Number(process.env.API_PORT || "8080");
 
 export default defineConfig({
-  base: basePath,
+  // PacketPath is deployed as a Render Web Service at the origin root.
+  // Do not let a stale BASE_PATH environment variable rewrite production
+  // module URLs into a subdirectory that Express does not serve.
+  base: "/",
   plugins: [
     react(),
     tailwindcss(),

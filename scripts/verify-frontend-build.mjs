@@ -35,6 +35,11 @@ for (const assetUrl of localAssets) {
   const clean = assetUrl.split(/[?#]/, 1)[0];
   if (!clean || /^(?:https?:)?\/\//i.test(clean) || clean.startsWith("data:")) continue;
 
+  const isExpectedRootAsset = clean === "/bootstrap-recovery.js" || clean.startsWith("/assets/");
+  if (!isExpectedRootAsset) {
+    fail(`production index references an unexpected off-root asset URL: ${assetUrl}`);
+  }
+
   const assetPath = path.join(clientDir, clean.replace(/^\/+/, ""));
   checked.push(assetPath);
   if (!fs.existsSync(assetPath)) {
@@ -46,4 +51,8 @@ if (checked.length === 0) {
   fail("index.html does not reference any local production script or stylesheet assets");
 }
 
-console.log(`Frontend build verified: ${indexPath} (${checked.length} local assets checked)`);
+if (![...localAssets].some(assetUrl => assetUrl.split(/[?#]/, 1)[0] === "/bootstrap-recovery.js")) {
+  fail("index.html is missing the pre-React bootstrap recovery script");
+}
+
+console.log(`Frontend build verified: ${indexPath} (${checked.length} local assets checked, root asset paths enforced)`);
