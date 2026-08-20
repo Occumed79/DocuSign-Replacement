@@ -1,4 +1,3 @@
-import crypto from "crypto";
 import express, { type Express } from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -38,21 +37,13 @@ function getAllowedOrigins(): string[] {
 const allowedOrigins = getAllowedOrigins();
 const isProduction = process.env.NODE_ENV === "production";
 
-// Production must enforce CSP unless an operator explicitly opts back into
-// report-only mode for a controlled troubleshooting window. Development stays
-// report-only by default so local tooling can surface violations without
-// breaking the developer session.
+// Production enforces CSP by default. Development remains report-only so local
+// tooling can surface violations without breaking the developer session.
 const cspReportOnly = process.env.CSP_REPORT_ONLY === undefined
   ? !isProduction
   : process.env.CSP_REPORT_ONLY === "true";
-const strictCsp = process.env.STRICT_CSP === "true";
 
 app.use(sentryRequestHandler());
-
-app.use((req, res, next) => {
-  res.locals.cspNonce = crypto.randomBytes(16).toString("base64");
-  next();
-});
 
 app.use(
   pinoHttp({
@@ -102,12 +93,17 @@ app.use(
         formAction: ["'self'"],
         frameAncestors: ["'none'"],
         objectSrc: ["'none'"],
-        scriptSrc: strictCsp
-          ? ["'self'", (req, res: any) => `'nonce-${res.locals.cspNonce}'`, "'strict-dynamic'"]
-          : ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-        styleSrc: strictCsp
-          ? ["'self'", (req, res: any) => `'nonce-${res.locals.cspNonce}'`]
-          : ["'self'", "'unsafe-inline'"],
+
+        // PacketPath is compiled by Vite into same-origin hashed module files.
+        // Do not combine strict-dynamic with a per-request nonce unless the
+        // generated index.html is also rewritten to carry that nonce. Chrome
+        // otherwise ignores 'self' and blocks the Vite entry module entirely,
+        // leaving only the static "Loading PacketPath" shell visible.
+        scriptSrc: ["'self'"],
+
+        // The application uses React style props and loads the Inter stylesheet
+        // from Google Fonts. Keep those explicit while scripts remain self-only.
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         imgSrc: ["'self'", "data:", "blob:"],
         fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
         connectSrc: ["'self'", ...allowedOrigins],
@@ -115,8 +111,6 @@ app.use(
         manifestSrc: ["'self'"],
         mediaSrc: ["'self'"],
         workerSrc: ["'self'", "blob:"],
-        requireTrustedTypesFor: strictCsp ? ["'script'"] : null,
-        trustedTypes: strictCsp ? ["default"] : null,
         reportUri: ["/api/security/csp-report"],
         upgradeInsecureRequests: isProduction ? [] : null,
       },
