@@ -1,0 +1,1 @@
+PacketPath production CSP hotfix: self-hosted Vite scripts remain allowed under enforced CSP; strict-dynamic nonce gating is removed until HTML nonce injection exists.
