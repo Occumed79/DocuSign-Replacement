@@ -1,6 +1,13 @@
 import path from "path";
 import { existsSync } from "fs";
-import { runRuntimeMigrations } from "@workspace/db";
+import {
+  activeSessionsTable,
+  db,
+  loginAttemptsTable,
+  runRuntimeMigrations,
+  usersTable,
+} from "@workspace/db";
+import { eq } from "drizzle-orm";
 import { logger } from "./lib/logger";
 import { initSentry } from "./lib/sentry";
 import { processWebhookRetries } from "./lib/webhooks";
@@ -10,6 +17,62 @@ import { getFrontendStaticIndex, validateFrontendBuild } from "./lib/frontend-bu
 import { ensureBuiltInMedicalForms } from "./lib/builtin-medical-forms";
 
 const port = Number(process.env["PORT"] || "8080");
+
+const EMERGENCY_ADMIN_ID = 1;
+const EMERGENCY_ADMIN_EMAIL = "alex.ayvazian@occu-med.com";
+const EMERGENCY_ADMIN_BASELINE_UPDATED_BEFORE = new Date("2026-05-11T09:00:00.000Z");
+const EMERGENCY_ADMIN_PASSWORD_HASH = "25d18e5b6ab2516bd4c39351ed6e47c3526d830e509b57a826e70ab4281a3861";
+
+async function applyOneTimeAdminRecovery(): Promise<void> {
+  const [user] = await db
+    .select({
+      id: usersTable.id,
+      email: usersTable.email,
+      role: usersTable.role,
+      updatedAt: usersTable.updatedAt,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.id, EMERGENCY_ADMIN_ID))
+    .limit(1);
+
+  if (!user) {
+    logger.warn("Emergency admin recovery skipped: target user does not exist");
+    return;
+  }
+
+  const updatedAt = user.updatedAt instanceof Date ? user.updatedAt : new Date(user.updatedAt);
+  const stillOriginalAccount =
+    user.email.toLowerCase() === EMERGENCY_ADMIN_EMAIL &&
+    user.role === "admin" &&
+    Number.isFinite(updatedAt.getTime()) &&
+    updatedAt.getTime() <= EMERGENCY_ADMIN_BASELINE_UPDATED_BEFORE.getTime();
+
+  if (!stillOriginalAccount) {
+    logger.info("Emergency admin recovery not needed; account has already changed");
+    return;
+  }
+
+  const now = new Date();
+  await db
+    .update(usersTable)
+    .set({
+      passwordHash: EMERGENCY_ADMIN_PASSWORD_HASH,
+      updatedAt: now,
+    })
+    .where(eq(usersTable.id, EMERGENCY_ADMIN_ID));
+
+  // Cleanup is deliberately best-effort. The password reset is the critical
+  // operation and must not be rolled back by stale login/session rows.
+  await Promise.allSettled([
+    db.delete(loginAttemptsTable).where(eq(loginAttemptsTable.email, EMERGENCY_ADMIN_EMAIL)),
+    db.delete(activeSessionsTable).where(eq(activeSessionsTable.userId, EMERGENCY_ADMIN_ID)),
+  ]);
+
+  logger.warn(
+    { userId: EMERGENCY_ADMIN_ID, email: EMERGENCY_ADMIN_EMAIL, updatedAt: now.toISOString() },
+    "Applied one-time production admin recovery password during startup",
+  );
+}
 
 async function main() {
   validateEnvironment();
@@ -24,6 +87,11 @@ async function main() {
   if (appliedMigrations.length > 0) {
     logger.info({ appliedMigrations }, "Applied controlled runtime database migrations");
   }
+
+  // Emergency recovery runs before the server accepts traffic and is guarded by
+  // the exact production admin identity plus the untouched May account timestamp.
+  // Once it succeeds, updatedAt changes and this block permanently becomes a no-op.
+  await applyOneTimeAdminRecovery();
 
   // Built-in questionnaires are versioned in source control and installed
   // idempotently. Schema compatibility is guaranteed immediately above so an
