@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useLogin } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,11 +15,12 @@ export default function LoginPage() {
   const { toast } = useToast();
   const loginMutation = useLogin();
 
+  // Redirect to setup if not yet initialized
   useEffect(() => {
     fetch("/api/setup/status")
       .then(r => r.json())
       .then(data => { if (!data.initialized) setLocation("/setup"); })
-      .catch(() => {});
+      .catch(() => {}); // fail silently — don't block login on network error
   }, [setLocation]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -31,16 +32,8 @@ export default function LoginPage() {
           login(data.token, data.user);
           setLocation("/");
         },
-        onError: (error) => {
-          const status = typeof error === "object" && error !== null && "status" in error
-            ? Number((error as { status?: unknown }).status)
-            : undefined;
-          const description = status === 401
-            ? "Invalid email or password."
-            : error instanceof Error
-              ? error.message
-              : "The login request failed before authentication completed.";
-          toast({ title: "Login failed", description, variant: "destructive" });
+        onError: () => {
+          toast({ title: "Login failed", description: "Invalid email or password.", variant: "destructive" });
         },
       }
     );
@@ -147,7 +140,7 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <button
+          <button
               type="submit"
               disabled={loginMutation.isPending}
               className="mt-2 w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl text-white text-sm font-semibold transition-all duration-200 disabled:opacity-60"
@@ -162,7 +155,10 @@ export default function LoginPage() {
               {loginMutation.isPending
                 ? <div className="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />
                 : <><span>Sign in</span><ArrowRight size={15} /></>}
-            </button>
+          </button>
+          <Link href="/recover-admin" className="text-center text-xs text-white/45 transition-colors hover:text-white/70">
+            Lost administrator access?
+          </Link>
           </form>
         </div>
       </motion.div>

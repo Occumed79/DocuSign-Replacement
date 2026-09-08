@@ -1,7 +1,6 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
 import authRouter from "./auth";
-import adminRecoveryRouter from "./admin-recovery";
 import usersRouter from "./users";
 import examTypesRouter from "./exam-types";
 import questionsRouter from "./questions";
@@ -28,12 +27,13 @@ import templateVersionsRouter from "./template-versions";
 import formProgressRouter from "./form-progress";
 import analyticsRouter from "./analytics";
 import setupRouter from "./setup";
+import adminAccessRecoveryRouter from "./admin-access-recovery";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(authRouter);
-router.use(adminRecoveryRouter);
+router.use(adminAccessRecoveryRouter);
 router.use(mfaRouter);
 router.use(usersRouter);
 router.use(examTypesRouter);

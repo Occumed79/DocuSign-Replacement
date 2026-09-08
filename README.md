@@ -153,6 +153,21 @@ scripts/
 
 ## Production Deployment
 
+### Recovering Administrator Access
+
+If every administrator is locked out, configure two temporary environment variables on the
+web service and redeploy:
+
+1. Set `ADMIN_RECOVERY_EMAIL` to the existing administrator email address.
+2. Set `ADMIN_RECOVERY_TOKEN` to a new random value of at least 32 characters. Generate one
+   with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
+3. Open `/recover-admin`, enter those values, and choose a new password. Recovery also clears
+   MFA for that administrator and revokes all existing sessions.
+4. **Immediately remove both recovery variables and redeploy again.** The recovery endpoint
+   is disabled unless both variables are present.
+
+The recovery token is never stored in the database or returned by the API.
+
 PacketPath ships with a **Dockerfile** that bundles the frontend and backend into a single container. In production, the Express server serves the React SPA and handles API requests on one port.
 
 ### Option A: Neon + Render (Recommended)

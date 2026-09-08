@@ -33,3 +33,9 @@ services:
           type: web
           name: packetpath-docusign-replacement
           property: url
+      # Temporary operator-controlled account recovery. Leave unset normally.
+      # Set both values in Render, recover at /recover-admin, then remove both.
+      - key: ADMIN_RECOVERY_EMAIL
+        sync: false
+      - key: ADMIN_RECOVERY_TOKEN
+        sync: false

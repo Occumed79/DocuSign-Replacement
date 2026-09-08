@@ -14,15 +14,10 @@ import {
   recordLoginAttempt,
   logSecurityEvent,
 } from "../lib/session-store";
-import {
-  createEmergencyAdminSessionToken,
-  isRecoveryAdminState,
-} from "../lib/emergency-admin-session";
 
 const router: IRouter = Router();
 
 const BCRYPT_ROUNDS = 12;
-const RECOVERY_SESSION_SECONDS = 30 * 60;
 
 export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, BCRYPT_ROUNDS);
@@ -44,6 +39,10 @@ function getClientIp(req: Request): string {
   return req.socket?.remoteAddress ?? "unknown";
 }
 
+
+function isMfaEnabled(user: { mfaEnabled?: boolean | null }): boolean {
+  return user.mfaEnabled === true;
+}
 router.post("/auth/login", async (req, res): Promise<void> => {
   const parsed = LoginBody.safeParse(req.body);
   if (!parsed.success) {
@@ -101,54 +100,36 @@ router.post("/auth/login", async (req, res): Promise<void> => {
 
   await recordLoginAttempt(email, true, ip);
 
-  // The production admin is currently in a one-time recovery state. Neon has
-  // already verified there is no MFA secret for this account. Bypass both the
-  // MFA table lookup and persistent-session insert only while that exact
-  // recovery marker remains on the user row. Any later account/password update
-  // changes updated_at and permanently disables this path.
-  const recoveryAdmin = isRecoveryAdminState(user);
+  // MFA gating: if enabled, return challenge token instead of issuing a full session.
+  const mfaStatus = await getMfaStatus(user.id);
+  if (mfaStatus.enabled) {
+    const challengeToken = await createMfaChallenge(user.id);
+    await logSecurityEvent({
+      eventType: "login_success",
+      userId: user.id,
+      email: user.email,
+      ip,
+      userAgent: ua,
+      details: "Password verified; MFA challenge required",
+      severity: "info",
+    });
 
-  if (!recoveryAdmin) {
-    // MFA gating: if enabled, return challenge token instead of issuing a full session.
-    const mfaStatus = await getMfaStatus(user.id);
-    if (mfaStatus.enabled) {
-      const challengeToken = await createMfaChallenge(user.id);
-      await logSecurityEvent({
-        eventType: "login_success",
-        userId: user.id,
+    res.json({
+      mfaRequired: true,
+      challengeToken,
+      user: {
+        id: user.id,
+        name: user.name,
         email: user.email,
-        ip,
-        userAgent: ua,
-        details: "Password verified; MFA challenge required",
-        severity: "info",
-      });
-
-      res.json({
-        mfaRequired: true,
-        challengeToken,
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          createdAt: user.createdAt.toISOString(),
-        },
-      });
-      return;
-    }
+        role: user.role,
+        createdAt: user.createdAt.toISOString(),
+      },
+    });
+    return;
   }
 
-  let token: string;
-  let expiresIn: number;
-
-  if (recoveryAdmin) {
-    token = createEmergencyAdminSessionToken(user.id);
-    expiresIn = RECOVERY_SESSION_SECONDS;
-  } else {
-    token = generateToken(user.id);
-    await createSession(user.id, token, ip, ua);
-    expiresIn = 8 * 60 * 60;
-  }
+  const token = generateToken(user.id);
+  await createSession(user.id, token, ip, ua);
 
   await logSecurityEvent({
     eventType: "login_success",
@@ -156,7 +137,6 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     email: user.email,
     ip,
     userAgent: ua,
-    details: recoveryAdmin ? "Password verified; short-lived admin recovery session issued" : undefined,
     severity: "info",
   });
 
@@ -166,7 +146,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     userName: user.name,
     action: "login",
     resource: "auth",
-    details: recoveryAdmin ? `Recovery login from ${ip}` : `Login from ${ip}`,
+    details: `Login from ${ip}`,
     ipAddress: ip,
     userAgent: ua,
     phiAccessed: false,
@@ -181,7 +161,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
       createdAt: user.createdAt.toISOString(),
     },
     token,
-    expiresIn,
+    expiresIn: 8 * 60 * 60,
   });
 });
 

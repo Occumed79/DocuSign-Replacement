@@ -30,6 +30,7 @@ import OfficialSourceFormsPage from "@/pages/OfficialSourceForms";
 import AppLayout from "@/components/layout/AppLayout";
 import NotFound from "@/pages/not-found";
 import SetupPage from "@/pages/Setup";
+import AdminRecoveryPage from "@/pages/AdminRecovery";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -61,6 +62,7 @@ function Router() {
     <Switch>
       <Route path="/login" component={LoginPage} />
       <Route path="/setup" component={SetupPage} />
+      <Route path="/recover-admin" component={AdminRecoveryPage} />
 
       {/* Public recipient pages — no PacketPath account required */}
       <Route path="/sign/:token">
